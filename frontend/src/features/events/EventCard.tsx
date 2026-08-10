@@ -143,7 +143,7 @@ const EventCard =({
           {location && (
             <div className="flex items-center gap-1 text-xs font-medium text-gray-500">
               <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-              <span className="truncate max-w-[180px]">{location}</span>
+              <span className="truncate max-w-45">{location}</span>
             </div>
           )}
         </div>

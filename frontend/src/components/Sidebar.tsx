@@ -6,7 +6,6 @@ import {
   Users,
   Box,
   Building2,
-  AlertTriangle,
   Zap,
 } from "lucide-react";
 
@@ -60,7 +59,7 @@ export default function Sidebar() {
               {isActive && (
                 <span className="absolute -left-3 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-amber-400" />
               )}
-              <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+              <Icon className="w-4.5 h-4.5 shrink-0" />
               <span className="flex-1 text-left">{item.label}</span>
               {item.badge && (
                 <span className="bg-red-100 text-red-500 text-xs font-semibold rounded-full w-5 h-5 flex items-center justify-center">
