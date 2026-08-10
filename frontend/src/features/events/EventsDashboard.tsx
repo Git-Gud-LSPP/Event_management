@@ -1,6 +1,5 @@
 import React from 'react';
 import EventCard, { type EventModel } from './EventCard';
-import { Sidebar } from 'lucide-react';
 
 const EventDashboard = (): React.JSX.Element => {
   // Mock event object conforming to EventModel interface
