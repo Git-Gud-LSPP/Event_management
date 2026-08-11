@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 // Bcrypt is the only one who knows how to compare a newly typed password to that scrambled hash
 
 const jwt= require('jsonwebtoken');
-const userRepository=require('../repositories/user.repository');
+const userRepository=require('./user.repository');
 
 
 
