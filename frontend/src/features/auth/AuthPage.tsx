@@ -7,42 +7,54 @@ import {
   Sparkles, 
   User, 
   Smartphone, 
-  Ticket 
+  Ticket,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
+import { useOrganizerAuth } from '../../hooks/useOrganizerAuth';
 
 type TabType = 'organizer' | 'staff';
 
 export default function EventOpsAuth(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<TabType>('organizer');
 
-  // Organizer Form State
-  const [organizerEmail, setOrganizerEmail] = useState('');
-  const [organizerPassword, setOrganizerPassword] = useState('');
-
   // Staff Form State
   const [staffName, setStaffName] = useState('');
   const [staffPhone, setStaffPhone] = useState('');
   const [eventCode, setEventCode] = useState('');
+  const [isStaffLoading, setIsStaffLoading] = useState(false);
 
-  const handleOrganizerSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Organizer Login:', { email: organizerEmail, password: organizerPassword });
+  // Decoupled Organizer Auth Logic via Custom Hook
+  const organizerAuth = useOrganizerAuth((token) => {
+    console.log('Successfully logged in! Token:', token);
+  });
+
+  const handleTabSwitch = (tab: TabType) => {
+    setActiveTab(tab);
+    organizerAuth.clearError();
   };
 
-  const handleStaffSubmit = (e: React.FormEvent) => {
+  const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Staff Login:', { name: staffName, phone: staffPhone, eventCode });
+    setIsStaffLoading(true);
+    try {
+      console.log('Staff Login:', { name: staffName, phone: staffPhone, eventCode });
+      // Simulate staff authentication submission
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    } finally {
+      setIsStaffLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col font-sans text-[#121d1e] bg-[#f7f6f2]">
       {/* 1. Header */}
-      <header className="w-full top-0 bg-[#f7f6f2] flex justify-between items-center px-9 py-3 max-w-300 mx-auto z-50">
-        <div className="flex items-center gap-3">
-          <Flower2 className="w-6 h-6 text-[#001f1f] fill-[#001f1f]" />
-          <span className="text-[22px] font-medium text-[#001f1f] tracking-tight">EventOps</span>
-        </div>
-        <div className="flex items-center">
+      <header className="w-full bg-[#f7f6f2]">
+        <div className="max-w-300 mx-auto flex justify-between items-center px-9 py-3">
+          <div className="flex items-center gap-3">
+            <Flower2 className="w-6 h-6 text-[#001f1f] fill-[#001f1f]" />
+            <span className="text-[22px] font-medium text-[#001f1f] tracking-tight">EventOps</span>
+          </div>
           <button 
             type="button" 
             className="text-[#414848] hover:text-[#001f1f] transition-colors text-sm flex items-center gap-2 cursor-pointer"
@@ -58,10 +70,10 @@ export default function EventOpsAuth(): React.JSX.Element {
         <div className="w-full max-w-md bg-white rounded-[14px] shadow-[0_4px_12px_rgba(0,31,31,0.06),0_1px_2px_rgba(0,31,31,0.04),0_0_0_1px_rgba(0,31,31,0.05)] p-12">
           
           {/* Tab Navigation */}
-          <div className="flex border-b border-[#d9e5e5] mb-9">
+          <div className="flex border-b border-[#d9e5e5] mb-8">
             <button
               type="button"
-              onClick={() => setActiveTab('organizer')}
+              onClick={() => handleTabSwitch('organizer')}
               className={`flex-1 py-3 text-sm text-center transition-all cursor-pointer ${
                 activeTab === 'organizer'
                   ? 'text-[#001f1f] border-b-2 border-[#001f1f] font-medium'
@@ -72,7 +84,7 @@ export default function EventOpsAuth(): React.JSX.Element {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('staff')}
+              onClick={() => handleTabSwitch('staff')}
               className={`flex-1 py-3 text-sm text-center transition-all cursor-pointer ${
                 activeTab === 'staff'
                   ? 'text-[#001f1f] border-b-2 border-[#001f1f] font-medium'
@@ -83,10 +95,18 @@ export default function EventOpsAuth(): React.JSX.Element {
             </button>
           </div>
 
+          {/* Dynamic Error Banner */}
+          {organizerAuth.errorMessage && activeTab === 'organizer' && (
+            <div className="mb-6 p-3 bg-[#ffdad6] border border-[#ba1a1a]/20 rounded-xl flex items-center gap-2 text-[#93000a] text-xs font-medium">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{organizerAuth.errorMessage}</span>
+            </div>
+          )}
+
           {/* TAB 1: ORGANIZER TAB */}
           {activeTab === 'organizer' && (
             <div className="animate-fadeIn">
-              <div className="mb-9">
+              <div className="mb-8">
                 <h2 className="text-[22px] font-medium text-[#001f1f] mb-2 leading-tight">
                   Organizer Sign-in
                 </h2>
@@ -95,22 +115,27 @@ export default function EventOpsAuth(): React.JSX.Element {
                 </p>
               </div>
 
-              <form onSubmit={handleOrganizerSubmit} className="space-y-5">
+              <form onSubmit={organizerAuth.handleLogin} className="space-y-5">
                 <div className="space-y-3">
                   {/* Email Field */}
                   <div>
-                    <label className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase">
+                    <label 
+                      htmlFor="organizer-email" 
+                      className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase"
+                    >
                       Email Address
                     </label>
                     <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
                       <Mail className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
                       <input
+                        id="organizer-email"
                         type="email"
                         required
-                        value={organizerEmail}
-                        onChange={(e) => setOrganizerEmail(e.target.value)}
+                        disabled={organizerAuth.isLoading}
+                        value={organizerAuth.email}
+                        onChange={(e) => organizerAuth.setEmail(e.target.value)}
                         placeholder="jane@eventops.com"
-                        className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0"
+                        className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0 disabled:opacity-50"
                       />
                     </div>
                   </div>
@@ -118,7 +143,10 @@ export default function EventOpsAuth(): React.JSX.Element {
                   {/* Password Field */}
                   <div>
                     <div className="flex justify-between items-baseline mb-2">
-                      <label className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] uppercase">
+                      <label 
+                        htmlFor="organizer-password" 
+                        className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] uppercase"
+                      >
                         Password
                       </label>
                       <a href="#forgot" className="text-[11px] font-medium text-[#001f1f] hover:underline">
@@ -128,12 +156,14 @@ export default function EventOpsAuth(): React.JSX.Element {
                     <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
                       <Lock className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
                       <input
+                        id="organizer-password"
                         type="password"
                         required
-                        value={organizerPassword}
-                        onChange={(e) => setOrganizerPassword(e.target.value)}
+                        disabled={organizerAuth.isLoading}
+                        value={organizerAuth.password}
+                        onChange={(e) => organizerAuth.setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0"
+                        className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0 disabled:opacity-50"
                       />
                     </div>
                   </div>
@@ -142,13 +172,21 @@ export default function EventOpsAuth(): React.JSX.Element {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  className="w-full h-12 bg-[#001f1f] text-white rounded-[29px] text-sm font-medium hover:bg-opacity-90 active:scale-[0.98] transition-all cursor-pointer"
+                  disabled={organizerAuth.isLoading}
+                  className="w-full h-12 bg-[#001f1f] text-white rounded-[29px] text-sm font-medium hover:bg-opacity-90 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Sign in to Dashboard
+                  {organizerAuth.isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Signing in...</span>
+                    </>
+                  ) : (
+                    <span>Sign in to Dashboard</span>
+                  )}
                 </button>
 
                 {/* Divider */}
-                <div className="relative flex py-3 items-center">
+                <div className="relative flex py-2 items-center">
                   <div className="grow border-t border-[#d9e5e5]"></div>
                   <span className="shrink-0 mx-3 text-[11px] font-medium text-[#c1c8c7] uppercase tracking-wider">
                     Or
@@ -170,7 +208,6 @@ export default function EventOpsAuth(): React.JSX.Element {
                     type="button"
                     className="w-full h-12 border-[1.5px] border-[#001f1f] text-[#001f1f] rounded-[29px] text-sm font-medium hover:bg-[#001f1f]/5 transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    {/* Google SVG Logo */}
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
                       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                       <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -187,7 +224,7 @@ export default function EventOpsAuth(): React.JSX.Element {
           {/* TAB 2: EVENT STAFF TAB */}
           {activeTab === 'staff' && (
             <div className="animate-fadeIn">
-              <div className="mb-9">
+              <div className="mb-8">
                 <h2 className="text-[22px] font-medium text-[#001f1f] mb-2 leading-tight">
                   Staff Onboarding
                 </h2>
@@ -200,55 +237,70 @@ export default function EventOpsAuth(): React.JSX.Element {
                 <div className="space-y-3">
                   {/* Full Name */}
                   <div>
-                    <label className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase">
+                    <label 
+                      htmlFor="staff-name" 
+                      className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase"
+                    >
                       Full Name
                     </label>
                     <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
                       <User className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
                       <input
+                        id="staff-name"
                         type="text"
                         required
+                        disabled={isStaffLoading}
                         value={staffName}
                         onChange={(e) => setStaffName(e.target.value)}
                         placeholder="Alex Morgan"
-                        className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0"
+                        className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0 disabled:opacity-50"
                       />
                     </div>
                   </div>
 
                   {/* Phone Number */}
                   <div>
-                    <label className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase">
+                    <label 
+                      htmlFor="staff-phone" 
+                      className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase"
+                    >
                       Phone Number
                     </label>
                     <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
                       <Smartphone className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
                       <input
+                        id="staff-phone"
                         type="tel"
                         required
+                        disabled={isStaffLoading}
                         value={staffPhone}
                         onChange={(e) => setStaffPhone(e.target.value)}
                         placeholder="(555) 000-0000"
-                        className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0"
+                        className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0 disabled:opacity-50"
                       />
                     </div>
                   </div>
 
                   {/* 6-Digit Event Code */}
                   <div>
-                    <label className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase">
+                    <label 
+                      htmlFor="event-code" 
+                      className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase"
+                    >
                       6-Digit Event Code
                     </label>
                     <div className="rounded-xl bg-[#e4f7f9] flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
                       <Ticket className="w-5 h-5 text-[#001f1f] mr-3 shrink-0" />
                       <input
+                        id="event-code"
                         type="text"
                         maxLength={6}
                         required
+                        disabled={isStaffLoading}
                         value={eventCode}
                         onChange={(e) => setEventCode(e.target.value.toUpperCase())}
                         placeholder="------"
-                        className="w-full bg-transparent border-none p-0 text-[22px] font-medium text-[#001f1f] placeholder-[#c1c8c7] tracking-widest uppercase text-center focus:outline-none focus:ring-0"
+                        className="w-full bg-transparent border-none p-0 text-[22px] font-medium text-[#001f1f] placeholder-[#c1c8c7] tracking-widest uppercase text-center focus:outline-none focus:ring-0 disabled:opacity-50"
                       />
                     </div>
                   </div>
@@ -257,9 +309,17 @@ export default function EventOpsAuth(): React.JSX.Element {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  className="w-full h-12 bg-[#001f1f] text-white rounded-[29px] text-sm font-medium hover:bg-opacity-90 active:scale-[0.98] transition-all cursor-pointer mt-9"
+                  disabled={isStaffLoading}
+                  className="w-full h-12 bg-[#001f1f] text-white rounded-[29px] text-sm font-medium hover:bg-opacity-90 active:scale-[0.98] transition-all cursor-pointer mt-8 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Join Event Crew
+                  {isStaffLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Joining Event Crew...</span>
+                    </>
+                  ) : (
+                    <span>Join Event Crew</span>
+                  )}
                 </button>
 
                 <div className="text-center mt-5">
@@ -274,20 +334,22 @@ export default function EventOpsAuth(): React.JSX.Element {
       </main>
 
       {/* 3. Footer */}
-      <footer className="w-full bg-[#f7f6f2] flex flex-col md:flex-row justify-between items-center px-9 py-9 max-w-300 mx-auto mt-auto">
-        <div className="text-sm text-[#414848] mb-5 md:mb-0">
-          © {new Date().getFullYear()} EventOps. All rights reserved.
-        </div>
-        <div className="flex gap-9">
-          <a href="#privacy" className="text-sm text-[#414848] hover:text-[#001f1f] transition-colors duration-200">
-            Privacy Policy
-          </a>
-          <a href="#terms" className="text-sm text-[#414848] hover:text-[#001f1f] transition-colors duration-200">
-            Terms of Service
-          </a>
-          <a href="#support" className="text-sm text-[#414848] hover:text-[#001f1f] transition-colors duration-200">
-            Contact Support
-          </a>
+      <footer className="w-full bg-[#f7f6f2] mt-auto">
+        <div className="max-w-300 mx-auto flex flex-col md:flex-row justify-between items-center px-9 py-8">
+          <div className="text-sm text-[#414848] mb-4 md:mb-0">
+            © {new Date().getFullYear()} EventOps. All rights reserved.
+          </div>
+          <div className="flex gap-8">
+            <a href="#privacy" className="text-sm text-[#414848] hover:text-[#001f1f] transition-colors duration-200">
+              Privacy Policy
+            </a>
+            <a href="#terms" className="text-sm text-[#414848] hover:text-[#001f1f] transition-colors duration-200">
+              Terms of Service
+            </a>
+            <a href="#support" className="text-sm text-[#414848] hover:text-[#001f1f] transition-colors duration-200">
+              Contact Support
+            </a>
+          </div>
         </div>
       </footer>
     </div>
