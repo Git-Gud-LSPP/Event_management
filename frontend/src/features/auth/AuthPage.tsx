@@ -102,7 +102,7 @@ export default function EventOpsAuth(): React.JSX.Element {
                     <label className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase">
                       Email Address
                     </label>
-                    <div className="rounded-[12px] bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
+                    <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
                       <Mail className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
                       <input
                         type="email"
@@ -125,7 +125,7 @@ export default function EventOpsAuth(): React.JSX.Element {
                         Forgot?
                       </a>
                     </div>
-                    <div className="rounded-[12px] bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
+                    <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
                       <Lock className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
                       <input
                         type="password"
@@ -149,11 +149,11 @@ export default function EventOpsAuth(): React.JSX.Element {
 
                 {/* Divider */}
                 <div className="relative flex py-3 items-center">
-                  <div className="flex-grow border-t border-[#d9e5e5]"></div>
-                  <span className="flex-shrink-0 mx-3 text-[11px] font-medium text-[#c1c8c7] uppercase tracking-wider">
+                  <div className="grow border-t border-[#d9e5e5]"></div>
+                  <span className="shrink-0 mx-3 text-[11px] font-medium text-[#c1c8c7] uppercase tracking-wider">
                     Or
                   </span>
-                  <div className="flex-grow border-t border-[#d9e5e5]"></div>
+                  <div className="grow border-t border-[#d9e5e5]"></div>
                 </div>
 
                 {/* Secondary Actions */}
@@ -203,7 +203,7 @@ export default function EventOpsAuth(): React.JSX.Element {
                     <label className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase">
                       Full Name
                     </label>
-                    <div className="rounded-[12px] bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
+                    <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
                       <User className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
                       <input
                         type="text"
@@ -221,7 +221,7 @@ export default function EventOpsAuth(): React.JSX.Element {
                     <label className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase">
                       Phone Number
                     </label>
-                    <div className="rounded-[12px] bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
+                    <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
                       <Smartphone className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
                       <input
                         type="tel"
@@ -239,7 +239,7 @@ export default function EventOpsAuth(): React.JSX.Element {
                     <label className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase">
                       6-Digit Event Code
                     </label>
-                    <div className="rounded-[12px] bg-[#e4f7f9] flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
+                    <div className="rounded-xl bg-[#e4f7f9] flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
                       <Ticket className="w-5 h-5 text-[#001f1f] mr-3 shrink-0" />
                       <input
                         type="text"
@@ -274,7 +274,7 @@ export default function EventOpsAuth(): React.JSX.Element {
       </main>
 
       {/* 3. Footer */}
-      <footer className="w-full bg-[#f7f6f2] flex flex-col md:flex-row justify-between items-center px-9 py-9 max-w-[1200px] mx-auto mt-auto">
+      <footer className="w-full bg-[#f7f6f2] flex flex-col md:flex-row justify-between items-center px-9 py-9 max-w-300 mx-auto mt-auto">
         <div className="text-sm text-[#414848] mb-5 md:mb-0">
           © {new Date().getFullYear()} EventOps. All rights reserved.
         </div>

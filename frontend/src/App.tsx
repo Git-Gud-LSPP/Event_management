@@ -7,8 +7,8 @@ const App = () => {
     <div>
       {/* The below components are temporary and will be replaced with proper routing */}
       <AuthPage/>
-      {/* <Sidebar/>
-      <EventsDashboard/> */}
+      <Sidebar/>
+      <EventsDashboard/>
     </div>
   );
 }
