@@ -1,8 +1,8 @@
-import React from 'react';
-import EventCard, { type EventModel } from './EventCard';
-import EventsDashboardHeader from './EventsDashboardHeader';
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import EventCard, { type EventModel } from "./EventCard";
+import EventsDashboardHeader from "./EventsDashboardHeader";
 
-// Interface extending EventModel with card statistics
 interface DashboardEventItem {
   id: string;
   event: EventModel;
@@ -13,14 +13,13 @@ interface DashboardEventItem {
   incidentCount: number;
 }
 
-// Array of event objects
 const MOCK_EVENTS: DashboardEventItem[] = [
   {
-    id: "1",
+    id: "evt-1",
     event: {
-      _id: "64f8a123b4c5d67890e1f2a3",
+      _id: "evt-1", // Standardized ID
       title: "TechSummit 2026",
-      description: "Annual technology summit with 5,000 attendees across 3 main stages and 12 breakout sessions.",
+      description: "Annual technology summit with 5,000 attendees across 3 main stages.",
       location: "Moscone Center, SF",
       startsAt: new Date("2026-08-09T09:00:00.000Z"),
       endsAt: new Date("2026-08-09T18:00:00.000Z"),
@@ -34,11 +33,11 @@ const MOCK_EVENTS: DashboardEventItem[] = [
     incidentCount: 2,
   },
   {
-    id: "2",
+    id: "evt-2",
     event: {
-      _id: "64f8a123b4c5d67890e1f2a4",
+      _id: "evt-2",
       title: "SXC Hackathon 2026",
-      description: "48-hour competitive student hackathon focused on AI and web development innovations.",
+      description: "48-hour competitive student hackathon focused on AI and web development.",
       location: "Kathmandu, Nepal",
       startsAt: new Date("2026-09-15T08:00:00.000Z"),
       endsAt: new Date("2026-09-17T18:00:00.000Z"),
@@ -51,46 +50,32 @@ const MOCK_EVENTS: DashboardEventItem[] = [
     taskCount: 30,
     incidentCount: 0,
   },
-  {
-    id: "3",
-    event: {
-      _id: "64f8a123b4c5d67890e1f2a5",
-      title: "Design System Workshop",
-      description: "Hands-on UI/UX masterclass on building accessible component libraries with React and Tailwind.",
-      location: "Online / Zoom",
-      startsAt: new Date("2026-10-01T10:00:00.000Z"),
-      endsAt: new Date("2026-10-01T14:00:00.000Z"),
-      capacity: 100,
-      status: "draft",
-    },
-    category: "Workshop",
-    progress: 10,
-    staffCount: 4,
-    taskCount: 8,
-    incidentCount: 0,
-  },
 ];
 
 const EventsDashboard = (): React.JSX.Element => {
+  const navigate = useNavigate();
+
   return (
     <div className="p-8 bg-[#FBFBF9] min-h-screen">
       <div className="max-w-7xl mx-auto">
-        {/* Header Section */}
         <EventsDashboardHeader />
 
-        {/* Responsive Grid with Spacing */}
-        <main className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-3 gap-6">
-          {MOCK_EVENTS.map((item) => (
-            <EventCard
-              key={item.id}
-              event={item.event}
-              category={item.category}
-              progress={item.progress}
-              staffCount={item.staffCount}
-              taskCount={item.taskCount}
-              incidentCount={item.incidentCount}
-            />
-          ))}
+        <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+          {MOCK_EVENTS.map((item) => {
+            const targetId = item.event._id || item.id;
+            return (
+              <EventCard
+                key={item.id}
+                event={item.event}
+                category={item.category}
+                progress={item.progress}
+                staffCount={item.staffCount}
+                taskCount={item.taskCount}
+                incidentCount={item.incidentCount}
+                onClick={() => navigate(`/events/${targetId}`)}
+              />
+            );
+          })}
         </main>
       </div>
     </div>
