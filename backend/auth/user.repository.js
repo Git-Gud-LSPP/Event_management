@@ -1,11 +1,14 @@
-const User = require('./user.model')
+const User = require('./user.model');
 
-const findUserByEmail =async(email)=>{
-    return User.findOne({email})
+const findUserByEmail = async (email) => {
+    return User.findOne({ email });
 };
 
-module.exports={
-    findUserByEmail
-}
+const createUser = async (userData) => {
+    return User.create(userData);
+};
 
-// Exporting the newly built search tool so the rest of the app can use it
+module.exports = {
+    findUserByEmail,
+    createUser,
+};

@@ -44,6 +44,41 @@ const login=async(email,password)=>{
 
 };
 
+
+const register = async (name, email, password) => {
+
+    const existingUser = await userRepository.findUserByEmail(email);
+
+    if (existingUser) {
+        throw new Error('User already exists');
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const user = await userRepository.createUser({
+        name,
+        email,
+        passwordHash,
+    });
+
+    const token = jwt.sign(
+        {
+            userId: user._id,
+            email: user.email,
+        },
+        process.env.JWT_SECRET,
+        {
+            expiresIn: '1h',
+        }
+    );
+
+    return {
+        token,
+    };
+};
+
 module.exports={
     login,
+
+    register,
 };
