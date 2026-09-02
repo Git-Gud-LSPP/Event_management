@@ -30,6 +30,9 @@ const App = () => {
           <Route path="/events" element={<EventsDashboard />} />
           <Route path="/events/:eventId" element={<EventDetail />} />
         </Route>
+
+        {/* 3. Fallback Route */}
+        <Route path="*" element={<Navigate to="/events" replace />} />
       </Routes>
     </BrowserRouter>
   );
