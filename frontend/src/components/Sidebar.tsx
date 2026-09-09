@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   LayoutGrid,
   Calendar,
@@ -26,6 +27,7 @@ const navItems: NavItem[] = [
 ];
 
 export default function Sidebar() {
+  const navigate = useNavigate();
   const [active, setActive] = useState<string>("Dashboard");
 
   return (
@@ -48,7 +50,14 @@ export default function Sidebar() {
           return (
             <button
               key={item.label}
-              onClick={() => setActive(item.label)}
+              //onClick={() => setActive(item.label)}
+              onClick={() => {
+                  setActive(item.label);
+
+                  if (item.label === "Schedule") {
+                    navigate("/schedule");
+                  }
+                }}
               className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                 ${
                   isActive

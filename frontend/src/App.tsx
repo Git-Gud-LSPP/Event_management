@@ -3,6 +3,7 @@ import Sidebar from "./components/Sidebar";
 import EventsDashboard from "./features/events/EventsDashboard";
 import EventDetail from "./features/events/EventDetail";
 import AuthPage from "./features/auth/AuthPage";
+import SchedulePage from "./features/schedule/SchedulePage";
 
 // Layout wrapper for authenticated application routes
 const MainLayout = () => {
@@ -29,6 +30,7 @@ const App = () => {
           <Route path="/" element={<Navigate to="/events" replace />} />
           <Route path="/events" element={<EventsDashboard />} />
           <Route path="/events/:eventId" element={<EventDetail />} />
+          <Route path="/schedule" element={<SchedulePage />} />
         </Route>
 
         {/* 3. Fallback Route */}
