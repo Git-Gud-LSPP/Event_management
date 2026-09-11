@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import EventCard, { type EventModel } from "./EventCard";
-import EventsDashboardHeader from "./EventsDashboardHeader";
+import DashboardHeader from "../../components/DashboardHeader";
 
 interface DashboardEventItem {
   id: string;
@@ -58,7 +58,7 @@ const EventsDashboard = (): React.JSX.Element => {
   return (
     <div className="p-8 bg-[#FBFBF9] min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <EventsDashboardHeader />
+        <DashboardHeader title={"Event Operations"} subtitle={"6 events across all status"} label={"Create Event"} categoriesList={["All", "Live", "Upcoming", "At Risk", "Completed"]} />
 
         <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
           {MOCK_EVENTS.map((item) => {

@@ -9,6 +9,7 @@ import Sidebar from "./components/Sidebar";
 import AuthPage from "./features/auth/AuthPage";
 import EventsDashboard from "./features/events/EventsDashboard";
 import EventDetail from "./features/events/EventDetail";
+import StaffDashboard from "./features/staff/StaffDashboard";
 import AuthPage from "./features/auth/AuthPage";
 import SchedulePage from "./features/schedule/SchedulePage";
 import VendorsPage from "./features/vendors/VendorsPage";
@@ -42,6 +43,7 @@ const App = () => {
           <Route path="/schedule" element={<SchedulePage />} />
           <Route path="/vendors" element={<VendorsPage />} />
           <Route path="/vendors/:vendorId" element={<VendorDetailPage />} />
+          <Route path="/staffs" element={<StaffDashboard />} />
         </Route>
 
         {/* 3. Fallback Route */}
