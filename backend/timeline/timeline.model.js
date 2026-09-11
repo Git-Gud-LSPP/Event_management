@@ -1,7 +1,13 @@
 const mongoose = require('mongoose');
 
-const eventSchema = new mongoose.Schema(
+const timelineSchema = new mongoose.Schema(
   {
+    event: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Event',
+      required: true,
+      index: true,
+    },
     title: { type: String, required: true, trim: true },
     description: { type: String, default: '', trim: true },
     location: { type: String, default: '', trim: true },
@@ -15,25 +21,17 @@ const eventSchema = new mongoose.Schema(
         message: 'endsAt must be on or after startsAt',
       },
     },
-    capacity: { type: Number, min: 0 },
-    status: {
+    type: {
       type: String,
-      enum: ['draft', 'published', 'cancelled'],
-      default: 'draft',
+      enum: ['session', 'break', 'keynote', 'workshop', 'networking', 'other'],
+      default: 'session',
     },
-    organizer: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
-    staff: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-      },
-    ],
+    speaker: { type: String, default: '', trim: true },
+    capacity: { type: Number, min: 0 },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model('Event', eventSchema);
+timelineSchema.index({ event: 1, startsAt: 1 });
+
+module.exports = mongoose.model('Timeline', timelineSchema);
