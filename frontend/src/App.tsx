@@ -10,7 +10,6 @@ import AuthPage from "./features/auth/AuthPage";
 import EventsDashboard from "./features/events/EventsDashboard";
 import EventDetail from "./features/events/EventDetail";
 import StaffDashboard from "./features/staff/StaffDashboard";
-import AuthPage from "./features/auth/AuthPage";
 import SchedulePage from "./features/schedule/SchedulePage";
 import VendorsPage from "./features/vendors/VendorsPage";
 import VendorDetailPage from "./features/vendors/VendorDetailPage";

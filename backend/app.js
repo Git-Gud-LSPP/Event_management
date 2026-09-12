@@ -5,7 +5,7 @@ const cors = require('cors');
 
 const eventsRoutes = require('./event/event.routes');
 const authRoutes = require('./auth/auth.route');
-const timelineRoutes = require('./timeline/timeline.routes');
+const scheduleRoutes = require('./schedule/schedule.routes');
 
 const app = express();
 
@@ -25,6 +25,6 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventsRoutes);
-app.use('/api/events/:eventId/timeline', timelineRoutes);
+app.use('/api/events/:eventId/schedule', scheduleRoutes);
 
 module.exports = app;
