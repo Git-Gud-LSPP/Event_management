@@ -1,4 +1,4 @@
-const authService = require('../services/auth.service');
+const authService = require('./auth.service');
 
 
 // req(request) contains everything the user sent us 
@@ -27,6 +27,41 @@ const login = async (req, res) => {
   }
 };
 
+const register = async (req, res) => {
+  try {
+
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: 'Name, email and password are required',
+      });
+    }
+
+    const result = await authService.register(
+      name,
+      email,
+      password
+    );
+
+    return res.status(201).json({
+      message: 'Registration successful',
+      token: result.token,
+    });
+
+  } catch (error) {
+
+    return res.status(400).json({
+      message: error.message,
+    });
+
+  }
+};
+
+
+
+
 module.exports = {
   login,
+  register,
 };
