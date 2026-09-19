@@ -39,37 +39,29 @@ type Vendor = {
   distance: number;
 };
 
-/* ------------------------------------------------------------------ */
-/*  VendorImage                                                         */
-/* ------------------------------------------------------------------ */
-type VendorImageProps = { src: string | null; name: string; Icon: ElementType };
 
-const NoImageFallback = ({ Icon }: { Icon: ElementType }) => (
-  <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
-    <Icon size={32} />
-    <span className="text-xs font-medium">No image available</span>
-  </div>
-);
+type VendorImageProps = { src: string | null; type: string; name: string };
 
-const VendorImage = ({ src, name, Icon }: VendorImageProps) => {
+const VendorImage = ({ src, type, name }: VendorImageProps) => {
   const [failed, setFailed] = useState(false);
-  if (!src || failed) {
-    return (
-      <div className="mb-5 h-32 overflow-hidden rounded-lg bg-slate-100">
-        <NoImageFallback Icon={Icon} />
-      </div>
-    );
-  }
+  const fallbackSrc = `/vendor-images/${type === "hotel" ? "hotels" : type}.png`;
+  const imageSrc = (src && !failed) ? src : fallbackSrc;
+
   return (
     <div className="mb-5 h-32 overflow-hidden rounded-lg bg-slate-100">
-      <img src={src} alt={name} className="h-full w-full object-cover" onError={() => setFailed(true)} />
+      <img
+        src={imageSrc}
+        alt={name}
+        className="h-full w-full object-cover"
+        onError={() => {
+          if (imageSrc === src) setFailed(true);
+        }}
+      />
     </div>
   );
 };
 
-/* ------------------------------------------------------------------ */
-/*  Session-storage snapshot                                            */
-/* ------------------------------------------------------------------ */
+
 const SESSION_KEY = "vendorsPage_snapshot";
 
 type VendorsSnapshot = {
@@ -93,9 +85,7 @@ function clearSnapshot() {
   try { sessionStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Nominatim geocoding (address -> coordinates)                        */
-/* ------------------------------------------------------------------ */
+
 type NominatimResult = {
   place_id: number;
   display_name: string;
@@ -110,9 +100,7 @@ async function geocodeAddress(query: string): Promise<NominatimResult[]> {
   return resp.json();
 }
 
-/* ------------------------------------------------------------------ */
-/*  Location picker modal                                               */
-/* ------------------------------------------------------------------ */
+
 type LocationPickerProps = {
   onClose: () => void;
   onSelect: (loc: { latitude: number; longitude: number; label?: string }) => void;
@@ -299,14 +287,10 @@ const LocationPicker = ({ onClose, onSelect }: LocationPickerProps) => {
   );
 };
 
-/* ------------------------------------------------------------------ */
-/*  Page size                                                           */
-/* ------------------------------------------------------------------ */
+
 const PAGE_SIZE = 10;
 
-/* ------------------------------------------------------------------ */
-/*  VendorsPage                                                         */
-/* ------------------------------------------------------------------ */
+
 const VendorsPage = () => {
   const navigate = useNavigate();
 
@@ -508,7 +492,7 @@ const VendorsPage = () => {
                       key={vendor.id}
                       className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
                     >
-                      <VendorImage src={vendor.image ?? null} name={vendor.name} Icon={Icon} />
+                      <VendorImage src={vendor.image ?? null} type={vendor.type} name={vendor.name} />
 
                       <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
                         {category?.name || vendor.type}

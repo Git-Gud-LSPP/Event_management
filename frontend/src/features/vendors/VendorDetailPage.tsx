@@ -17,10 +17,6 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                               */
-/* ------------------------------------------------------------------ */
-
 type Vendor = {
   id: string;
   name: string;
@@ -45,9 +41,6 @@ type RouteInfo = {
   duration_s: number;
 };
 
-/* ------------------------------------------------------------------ */
-/*  Category metadata (same as VendorsPage)                            */
-/* ------------------------------------------------------------------ */
 
 const categories = [
   { name: "Photographers", value: "photographer", icon: Camera },
@@ -58,10 +51,6 @@ const categories = [
   { name: "Decoration",    value: "decoration",    icon: Palette },
   { name: "Hotels",        value: "hotel",         icon: Hotel },
 ];
-
-/* ------------------------------------------------------------------ */
-/*  Haversine distance (km) - used as initial / fallback value         */
-/* ------------------------------------------------------------------ */
 
 function haversineKm(
   lat1: number, lon1: number,
@@ -78,10 +67,6 @@ function haversineKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/* ------------------------------------------------------------------ */
-/*  Format distance for display                                         */
-/* ------------------------------------------------------------------ */
-
 function formatDistance(km: number): string {
   if (km < 1) return `${Math.round(km * 1000)} m`;
   return `${km.toFixed(2)} km`;
@@ -91,12 +76,6 @@ function formatRoadDistance(m: number): string {
   if (m < 1000) return `${Math.round(m)} m`;
   return `${(m / 1000).toFixed(2)} km`;
 }
-
-/* ------------------------------------------------------------------ */
-/*  Map component (uses Leaflet directly via useEffect)                 */
-/*                                                                      */
-/*  We load Leaflet imperatively to avoid SSR / import-order issues.    */
-/* ------------------------------------------------------------------ */
 
 type MapProps = {
   userLocation: UserLocation | null;
@@ -273,10 +252,6 @@ const VendorMap = ({ userLocation, vendor, onRouteLoaded }: MapProps) => {
   );
 };
 
-/* ------------------------------------------------------------------ */
-/*  Info row helper                                                     */
-/* ------------------------------------------------------------------ */
-
 const InfoRow = ({
   label,
   children,
@@ -291,10 +266,6 @@ const InfoRow = ({
     <div className="text-slate-800">{children}</div>
   </div>
 );
-
-/* ------------------------------------------------------------------ */
-/*  Main VendorDetailPage                                               */
-/* ------------------------------------------------------------------ */
 
 const VendorDetailPage = () => {
   const navigate = useNavigate();

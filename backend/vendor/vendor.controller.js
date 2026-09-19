@@ -1,4 +1,5 @@
-﻿const service = require('./vendor.service');
+const service = require('./vendor.service');
+const { getCachedVendors, cacheVendors } = require('./vendor.cache');
 const https = require('https');
 
 exports.nearby = async (req, res, next) => {
@@ -25,12 +26,17 @@ exports.nearby = async (req, res, next) => {
       });
     }
 
-    const vendors = await service.searchNearby({
-      type,
-      latitude: lat,
-      longitude: lon,
-      radius: searchRadius,
-    });
+    let vendors = await getCachedVendors(type, lat, lon, searchRadius);
+
+    if (!vendors) {
+      vendors = await service.searchNearby({
+        type,
+        latitude: lat,
+        longitude: lon,
+        radius: searchRadius,
+      });
+      await cacheVendors(type, lat, lon, searchRadius, vendors);
+    }
 
     res.json({
       items: vendors,
