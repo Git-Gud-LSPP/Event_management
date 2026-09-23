@@ -4,6 +4,7 @@ import {
   BarChart2,
   Users,
   Building2,
+  LayoutPanelTop,
   Zap,
 } from "lucide-react";
 
@@ -19,6 +20,7 @@ const navItems: NavItem[] = [
   { label: "Schedule", icon: BarChart2, path: "/schedule" },
   { label: "Staff", icon: Users, path: "/staffs" },
   { label: "Vendors", icon: Building2, path: "/vendors" },
+  { label: "Floor Plan", icon: LayoutPanelTop, path: "/floorplan" },
 ];
 
 export default function Sidebar() {
