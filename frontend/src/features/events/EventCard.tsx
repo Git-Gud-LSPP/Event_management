@@ -26,7 +26,7 @@ export interface EventCardProps {
 
 const EventCard = ({
   event,
-  category = "Conference",
+  category,
   progress = 0,
   staffCount = 0,
   taskCount = 0,

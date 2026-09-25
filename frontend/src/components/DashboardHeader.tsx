@@ -6,12 +6,14 @@ const DashboardHeader = ({
   title,
   subtitle,
   label,
-  categoriesList
+  categoriesList,
+  onLabelClick,
 }: {
   title: string;
   subtitle: string;
   label: string;
   categoriesList: string[];
+  onLabelClick?: () => void;
 }): React.JSX.Element => {
   return (
     <header className="mb-8 space-y-6">
@@ -28,7 +30,7 @@ const DashboardHeader = ({
         </div>
 
         {/* Searchbar */}
-        <Button label={label} />
+        <Button label={label} onClick={onLabelClick} />
 
       </div>
 

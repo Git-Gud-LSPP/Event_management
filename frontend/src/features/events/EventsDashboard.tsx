@@ -1,83 +1,93 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import EventCard, { type EventModel } from "./EventCard";
+import EventCard from "./EventCard";
 import DashboardHeader from "../../components/DashboardHeader";
-
-interface DashboardEventItem {
-  id: string;
-  event: EventModel;
-  category: string;
-  progress: number;
-  staffCount: number;
-  taskCount: number;
-  incidentCount: number;
-}
-
-const MOCK_EVENTS: DashboardEventItem[] = [
-  {
-    id: "evt-1",
-    event: {
-      _id: "evt-1", // Standardized ID
-      title: "TechSummit 2026",
-      description: "Annual technology summit with 5,000 attendees across 3 main stages.",
-      location: "Moscone Center, SF",
-      startsAt: new Date("2026-08-09T09:00:00.000Z"),
-      endsAt: new Date("2026-08-09T18:00:00.000Z"),
-      capacity: 5000,
-      status: "published",
-    },
-    category: "Conference",
-    progress: 62,
-    staffCount: 48,
-    taskCount: 12,
-    incidentCount: 2,
-  },
-  {
-    id: "evt-2",
-    event: {
-      _id: "evt-2",
-      title: "SXC Hackathon 2026",
-      description: "48-hour competitive student hackathon focused on AI and web development.",
-      location: "Kathmandu, Nepal",
-      startsAt: new Date("2026-09-15T08:00:00.000Z"),
-      endsAt: new Date("2026-09-17T18:00:00.000Z"),
-      capacity: 300,
-      status: "published",
-    },
-    category: "Hackathon",
-    progress: 25,
-    staffCount: 15,
-    taskCount: 30,
-    incidentCount: 0,
-  },
-];
+import CreateEventModal from "./CreateEventModal";
+import { eventsApi, type EventDTO } from "../../services/eventsApi";
 
 const EventsDashboard = (): React.JSX.Element => {
   const navigate = useNavigate();
+  const [events, setEvents] = useState<EventDTO[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  const loadEvents = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await eventsApi.list({ limit: 50 });
+      setEvents(data.items);
+    } catch (err: any) {
+      setError(err.message || "Couldn't load events.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
 
   return (
     <div className="p-8 bg-[#FBFBF9] min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <DashboardHeader title={"Event Operations"} subtitle={"6 events across all status"} label={"Create Event"} categoriesList={["All", "Live", "Upcoming", "At Risk", "Completed"]} />
+        <DashboardHeader
+          title={"Event Operations"}
+          subtitle={`${events.length} event${events.length === 1 ? "" : "s"} across all status`}
+          label={"Create Event"}
+          categoriesList={["All", "Live", "Upcoming", "At Risk", "Completed"]}
+          onLabelClick={() => setIsCreateOpen(true)}
+        />
 
-        <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-          {MOCK_EVENTS.map((item) => {
-            const targetId = item.event._id || item.id;
-            return (
+        {isLoading && (
+          <div className="mt-10 text-center text-sm text-gray-400">Loading events…</div>
+        )}
+
+        {!isLoading && error && (
+          <div className="mt-10 text-center text-sm text-rose-500">
+            {error}{" "}
+            <button onClick={loadEvents} className="underline hover:text-rose-600 cursor-pointer">
+              Retry
+            </button>
+          </div>
+        )}
+
+        {!isLoading && !error && events.length === 0 && (
+          <div className="mt-10 text-center text-sm text-gray-400">
+            No events yet. Create your first one to get started.
+          </div>
+        )}
+
+        {!isLoading && !error && events.length > 0 && (
+          <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+            {events.map((event) => (
               <EventCard
-                key={item.id}
-                event={item.event}
-                category={item.category}
-                progress={item.progress}
-                staffCount={item.staffCount}
-                taskCount={item.taskCount}
-                incidentCount={item.incidentCount}
-                onClick={() => navigate(`/events/${targetId}`)}
+                key={event._id}
+                event={event}
+                // Progress/task/incident counts depend on the schedule and
+                // incident modules, which aren't built yet — showing 0
+                // rather than fabricating numbers until those exist.
+                progress={0}
+                staffCount={event.staff?.length ?? 0}
+                taskCount={0}
+                incidentCount={0}
+                onClick={() => navigate(`/events/${event._id}`)}
               />
-            );
-          })}
-        </main>
+            ))}
+          </main>
+        )}
       </div>
+
+      {isCreateOpen && (
+        <CreateEventModal
+          onClose={() => setIsCreateOpen(false)}
+          onCreated={(newEvent) => {
+            setEvents((prev) => [newEvent, ...prev]);
+            setIsCreateOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

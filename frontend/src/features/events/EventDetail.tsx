@@ -1,15 +1,95 @@
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { events, tasks, staff, incidents, dependencyChains } from './data'
-import type { DependencyChain } from './data'
+import { tasks, staff, incidents, dependencyChains } from './data'
+import type { Event as LocalEvent, DependencyChain } from './data'
+import { eventsApi, type EventDTO } from '../../services/eventsApi'
+
+function formatEventDate(startsAt: string): string {
+  const start = new Date(startsAt)
+  const datePart = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const timePart = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  return `${datePart} · ${timePart}`
+}
+
+// Backend Event -> the shape the rest of this page (and its still-mocked
+// task/staff/incident/vendor sections) was already built against.
+function toLocalEvent(dto: EventDTO): LocalEvent {
+  const now = new Date()
+  const start = new Date(dto.startsAt)
+  const end = dto.endsAt ? new Date(dto.endsAt) : null
+
+  let status: LocalEvent['status'] = 'Upcoming'
+  if (dto.status === 'cancelled') {
+    status = 'At Risk'
+  } else if (dto.status === 'published') {
+    if (now >= start && (!end || now <= end)) status = 'Live'
+    else if (end && now > end) status = 'Completed'
+  }
+
+  return {
+    id: dto._id,
+    name: dto.title,
+    date: formatEventDate(dto.startsAt),
+    location: dto.location || 'Location TBD',
+    type: 'Event', // backend has no category field yet
+    staffCount: dto.staff?.length ?? 0,
+    activeTasks: 0, // schedule module isn't wired to this page yet
+    incidents: 0, // incident module isn't wired to this page yet
+    status,
+    progress: 0, // no task-completion data to derive this from yet
+    description: dto.description || '',
+  }
+}
 
 export default function EventDetail({ eventId: propEventId }: { eventId?: string } = {}) {
   // Extract route parameter from URL
   const { eventId: paramEventId } = useParams<{ eventId: string }>()
-  
+
   // Fall back to prop if provided, otherwise route parameter
   const eventId = propEventId || paramEventId || ''
 
-  const event = events.find(e => e.id === eventId) || events[0]
+  const [backendEvent, setBackendEvent] = useState<EventDTO | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!eventId) return
+    let cancelled = false
+    setIsLoading(true)
+    setLoadError(null)
+    eventsApi
+      .getById(eventId)
+      .then((data) => {
+        if (!cancelled) setBackendEvent(data)
+      })
+      .catch((err: any) => {
+        if (!cancelled) setLoadError(err.message || "Couldn't load this event.")
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [eventId])
+
+  if (isLoading) {
+    return <div className="p-8 max-w-6xl mx-auto text-sm text-mist">Loading event…</div>
+  }
+
+  if (loadError || !backendEvent) {
+    return (
+      <div className="p-8 max-w-6xl mx-auto text-sm text-rose-500">
+        {loadError || 'Event not found.'}
+      </div>
+    )
+  }
+
+  const event = toLocalEvent(backendEvent)
+  // Tasks/staff/incidents/vendor sections below still read from local mock
+  // data (./data) — the schedule, staff, and vendor modules aren't wired to
+  // the backend yet. These filters will start returning real rows on their
+  // own once those modules use real event ids.
   const eventTasks = tasks.filter(t => t.eventId === eventId)
   const eventStaff = staff.slice(0, 8)
   const eventIncidents = incidents.filter(i => i.eventId === eventId)
