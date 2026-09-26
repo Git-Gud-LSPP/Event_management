@@ -1,83 +1,122 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import EventCard, { type EventModel } from "./EventCard";
+import { Loader2 } from "lucide-react";
+import EventCard from "./EventCard";
+import EventFormModal from "./EventFormModal";
 import DashboardHeader from "../../components/DashboardHeader";
+import { listEvents, type EventRecord } from "./api";
 
-interface DashboardEventItem {
-  id: string;
-  event: EventModel;
-  category: string;
-  progress: number;
-  staffCount: number;
-  taskCount: number;
-  incidentCount: number;
-}
+const FILTERS = ["All", "Live", "Upcoming", "Draft", "Completed", "Cancelled"] as const;
+type Filter = (typeof FILTERS)[number];
 
-const MOCK_EVENTS: DashboardEventItem[] = [
-  {
-    id: "evt-1",
-    event: {
-      _id: "evt-1", // Standardized ID
-      title: "TechSummit 2026",
-      description: "Annual technology summit with 5,000 attendees across 3 main stages.",
-      location: "Moscone Center, SF",
-      startsAt: new Date("2026-08-09T09:00:00.000Z"),
-      endsAt: new Date("2026-08-09T18:00:00.000Z"),
-      capacity: 5000,
-      status: "published",
-    },
-    category: "Conference",
-    progress: 62,
-    staffCount: 48,
-    taskCount: 12,
-    incidentCount: 2,
-  },
-  {
-    id: "evt-2",
-    event: {
-      _id: "evt-2",
-      title: "SXC Hackathon 2026",
-      description: "48-hour competitive student hackathon focused on AI and web development.",
-      location: "Kathmandu, Nepal",
-      startsAt: new Date("2026-09-15T08:00:00.000Z"),
-      endsAt: new Date("2026-09-17T18:00:00.000Z"),
-      capacity: 300,
-      status: "published",
-    },
-    category: "Hackathon",
-    progress: 25,
-    staffCount: 15,
-    taskCount: 30,
-    incidentCount: 0,
-  },
-];
+// Derived from the dates/status the backend already stores — no extra fields needed.
+const bucketOf = (ev: EventRecord): Filter => {
+  if (ev.status === "cancelled") return "Cancelled";
+  if (ev.status === "draft") return "Draft";
+  const now = Date.now();
+  const start = new Date(ev.startsAt).getTime();
+  const end = ev.endsAt ? new Date(ev.endsAt).getTime() : start;
+  if (now < start) return "Upcoming";
+  if (now > end) return "Completed";
+  return "Live";
+};
+
+const progressOf = (ev: EventRecord): number => {
+  const start = new Date(ev.startsAt).getTime();
+  const end = ev.endsAt ? new Date(ev.endsAt).getTime() : start;
+  if (end <= start) return Date.now() >= start ? 100 : 0;
+  return Math.round(Math.min(100, Math.max(0, ((Date.now() - start) / (end - start)) * 100)));
+};
 
 const EventsDashboard = (): React.JSX.Element => {
   const navigate = useNavigate();
+  const [events, setEvents] = useState<EventRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Filter>("All");
+  const [search, setSearch] = useState("");
+  const [showForm, setShowForm] = useState(false);
+
+  useEffect(() => {
+    listEvents()
+      .then(({ items }) => setEvents(items))
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const counts = useMemo(() => {
+    const result: Record<string, number> = { All: events.length };
+    for (const ev of events) {
+      const bucket = bucketOf(ev);
+      result[bucket] = (result[bucket] ?? 0) + 1;
+    }
+    return result;
+  }, [events]);
+
+  const visible = useMemo(
+    () =>
+      events.filter(
+        (ev) =>
+          (filter === "All" || bucketOf(ev) === filter) &&
+          (ev.title.toLowerCase().includes(search.toLowerCase()) ||
+            (ev.location ?? "").toLowerCase().includes(search.toLowerCase()))
+      ),
+    [events, filter, search]
+  );
 
   return (
     <div className="p-8 bg-[#FBFBF9] min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <DashboardHeader title={"Event Operations"} subtitle={"6 events across all status"} label={"Create Event"} categoriesList={["All", "Live", "Upcoming", "At Risk", "Completed"]} />
+        <DashboardHeader
+          title="Event Operations"
+          subtitle={loading ? "Loading events…" : `${events.length} events across all status`}
+          label="Create Event"
+          categoriesList={[...FILTERS]}
+          counts={counts}
+          activeCategory={filter}
+          onCategoryChange={(c) => setFilter(c as Filter)}
+          onAction={() => setShowForm(true)}
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search for events..."
+        />
 
-        <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-          {MOCK_EVENTS.map((item) => {
-            const targetId = item.event._id || item.id;
-            return (
+        {error && (
+          <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">{error}</p>
+        )}
+
+        {loading ? (
+          <div className="flex items-center gap-2 py-16 text-sm text-gray-400">
+            <Loader2 size={16} className="animate-spin" /> Loading events…
+          </div>
+        ) : visible.length === 0 ? (
+          <p className="py-16 text-center text-sm text-gray-400">
+            {events.length === 0
+              ? "No events yet — hit Create Event to add your first one."
+              : "No events match this filter."}
+          </p>
+        ) : (
+          <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+            {visible.map((ev) => (
               <EventCard
-                key={item.id}
-                event={item.event}
-                category={item.category}
-                progress={item.progress}
-                staffCount={item.staffCount}
-                taskCount={item.taskCount}
-                incidentCount={item.incidentCount}
-                onClick={() => navigate(`/events/${targetId}`)}
+                key={ev._id}
+                event={ev}
+                category={bucketOf(ev)}
+                progress={progressOf(ev)}
+                staffCount={ev.staff?.length ?? 0}
+                onClick={() => navigate(`/events/${ev._id}`)}
               />
-            );
-          })}
-        </main>
+            ))}
+          </main>
+        )}
       </div>
+
+      {showForm && (
+        <EventFormModal
+          onClose={() => setShowForm(false)}
+          onSaved={(saved) => setEvents((prev) => [...prev, saved])}
+        />
+      )}
     </div>
   );
 };

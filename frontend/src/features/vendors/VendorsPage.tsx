@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, type ElementType } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE } from "../../services/api";
 import {
   Camera,
   CakeSlice,
@@ -347,7 +348,7 @@ const VendorsPage = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/vendors/nearby?type=${selectedCategory}&latitude=${location.latitude}&longitude=${location.longitude}`
+        `${API_BASE}/vendors/nearby?type=${selectedCategory}&latitude=${location.latitude}&longitude=${location.longitude}`
       );
       if (!response.ok) throw new Error("Failed to fetch vendors");
       const data = await response.json();

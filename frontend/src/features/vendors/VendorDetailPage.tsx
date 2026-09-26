@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { API_BASE } from "../../services/api";
 import {
   ArrowLeft,
   MapPin,
@@ -217,7 +218,7 @@ const VendorMap = ({ userLocation, vendor, onRouteLoaded }: MapProps) => {
           const [uLat, uLon] = userLatLng;
           const [vLat, vLon] = vendorLatLng;
           const resp = await fetch(
-            `/api/vendors/route?fromLat=${uLat}&fromLon=${uLon}&toLat=${vLat}&toLon=${vLon}`
+            `${API_BASE}/vendors/route?fromLat=${uLat}&fromLon=${uLon}&toLat=${vLat}&toLon=${vLon}`
           );
 
           if (resp.ok) {

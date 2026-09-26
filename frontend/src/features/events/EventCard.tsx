@@ -29,8 +29,8 @@ const EventCard = ({
   category = "Conference",
   progress = 0,
   staffCount = 0,
-  taskCount = 0,
-  incidentCount = 0,
+  taskCount,
+  incidentCount,
   onClick,
 }: EventCardProps): React.JSX.Element => {
   const { title, description, location, startsAt, endsAt, status = "draft" } = event;
@@ -142,11 +142,11 @@ const EventCard = ({
             <div className="text-xs text-gray-400 font-medium">Staff</div>
           </div>
           <div>
-            <div className="text-base font-bold text-emerald-500">{taskCount}</div>
+            <div className="text-base font-bold text-emerald-500">{taskCount ?? "—"}</div>
             <div className="text-xs text-gray-400 font-medium">Tasks</div>
           </div>
           <div>
-            <div className="text-base font-bold text-rose-500">{incidentCount}</div>
+            <div className="text-base font-bold text-rose-500">{incidentCount ?? "—"}</div>
             <div className="text-xs text-gray-400 font-medium">Incidents</div>
           </div>
         </div>

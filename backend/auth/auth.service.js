@@ -6,6 +6,15 @@ const userRepository=require('./user.repository');
 
 
 
+// Never let passwordHash leave this layer.
+const publicUser = (user) => ({
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+});
+
+
 const login=async(email,password)=>{
     const user=await userRepository.findUserByEmail(email);
 
@@ -40,18 +49,23 @@ const login=async(email,password)=>{
 
  return{
     token,
+    user: publicUser(user),
  };
 
 
 };
 
 
-const register = async (name, email, password) => {
+const register = async (name, email, password, role) => {
 
     const existingUser = await userRepository.findUserByEmail(email);
 
     if (existingUser) {
         throw new Error('User already exists');
+    }
+
+    if (role && !['organizer', 'staff'].includes(role)) {
+        throw new Error('Role must be organizer or staff');
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -60,6 +74,7 @@ const register = async (name, email, password) => {
         name,
         email,
         passwordHash,
+        ...(role ? { role } : {}),
     });
 
     const token = jwt.sign(
@@ -76,11 +91,25 @@ const register = async (name, email, password) => {
 
     return {
         token,
+        user: publicUser(user),
     };
+};
+
+const getUserById = async (id) => {
+    const user = await userRepository.findUserById(id);
+    if (!user) throw new Error('User not found');
+    return publicUser(user);
+};
+
+const listUsers = async ({ role, q } = {}) => {
+    const users = await userRepository.findUsers({ role, q });
+    return users.map(publicUser);
 };
 
 module.exports={
     login,
 
     register,
+    getUserById,
+    listUsers,
 };
