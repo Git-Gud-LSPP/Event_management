@@ -13,6 +13,7 @@ import EventDetail from "./features/events/EventDetail";
 import StaffDashboard from "./features/staff/StaffDashboard";
 import SchedulePage from "./features/schedule/SchedulePage";
 import VendorsPage from "./features/vendors/VendorsPage";
+import IncidentsPage from "./features/incidents/IncidentsPage";
 import FloorPlanPage from "./features/floorplan/FloorPlanPage";
 import VendorDetailPage from "./features/vendors/VendorDetailPage";
 import { isLoggedIn } from "./services/authApi";
@@ -52,6 +53,7 @@ const App = () => {
           <Route path="/schedule" element={<SchedulePage />} />
           <Route path="/vendors" element={<VendorsPage />} />
           <Route path="/vendors/:vendorId" element={<VendorDetailPage />} />
+          <Route path="/incidents" element={<IncidentsPage />} />
           <Route path="/staffs" element={<StaffDashboard />} />
           <Route path="/floorplan" element={<FloorPlanPage />} />
         </Route>
