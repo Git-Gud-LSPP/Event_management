@@ -7,6 +7,7 @@ import {
   LayoutPanelTop,
   Zap,
   LogOut,
+  AlertTriangle,
 } from "lucide-react";
 import { getStoredUser, logout } from "../services/authApi";
 
@@ -22,6 +23,7 @@ const navItems: NavItem[] = [
   { label: "Schedule", icon: BarChart2, path: "/schedule" },
   { label: "Staff", icon: Users, path: "/staffs" },
   { label: "Vendors", icon: Building2, path: "/vendors" },
+  { label: "Incidents", icon: AlertTriangle, path: "/incidents" },
   { label: "Floor Plan", icon: LayoutPanelTop, path: "/floorplan" },
 ];
 
