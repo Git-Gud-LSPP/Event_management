@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import {
   LayoutGrid,
   Calendar,
@@ -6,7 +8,6 @@ import {
   Users,
   Box,
   Building2,
-  AlertTriangle,
   Zap,
 } from "lucide-react";
 
@@ -14,20 +15,27 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   badge?: number;
+  linkUrl: string;
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", icon: LayoutGrid },
-  { label: "Events", icon: Calendar },
-  { label: "Schedule", icon: BarChart2 },
-  { label: "Staff", icon: Users },
-  { label: "Inventory", icon: Box },
-  { label: "Vendors", icon: Building2 },
+  { label: "Dashboard", icon: LayoutGrid, linkUrl: "/dashboard" },
+  { label: "Events", icon: Calendar, linkUrl: "/events" },
+  { label: "Schedule", icon: BarChart2, linkUrl: "/schedule" },
+  { label: "Staff", icon: Users, linkUrl: "/staffs" },
+  { label: "Inventory", icon: Box, linkUrl: "/inventory" },
+  { label: "Vendors", icon: Building2, linkUrl: "/vendors" },
 //   { label: "Incidents", icon: AlertTriangle, badge: 2 },
 ];
 
 export default function Sidebar() {
   const [active, setActive] = useState<string>("Dashboard");
+  const navigate = useNavigate();
+
+  function handleClick(item: NavItem) {
+    setActive(item.label);
+    navigate(item.linkUrl);
+  }
 
   return (
     <div className="h-screen w-64 bg-white border-r border-gray-200 flex flex-col">
@@ -49,7 +57,7 @@ export default function Sidebar() {
           return (
             <button
               key={item.label}
-              onClick={() => setActive(item.label)}
+              onClick={() => handleClick(item)}
               className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                 ${
                   isActive
@@ -60,7 +68,7 @@ export default function Sidebar() {
               {isActive && (
                 <span className="absolute -left-3 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-amber-400" />
               )}
-              <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+              <Icon className="w-4.5 h-4.5 shrink-0" />
               <span className="flex-1 text-left">{item.label}</span>
               {item.badge && (
                 <span className="bg-red-100 text-red-500 text-xs font-semibold rounded-full w-5 h-5 flex items-center justify-center">

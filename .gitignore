@@ -24,3 +24,6 @@ Thumbs.db
 # Editor files
 .vscode/
 .idea/
+
+# Others
+DESIGN.md
