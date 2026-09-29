@@ -1,9 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
+import AuthPage from "./features/auth/AuthPage";
 import EventsDashboard from "./features/events/EventsDashboard";
 import EventDetail from "./features/events/EventDetail";
 import StaffDashboard from "./features/staff/StaffDashboard";
-import AuthPage from "./features/auth/AuthPage";
 
 // Layout wrapper for authenticated application routes
 const MainLayout = () => {
