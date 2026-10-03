@@ -1,32 +1,82 @@
-import { useParams } from 'react-router-dom'
-import { events, tasks, staff, incidents, dependencyChains } from './data'
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { Loader2 } from 'lucide-react'
+// Incidents, inventory and dependency chains have no backend yet, so those panels
+// still read the sample file. Everything else on this page is live.
+import { incidents, dependencyChains } from './data'
 import type { DependencyChain } from './data'
+import { getEvent, type EventRecord } from './api'
+import { listSchedule, toTask } from '../schedule/api'
+import type { Task } from '../schedule/data'
 
 export default function EventDetail({ eventId: propEventId }: { eventId?: string } = {}) {
   // Extract route parameter from URL
   const { eventId: paramEventId } = useParams<{ eventId: string }>()
-  
+
   // Fall back to prop if provided, otherwise route parameter
   const eventId = propEventId || paramEventId || ''
 
-  const event = events.find(e => e.id === eventId) || events[0]
-  const eventTasks = tasks.filter(t => t.eventId === eventId)
-  const eventStaff = staff.slice(0, 8)
-  const eventIncidents = incidents.filter(i => i.eventId === eventId)
-  const eventChains = dependencyChains.filter(d => d.eventId === eventId)
+  const [event, setEvent] = useState<EventRecord | null>(null)
+  const [eventTasks, setEventTasks] = useState<Task[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!eventId) return
+    setLoading(true)
+    Promise.all([getEvent(eventId), listSchedule(eventId)])
+      .then(([ev, schedule]) => {
+        setEvent(ev)
+        setEventTasks(schedule.items.map(toTask))
+      })
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [eventId])
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 p-8 text-sm text-mist">
+        <Loader2 size={16} className="animate-spin" /> Loading event…
+      </div>
+    )
+  }
+
+  if (error || !event) {
+    return (
+      <div className="p-8">
+        <p className="rounded-xl bg-[#fee2e2] px-4 py-3 text-sm font-medium text-[#dc2626]">
+          {error || 'Event not found.'}
+        </p>
+        <Link to="/events" className="mt-4 inline-block text-sm text-lichen-gray hover:underline">
+          ← Back to events
+        </Link>
+      </div>
+    )
+  }
+
+  const eventStaff = event.staff ?? []
+  const eventIncidents = incidents
+  const eventChains = dependencyChains
 
   const doneTasks = eventTasks.filter(t => t.status === 'Done').length
   const blockedTasks = eventTasks.filter(t => t.status === 'Blocked').length
-  const onSiteStaff = eventStaff.filter(s => s.status === 'On Site' || s.status === 'Checked In').length
   const openIncidents = eventIncidents.filter(i => i.status !== 'Resolved').length
   const criticalIncidents = eventIncidents.filter(i => i.severity === 'Critical').length
 
+  const start = new Date(event.startsAt)
+  const end = event.endsAt ? new Date(event.endsAt) : null
+  const now = Date.now()
+  const timeLabel = now < start.getTime() ? 'Upcoming' : end && now > end.getTime() ? 'Completed' : 'Live'
+  const progress = eventTasks.length
+    ? Math.round((doneTasks / eventTasks.length) * 100)
+    : 0
+
   const needsAttention = [
+    ...eventTasks.filter(t => t.status === 'Blocked').map(t => ({
+      id: t.id, type: 'task' as const, label: `${t.name} blocked`, person: t.owner, time: t.start, severity: 'High' as const,
+    })),
     ...eventIncidents.filter(i => i.status !== 'Resolved').map(i => ({
       id: i.id, type: 'incident' as const, label: i.title, person: i.who.split(' ·')[0], time: i.timeAgo, severity: i.severity,
-    })),
-    ...eventTasks.filter(t => t.status === 'Blocked').map(t => ({
-      id: t.id, type: 'task' as const, label: `${t.title} blocked`, person: t.owner, time: t.dueTime, severity: 'High' as const,
     })),
   ].slice(0, 5)
 
@@ -36,26 +86,36 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <StatusDot status={event.status} />
-            <span className="text-[11px] font-medium text-lichen-gray uppercase tracking-[0.08em]">{event.status}</span>
+            <StatusDot status={timeLabel} />
+            <span className="text-[11px] font-medium text-lichen-gray uppercase tracking-[0.08em]">{event.status} · {timeLabel}</span>
           </div>
-          <h1 className="text-[28px] font-semibold text-forest-ink leading-tight tracking-[-0.4px]">{event.name}</h1>
-          <p className="text-stone text-sm mt-0.5">{event.date} · {event.location}</p>
+          <h1 className="text-[28px] font-semibold text-forest-ink leading-tight tracking-[-0.4px]">{event.title}</h1>
+          <p className="text-stone text-sm mt-0.5">
+            {start.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+            {event.location ? ` · ${event.location}` : ''}
+          </p>
+          {event.description && <p className="text-stone text-sm mt-2 max-w-2xl">{event.description}</p>}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-meadow text-forest-ink border border-forest-ink/10">{event.type}</span>
-          <button className="flex items-center gap-1.5 text-[13px] font-medium px-4 py-2 rounded-full border border-forest-ink/15 text-forest-ink hover:bg-forest-ink/5 transition-colors">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-            Report Incident
-          </button>
+          {event.capacity != null && (
+            <span className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-meadow text-forest-ink border border-forest-ink/10">
+              Capacity {event.capacity}
+            </span>
+          )}
+          <Link
+            to="/schedule"
+            className="flex items-center gap-1.5 text-[13px] font-medium px-4 py-2 rounded-full border border-forest-ink/15 text-forest-ink hover:bg-forest-ink/5 transition-colors"
+          >
+            Manage schedule
+          </Link>
         </div>
       </div>
 
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Overall Progress" value={`${event.progress}%`} sub={`${doneTasks}/${eventTasks.length} tasks done`} surface="bg-mint-surface" accent="#003d3d" progress={event.progress} />
+        <KpiCard label="Task Progress" value={`${progress}%`} sub={`${doneTasks}/${eventTasks.length} tasks done`} surface="bg-mint-surface" accent="#003d3d" progress={progress} />
         <KpiCard label="Active Tasks" value={String(eventTasks.filter(t => t.status === 'In Progress').length)} sub={`${blockedTasks} blocked`} surface="bg-lime-surface" accent="#515c0b" alertCount={blockedTasks} />
-        <KpiCard label="Staff On Site" value={`${onSiteStaff}/${eventStaff.length}`} sub="4 checked in, 2 off shift" surface="bg-lavender-surface" accent="#652ea3" />
+        <KpiCard label="Staff Assigned" value={String(eventStaff.length)} sub={eventStaff.length ? 'On this event' : 'Add staff on the Staff page'} surface="bg-lavender-surface" accent="#652ea3" />
         <KpiCard label="Open Incidents" value={String(openIncidents)} sub={criticalIncidents > 0 ? `${criticalIncidents} critical` : 'No critical alerts'} surface="bg-blush-surface" accent="#7a2251" alertCount={criticalIncidents} />
       </div>
 
@@ -86,24 +146,29 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
           )}
         </div>
 
-        {/* Staff attendance mini */}
+        {/* Staff on this event */}
         <div className="bg-white rounded-[14px] shadow-[var(--shadow-card)] p-6">
-          <h2 className="font-semibold text-forest-ink text-[15px] mb-5">Staff Attendance</h2>
-          <div className="space-y-2.5">
-            {eventStaff.slice(0, 6).map(s => (
-              <div key={s.id} className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-meadow flex items-center justify-center text-[11px] font-semibold text-forest-ink flex-shrink-0">
-                  {s.initials}
+          <h2 className="font-semibold text-forest-ink text-[15px] mb-5">Staff on this Event</h2>
+          {eventStaff.length === 0 ? (
+            <p className="text-[13px] text-mist">Nobody assigned yet.</p>
+          ) : (
+            <div className="space-y-2.5">
+              {eventStaff.slice(0, 6).map(s => (
+                <div key={s._id} className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-meadow flex items-center justify-center text-[11px] font-semibold text-forest-ink flex-shrink-0">
+                    {initialsOf(s.name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-medium text-forest-ink truncate">{s.name}</p>
+                    <p className="text-[11px] text-mist truncate">{s.email}</p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-forest-ink truncate">{s.name}</p>
-                  <p className="text-[11px] text-mist">{s.role}</p>
-                </div>
-                <StaffStatusDot status={s.status} />
-              </div>
-            ))}
-          </div>
-          <button className="w-full mt-4 text-[12px] font-medium text-lichen-gray hover:text-forest-ink transition-colors py-1">View all staff →</button>
+              ))}
+            </div>
+          )}
+          <Link to="/staffs" className="block w-full mt-4 text-[12px] font-medium text-lichen-gray hover:text-forest-ink transition-colors py-1">
+            Manage staff →
+          </Link>
         </div>
       </div>
 
@@ -112,7 +177,7 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
         <div className="bg-white rounded-[14px] shadow-[var(--shadow-card)] p-6">
           <div className="flex items-center gap-2 mb-5">
             <h2 className="font-semibold text-forest-ink text-[15px]">Dependency Alert Chains</h2>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#fee2e2] text-[#dc2626] font-medium">{eventChains.length} active</span>
+            <SampleBadge />
           </div>
           <div className="space-y-4">
             {eventChains.slice(0, 2).map(chain => (
@@ -125,7 +190,10 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
       {/* Vendor status mini */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-[14px] shadow-[var(--shadow-card)] p-6">
-          <h2 className="font-semibold text-forest-ink text-[15px] mb-4">Vendor Status</h2>
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="font-semibold text-forest-ink text-[15px]">Vendor Status</h2>
+            <SampleBadge />
+          </div>
           <div className="space-y-2">
             {[
               { name: 'SoundWave Productions', service: 'AV & Sound', status: 'Confirmed' },
@@ -145,7 +213,10 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
         </div>
 
         <div className="bg-white rounded-[14px] shadow-[var(--shadow-card)] p-6">
-          <h2 className="font-semibold text-forest-ink text-[15px] mb-4">Inventory Alerts</h2>
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="font-semibold text-forest-ink text-[15px]">Inventory Alerts</h2>
+            <SampleBadge />
+          </div>
           <div className="space-y-2">
             {[
               { name: 'Wireless Lavalier Mic', stock: '2 of 12', status: 'Low Stock', color: 'text-[#d97706]' },
@@ -167,6 +238,9 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
     </div>
   )
 }
+
+const initialsOf = (name: string) =>
+  name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || '?'
 
 function StatusDot({ status }: { status: string }) {
   const colors: Record<string, string> = { Live: 'bg-[#16a34a]', Upcoming: 'bg-[#4f46e5]', Completed: 'bg-[#889494]', 'At Risk': 'bg-[#dc2626]' }
@@ -218,19 +292,11 @@ function severityBadge(s: string) {
   }[s] || 'bg-parchment text-mist'
 }
 
-function StaffStatusDot({ status }: { status: string }) {
-  const map: Record<string, { dot: string; label: string }> = {
-    'On Site': { dot: 'bg-[#16a34a]', label: 'On Site' },
-    'Checked In': { dot: 'bg-[#4f46e5]', label: 'In' },
-    'Off Shift': { dot: 'bg-mist', label: 'Off' },
-    'Unavailable': { dot: 'bg-[#dc2626]', label: 'N/A' },
-  }
-  const s = map[status] || map['Off Shift']
+function SampleBadge() {
   return (
-    <div className="flex items-center gap-1">
-      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-      <span className="text-[11px] text-mist">{s.label}</span>
-    </div>
+    <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-parchment text-mist">
+      Sample data
+    </span>
   )
 }
 

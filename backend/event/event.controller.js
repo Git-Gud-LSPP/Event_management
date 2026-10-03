@@ -1,5 +1,6 @@
 const repo = require('./event.repository');
 const Event = require('./event.model');
+const User = require('../auth/user.model');
 
 // Only fields a client is allowed to set.
 const FIELDS = ['title', 'description', 'location', 'startsAt', 'endsAt', 'capacity', 'status'];
@@ -43,7 +44,8 @@ exports.list = async (req, res, next) => {
 
 exports.getOne = async (req, res, next) => {
   try {
-    res.json(req.event);
+    // The guard loaded the event with raw staff ids; the client wants names.
+    res.json(await req.event.populate('staff', 'name email'));
   } catch (err) {
     next(err);
   }
@@ -74,6 +76,9 @@ exports.addStaff = async (req, res, next) => {
     const { staffId } = req.body;
     if (!staffId) {
       return res.status(400).json({ message: 'staffId is required' });
+    }
+    if (!(await User.exists({ _id: staffId }))) {
+      return res.status(400).json({ message: 'No such user' });
     }
     const event = await Event.findByIdAndUpdate(
       req.params.id,

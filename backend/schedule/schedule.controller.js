@@ -17,7 +17,9 @@ exports.create = async (req, res, next) => {
   try {
     const data = pick(req.body);
     data.event = req.params.eventId;
-    res.status(201).json(await repo.create(data));
+    const created = await repo.create(data);
+    // Re-read so owner/dependsOn come back populated, like every other response.
+    res.status(201).json(await repo.findById(created._id));
   } catch (err) {
     next(err);
   }
