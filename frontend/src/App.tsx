@@ -12,6 +12,7 @@ import EventsDashboard from "./features/events/EventsDashboard";
 import EventDetail from "./features/events/EventDetail";
 import StaffDashboard from "./features/staff/StaffDashboard";
 import SchedulePage from "./features/schedule/SchedulePage";
+import MyTasksPage from "./features/mytask/MyTaskpage";
 import VendorsPage from "./features/vendors/VendorsPage";
 import IncidentsPage from "./features/incidents/IncidentsPage";
 import FloorPlanPage from "./features/floorplan/FloorPlanPage";
@@ -30,7 +31,9 @@ const MainLayout = () => {
   return (
     <div className="flex min-h-screen bg-[#FBFBF9] text-slate-900">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-6">
+      {/* Main content */}
+      {/* <main className="flex-1 overflow-y-auto p-6"> */}
+      <main className="h-screen min-w-0 flex-1 overflow-y-auto p-6">
         {/* Child routes render here */}
         <Outlet />
       </main>
@@ -51,6 +54,7 @@ const App = () => {
           <Route path="/events" element={<EventsDashboard />} />
           <Route path="/events/:eventId" element={<EventDetail />} />
           <Route path="/schedule" element={<SchedulePage />} />
+          <Route path="/my-tasks" element={<MyTasksPage />} />
           <Route path="/vendors" element={<VendorsPage />} />
           <Route path="/vendors/:vendorId" element={<VendorDetailPage />} />
           <Route path="/incidents" element={<IncidentsPage />} />

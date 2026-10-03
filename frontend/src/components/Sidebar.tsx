@@ -20,6 +20,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Events", icon: Calendar, path: "/events" },
+  { label: "My Tasks", icon: ListTodo, path: "/my-tasks" },
   { label: "Schedule", icon: BarChart2, path: "/schedule" },
   { label: "Staff", icon: Users, path: "/staffs" },
   { label: "Vendors", icon: Building2, path: "/vendors" },
