@@ -13,6 +13,17 @@ services:
       MONGO_URI: mongodb://mongo:27017/event_management
       JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
       JWT_EXPIRES_IN: 1h
+      # Passed through from the host shell only when set there, so backend/.env still works.
+      AGENT_MODEL:
+      ANTHROPIC_API_KEY:
+      OPENAI_API_KEY:
+      GOOGLE_GENERATIVE_AI_API_KEY:
+      LOCAL_MODEL_API_KEY:
+      # Inside Docker, localhost = the container itself, NOT your Windows host.
+      # Unsloth runs on the host, so the container must use host.docker.internal.
+      # (backend/.env saying localhost:8888 is correct only for native `npm run dev`.)
+      LOCAL_MODEL_BASE_URL: ${LOCAL_MODEL_BASE_URL:-http://host.docker.internal:8888/v1}
+    extra_hosts: ["host.docker.internal:host-gateway"]
     ports: ["5000:5000"]
     volumes: [./backend:/app, backend-modules:/app/node_modules]
     depends_on: [mongo]

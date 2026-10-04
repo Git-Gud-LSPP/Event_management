@@ -1,4 +1,4 @@
-import type { IncidentPriority, IncidentStatus } from "../service";
+import type { IncidentPriority, IncidentStatus } from "../api";
 
 const priorityStyle: Record<IncidentPriority, string> = {
   Critical: "bg-red-100 text-red-600",

@@ -5,7 +5,7 @@ import ScheduleList from "./components/ScheduleList";
 import Gantt from "./components/GanttView";
 import TaskFormModal from "./TaskFormModal";
 import EventPicker, { useEventSelection } from "../../components/EventPicker";
-import { assignTask, deleteTask, listSchedule, toTask, type ScheduleItem } from "./api";
+import { assignTask, deleteTask, listSchedule, toTask, updateTask, type ScheduleItem } from "./api";
 import { getStoredUser } from "../../services/authApi";
 
 export default function SchedulePage() {
@@ -53,6 +53,17 @@ export default function SchedulePage() {
       setItems((prev) => prev.filter((i) => i._id !== taskId));
     } catch (e) {
       setError((e as Error).message);
+    }
+  };
+
+  // Gantt drag/resize. On failure reload, so the bar snaps back to the saved time.
+  const handleReschedule = async (taskId: string, change: { startsAt?: string; endsAt?: string }) => {
+    try {
+      const updated = await updateTask(selectedId, taskId, change);
+      setItems((prev) => prev.map((i) => (i._id === taskId ? updated : i)));
+    } catch (e) {
+      setError((e as Error).message);
+      load();
     }
   };
 
@@ -207,7 +218,10 @@ export default function SchedulePage() {
           onDelete={isOrganizer ? handleDelete : undefined}
         />
       ) : (
-        <Gantt tasks={filteredTasks} />
+        <Gantt
+          items={items.filter((i) => filteredTasks.some((t) => t.id === i._id))}
+          onReschedule={isOrganizer ? handleReschedule : undefined}
+        />
       )}
 
       {showForm && selectedId && (

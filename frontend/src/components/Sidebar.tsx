@@ -8,6 +8,8 @@ import {
   Zap,
   LogOut,
   AlertTriangle,
+  ListTodo,
+  FileText,
 } from "lucide-react";
 import { getStoredUser, logout } from "../services/authApi";
 
@@ -26,6 +28,7 @@ const navItems: NavItem[] = [
   { label: "Vendors", icon: Building2, path: "/vendors" },
   { label: "Incidents", icon: AlertTriangle, path: "/incidents" },
   { label: "Floor Plan", icon: LayoutPanelTop, path: "/floorplan" },
+  { label: "Documents", icon: FileText, path: "/documents" },
 ];
 
 export default function Sidebar() {

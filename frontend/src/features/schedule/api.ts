@@ -45,16 +45,10 @@ const initialsOf = (name: string) =>
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("") || "?";
 
-// ponytail: the Gantt is hardcoded to a 6:00am-2:00pm window (see timelineHours),
-// so positions are minutes-since-6am on the task's own day. Make the window
-// data-driven if events outside those hours need to render.
-const GANTT_START_HOUR = 6;
-
 export const toTask = (item: ScheduleItem): Task => {
   const start = new Date(item.startsAt);
   const end = item.endsAt ? new Date(item.endsAt) : null;
   const durationMinutes = end ? Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000)) : 0;
-  const startMinutes = (start.getHours() - GANTT_START_HOUR) * 60 + start.getMinutes();
 
   return {
     id: item._id,
@@ -67,8 +61,5 @@ export const toTask = (item: ScheduleItem): Task => {
     status: item.status,
     dependsOn: item.dependsOn?.name,
     delayed: (item.delayMinutes ?? 0) > 0,
-    startMinutes,
-    durationMinutes,
-    delayMinutes: item.delayMinutes,
   };
 };

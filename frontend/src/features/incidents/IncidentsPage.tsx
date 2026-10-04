@@ -8,10 +8,9 @@ import IncidentDetailModal from "./IncidentDetailModal";
 import { getStoredUser } from "../../services/authApi";
 import {
   listIncidents,
-  noteStaff,
   type IncidentRecord,
   type IncidentStatus,
-} from "./service";
+} from "./api";
 
 const FILTERS = ["All", "Open", "In Progress", "Resolved"] as const;
 type Filter = (typeof FILTERS)[number];
@@ -72,11 +71,6 @@ export default function IncidentsPage() {
       cancelled = true;
     };
   }, [selectedId]);
-
-  // Lets the mock service look up staff names (no-op with the real API)
-  useEffect(() => {
-    if (selected?.staff) noteStaff(selected.staff);
-  }, [selected]);
 
   const counts: Record<string, number> = {
     All: items.length,

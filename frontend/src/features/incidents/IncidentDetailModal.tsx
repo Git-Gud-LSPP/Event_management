@@ -8,7 +8,7 @@ import {
   updateIncidentStatus,
   type IncidentRecord,
   type IncidentStatus,
-} from "./service";
+} from "./api";
 import { PriorityBadge, StatusBadge } from "./components/IncidentBadges";
 
 // "In Progress" requires an assignee.

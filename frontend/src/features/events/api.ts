@@ -21,7 +21,11 @@ export interface EventRecord {
   staff: StaffRef[];
 }
 
-export type EventInput = Partial<Omit<EventRecord, "_id" | "organizer" | "staff">>;
+// null clears an optional field on update (undefined would leave it unchanged).
+export type EventInput = Partial<Omit<EventRecord, "_id" | "organizer" | "staff" | "endsAt" | "capacity">> & {
+  endsAt?: string | null;
+  capacity?: number | null;
+};
 
 export const listEvents = () =>
   apiFetch<{ items: EventRecord[]; total: number }>("/events?limit=100");
@@ -48,3 +52,25 @@ export const removeStaff = (eventId: string, staffId: string) =>
     method: "DELETE",
     body: JSON.stringify({ staffId }),
   });
+
+export interface InventoryRecord {
+  _id: string;
+  name: string;
+  category?: string;
+  stock: number;
+  maxStock: number;
+  location?: string;
+  status: "Available" | "Low Stock" | "Damaged" | "Checked Out" | "Ordered";
+}
+
+export const listInventory = (eventId: string) =>
+  apiFetch<{ items: InventoryRecord[]; total: number }>(`/events/${eventId}/inventory`);
+
+export interface DependencyChainRecord {
+  id: string;
+  trigger: { taskId: string; label: string; type: "delay" | "blocked"; time: string };
+  chain: Array<{ id: string; label: string; impact: string; severity: "high" | "critical" }>;
+}
+
+export const listDependencyChains = (eventId: string) =>
+  apiFetch<{ items: DependencyChainRecord[] }>(`/events/${eventId}/schedule/chains`);

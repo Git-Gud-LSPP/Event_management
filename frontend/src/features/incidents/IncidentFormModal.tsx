@@ -6,7 +6,7 @@ import {
   type IncidentInput,
   type IncidentPriority,
   type IncidentRecord,
-} from "./service";
+} from "./api";
 
 const PRIORITIES: IncidentPriority[] = ["Low", "Medium", "Critical"];
 

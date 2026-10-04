@@ -4,6 +4,7 @@ import FloorCanvas from "./FloorCanvas";
 import { roomAt } from "./geometry";
 import DetailsPanel from "./DetailsPanel";
 import { getFloorPlan, listEvents, saveFloorPlan } from "./api";
+import { getSelectedEventId, setSelectedEventId } from "../../services/selectedEvent";
 import type { EventSummary, Floor, Placement, Room, RosterMember } from "./types";
 
 const ROOM_TINTS = ["#e4f7f9", "#e8f6ec", "#fdeaea", "#fff3c2", "#f3e8fd", "#e8eefd"];
@@ -24,13 +25,15 @@ export default function FloorPlanPage() {
     listEvents()
       .then((items) => {
         setEvents(items);
-        if (items.length) setEventId(items[0]._id);
+        const stored = getSelectedEventId();
+        if (items.length) setEventId(items.some((e) => e._id === stored) ? stored : items[0]._id);
       })
       .catch((e) => setStatus(e.message));
   }, []);
 
   useEffect(() => {
     if (!eventId) return;
+    setSelectedEventId(eventId);
     getFloorPlan(eventId)
       .then(({ floors, roster }) => {
         setFloors(floors);

@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
-// Incidents, inventory and dependency chains have no backend yet, so those panels
-// still read the sample file. Everything else on this page is live.
-import { incidents, dependencyChains } from './data'
-import type { DependencyChain } from './data'
-import { getEvent, type EventRecord } from './api'
+import { Loader2, Pencil } from 'lucide-react'
+import {
+  getEvent, listInventory, listDependencyChains,
+  type EventRecord, type InventoryRecord, type DependencyChainRecord,
+} from './api'
+import { listIncidents, type IncidentRecord } from '../incidents/api'
 import { listSchedule, toTask } from '../schedule/api'
 import type { Task } from '../schedule/data'
+import { getStoredUser } from '../../services/authApi'
+import EventFormModal from './EventFormModal'
 
 export default function EventDetail({ eventId: propEventId }: { eventId?: string } = {}) {
   // Extract route parameter from URL
@@ -18,16 +20,26 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
 
   const [event, setEvent] = useState<EventRecord | null>(null)
   const [eventTasks, setEventTasks] = useState<Task[]>([])
+  const [eventIncidents, setEventIncidents] = useState<IncidentRecord[]>([])
+  const [inventory, setInventory] = useState<InventoryRecord[]>([])
+  const [eventChains, setEventChains] = useState<DependencyChainRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
 
   useEffect(() => {
     if (!eventId) return
     setLoading(true)
-    Promise.all([getEvent(eventId), listSchedule(eventId)])
-      .then(([ev, schedule]) => {
+    Promise.all([
+      getEvent(eventId), listSchedule(eventId), listIncidents(eventId),
+      listInventory(eventId), listDependencyChains(eventId),
+    ])
+      .then(([ev, schedule, inc, inv, chains]) => {
         setEvent(ev)
         setEventTasks(schedule.items.map(toTask))
+        setEventIncidents(inc.items)
+        setInventory(inv.items)
+        setEventChains(chains.items)
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
@@ -54,14 +66,14 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
     )
   }
 
+  const isOrganizer = getStoredUser()?.id === event.organizer
   const eventStaff = event.staff ?? []
-  const eventIncidents = incidents
-  const eventChains = dependencyChains
+  const inventoryAlerts = inventory.filter(i => i.status !== 'Available')
 
   const doneTasks = eventTasks.filter(t => t.status === 'Done').length
   const blockedTasks = eventTasks.filter(t => t.status === 'Blocked').length
   const openIncidents = eventIncidents.filter(i => i.status !== 'Resolved').length
-  const criticalIncidents = eventIncidents.filter(i => i.severity === 'Critical').length
+  const criticalIncidents = eventIncidents.filter(i => i.priority === 'Critical' && i.status !== 'Resolved').length
 
   const start = new Date(event.startsAt)
   const end = event.endsAt ? new Date(event.endsAt) : null
@@ -76,7 +88,8 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
       id: t.id, type: 'task' as const, label: `${t.name} blocked`, person: t.owner, time: t.start, severity: 'High' as const,
     })),
     ...eventIncidents.filter(i => i.status !== 'Resolved').map(i => ({
-      id: i.id, type: 'incident' as const, label: i.title, person: i.who.split(' ·')[0], time: i.timeAgo, severity: i.severity,
+      id: i._id, type: 'incident' as const, label: i.title, person: i.reportedBy?.name ?? '—',
+      time: new Date(i.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), severity: i.priority,
     })),
   ].slice(0, 5)
 
@@ -101,6 +114,15 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
             <span className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-meadow text-forest-ink border border-forest-ink/10">
               Capacity {event.capacity}
             </span>
+          )}
+          {isOrganizer && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="flex items-center gap-1.5 text-[13px] font-medium px-4 py-2 rounded-full border border-forest-ink/15 text-forest-ink hover:bg-forest-ink/5 transition-colors"
+            >
+              <Pencil size={14} /> Edit event
+            </button>
           )}
           <Link
             to="/schedule"
@@ -177,7 +199,6 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
         <div className="bg-white rounded-[14px] shadow-[var(--shadow-card)] p-6">
           <div className="flex items-center gap-2 mb-5">
             <h2 className="font-semibold text-forest-ink text-[15px]">Dependency Alert Chains</h2>
-            <SampleBadge />
           </div>
           <div className="space-y-4">
             {eventChains.slice(0, 2).map(chain => (
@@ -215,28 +236,39 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
         <div className="bg-white rounded-[14px] shadow-[var(--shadow-card)] p-6">
           <div className="flex items-center gap-2 mb-4">
             <h2 className="font-semibold text-forest-ink text-[15px]">Inventory Alerts</h2>
-            <SampleBadge />
           </div>
-          <div className="space-y-2">
-            {[
-              { name: 'Wireless Lavalier Mic', stock: '2 of 12', status: 'Low Stock', color: 'text-[#d97706]' },
-              { name: 'HDMI to USB-C Adapter', stock: '1 of 8', status: 'Damaged', color: 'text-[#dc2626]' },
-              { name: 'First Aid Kits', stock: '3 of 10', status: 'Low Stock', color: 'text-[#d97706]' },
-              { name: 'Power Extension Cables', stock: '0 of 20', status: 'Ordered', color: 'text-[#6b7280]' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-forest-ink/5 last:border-0">
-                <div>
-                  <p className="text-[13px] font-medium text-forest-ink">{item.name}</p>
-                  <p className="text-[11px] text-mist">Stock: {item.stock}</p>
+          {inventoryAlerts.length === 0 ? (
+            <p className="text-[13px] text-mist">No inventory alerts.</p>
+          ) : (
+            <div className="space-y-2">
+              {inventoryAlerts.slice(0, 6).map(item => (
+                <div key={item._id} className="flex items-center justify-between py-2 border-b border-forest-ink/5 last:border-0">
+                  <div>
+                    <p className="text-[13px] font-medium text-forest-ink">{item.name}</p>
+                    <p className="text-[11px] text-mist">Stock: {item.stock} of {item.maxStock}</p>
+                  </div>
+                  <span className={`text-[11px] font-medium ${inventoryColor[item.status] ?? 'text-mist'}`}>{item.status}</span>
                 </div>
-                <span className={`text-[11px] font-medium ${item.color}`}>{item.status}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
+      {editing && (
+        <EventFormModal
+          event={event}
+          onClose={() => setEditing(false)}
+          // PATCH returns staff as bare ids; keep the populated list we already have.
+          onSaved={(saved) => setEvent((prev) => ({ ...saved, staff: prev?.staff ?? [] }))}
+        />
+      )}
     </div>
   )
+}
+
+const inventoryColor: Record<string, string> = {
+  'Low Stock': 'text-[#d97706]', Damaged: 'text-[#dc2626]', Ordered: 'text-[#6b7280]', 'Checked Out': 'text-[#4f46e5]',
 }
 
 const initialsOf = (name: string) =>
@@ -310,8 +342,8 @@ function VendorStatusBadge({ status }: { status: string }) {
   return <span className={`text-[12px] font-medium ${map[status] || 'text-mist'}`}>{status}</span>
 }
 
-function DependencyChainCard({ chain }: { chain: DependencyChain }) {
-  const triggerColors = { delay: 'bg-buttercream text-saffron', risk: 'bg-[#fff7ed] text-[#ea580c]', blocked: 'bg-[#fee2e2] text-[#dc2626]' }
+function DependencyChainCard({ chain }: { chain: DependencyChainRecord }) {
+  const triggerColors = { delay: 'bg-buttercream text-saffron', blocked: 'bg-[#fee2e2] text-[#dc2626]' }
   return (
     <div className="border border-forest-ink/8 rounded-[10px] p-4">
       <div className="flex items-start gap-3 mb-3">
@@ -320,12 +352,12 @@ function DependencyChainCard({ chain }: { chain: DependencyChain }) {
         </span>
         <div>
           <p className="text-[13px] font-medium text-forest-ink">{chain.trigger.label}</p>
-          <p className="text-[11px] text-mist">{chain.trigger.time}</p>
+          <p className="text-[11px] text-mist">{new Date(chain.trigger.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
         </div>
       </div>
       <div className="ml-4 space-y-2 mb-3">
         {chain.chain.map((item) => {
-          const sevColors = { critical: 'border-[#fecaca] bg-[#fff5f5]', high: 'border-[#fed7aa] bg-[#fffbf5]', medium: 'border-[#fde68a] bg-[#fffdf0]' }
+          const sevColors = { critical: 'border-[#fecaca] bg-[#fff5f5]', high: 'border-[#fed7aa] bg-[#fffbf5]' }
           return (
             <div key={item.id} className="flex items-start gap-2">
               <div className="flex flex-col items-center">
@@ -339,10 +371,6 @@ function DependencyChainCard({ chain }: { chain: DependencyChain }) {
             </div>
           )
         })}
-      </div>
-      <div className="bg-sage-glow rounded-[8px] px-3 py-2.5 flex items-start gap-2">
-        <span className="text-[11px] font-semibold text-deep-forest uppercase tracking-wide flex-shrink-0 mt-0.5">→ Action</span>
-        <p className="text-[12px] text-deep-forest">{chain.suggestedAction}</p>
       </div>
     </div>
   )

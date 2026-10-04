@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { API_BASE } from "../../services/api";
+import { getStoredUser } from "../../services/authApi";
+import { useEventSelection } from "../../components/EventPicker";
+import { addEventVendor } from "../documents/api";
 import {
   ArrowLeft,
   MapPin,
@@ -16,6 +19,8 @@ import {
   Navigation,
   Star,
   ExternalLink,
+  Plus,
+  Check,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -297,6 +302,48 @@ const InfoRow = ({
 /*  Main VendorDetailPage                                               */
 /* ------------------------------------------------------------------ */
 
+// Puts this search result on the selected event's procurement pipeline (Documents page),
+// where documents and the assistant can use its details.
+function AddToEventButton({ vendor }: { vendor: Vendor }) {
+  const { selected } = useEventSelection();
+  const [state, setState] = useState<"idle" | "saving" | "added" | string>("idle");
+
+  const add = async () => {
+    if (!selected) return;
+    setState("saving");
+    try {
+      await addEventVendor(selected._id, {
+        name: vendor.name,
+        type: vendor.type,
+        phone: vendor.phone ?? undefined,
+        website: vendor.website ?? undefined,
+        address: vendor.address ?? undefined,
+        latitude: vendor.latitude,
+        longitude: vendor.longitude,
+        sourceId: vendor.id,
+      });
+      setState("added");
+    } catch (e) {
+      const msg = (e as Error).message;
+      setState(/already/i.test(msg) ? "added" : msg);
+    }
+  };
+
+  if (!selected) return null;
+  const failed = !["idle", "saving", "added"].includes(state);
+  return (
+    <button
+      onClick={add}
+      disabled={state === "saving" || state === "added"}
+      title={failed ? state : `Add to ${selected.title}`}
+      className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-70"
+    >
+      {state === "added" ? <Check size={15} /> : <Plus size={15} />}
+      {state === "added" ? `On ${selected.title}` : failed ? "Retry add" : `Add to ${selected.title}`}
+    </button>
+  );
+}
+
 const VendorDetailPage = () => {
   const navigate = useNavigate();
   const routerLocation = useLocation();
@@ -527,6 +574,7 @@ const VendorDetailPage = () => {
                   Website
                 </a>
               )}
+              {getStoredUser()?.role === "organizer" && <AddToEventButton vendor={vendor} />}
               {!vendor.phone && !validWebsite && (
                 <p className="w-full text-center text-sm text-slate-400 py-1">
                   No contact information available

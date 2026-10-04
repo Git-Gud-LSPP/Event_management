@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type ElementType } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_BASE } from "../../services/api";
 import {
   Camera,
@@ -9,6 +9,7 @@ import {
   Music,
   Palette,
   Hotel,
+  UtensilsCrossed,
   Search,
   MapPin,
   ChevronDown,
@@ -25,6 +26,7 @@ const categories = [
   { name: "Entertainment", value: "entertainment",icon: Music },
   { name: "Decoration",    value: "decoration",   icon: Palette },
   { name: "Hotels",        value: "hotel",        icon: Hotel },
+  { name: "Restaurants",   value: "restaurant",   icon: UtensilsCrossed },
 ];
 
 type Vendor = {
@@ -310,6 +312,7 @@ const PAGE_SIZE = 10;
 /* ------------------------------------------------------------------ */
 const VendorsPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const snapshot = loadSnapshot();
 
@@ -337,10 +340,13 @@ const VendorsPage = () => {
   const hasMore   = visibleCount < filtered.length;
 
   // Fetch nearby vendors from backend
-  const handleSearch = async () => {
+  const handleSearch = () => {
     if (!selectedCategory) { setError("Please select a vendor category."); return; }
     if (!location)          { setError("Please set your location first."); return; }
+    runSearch(selectedCategory, location);
+  };
 
+  const runSearch = async (type: string, loc: { latitude: number; longitude: number }) => {
     clearSnapshot();
     setVendorLoading(true);
     setError("");
@@ -348,7 +354,7 @@ const VendorsPage = () => {
 
     try {
       const response = await fetch(
-        `${API_BASE}/vendors/nearby?type=${selectedCategory}&latitude=${location.latitude}&longitude=${location.longitude}`
+        `${API_BASE}/vendors/nearby?type=${encodeURIComponent(type)}&latitude=${loc.latitude}&longitude=${loc.longitude}`
       );
       if (!response.ok) throw new Error("Failed to fetch vendors");
       const data = await response.json();
@@ -360,6 +366,33 @@ const VendorsPage = () => {
       setVendorLoading(false);
     }
   };
+
+  // The assistant opens /vendors?type=catering&near=<address>: geocode it and search here.
+  // The params are cleared right away so a reload or back navigation does not search again.
+  const linkedType = searchParams.get("type");
+  const linkedNear = searchParams.get("near");
+  const linkedRef = useRef(""); // StrictMode runs effects twice; search once
+  useEffect(() => {
+    if (!linkedType || !linkedNear || linkedRef.current === `${linkedType}|${linkedNear}`) return;
+    linkedRef.current = `${linkedType}|${linkedNear}`;
+    setSearchParams({}, { replace: true });
+    setSelectedCategory(linkedType);
+    setSearchText("");
+    setVendorLoading(true);
+    setError("");
+    geocodeAddress(linkedNear)
+      .then((hits) => {
+        if (!hits.length) throw new Error(`No location found for "${linkedNear}".`);
+        const loc = { latitude: parseFloat(hits[0].lat), longitude: parseFloat(hits[0].lon), label: hits[0].display_name };
+        setLocation(loc);
+        return runSearch(linkedType, loc);
+      })
+      .catch((e: Error) => {
+        setError(e.message || "Could not find that location.");
+        setVendorLoading(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per linked search
+  }, [linkedType, linkedNear]);
 
   // Navigate to detail page, persisting snapshot
   const handleViewVendor = (vendor: Vendor) => {

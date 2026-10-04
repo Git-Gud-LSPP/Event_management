@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, Check } from "lucide-react";
 import { listEvents, type EventRecord } from "../features/events/api";
+import { getSelectedEventId, setSelectedEventId } from "../services/selectedEvent";
 
 // Schedule and Staff both hang off a chosen event, so the "load my events and
 // remember which one is selected" part lives here once.
 export function useEventSelection() {
   const [events, setEvents] = useState<EventRecord[]>([]);
-  const [selectedId, setSelectedId] = useState<string>("");
+  const [selectedId, setSelectedId] = useState<string>(getSelectedEventId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedId) setSelectedEventId(selectedId);
+  }, [selectedId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -16,7 +21,9 @@ export function useEventSelection() {
       .then(({ items }) => {
         if (cancelled) return;
         setEvents(items);
-        setSelectedId((current) => current || items[0]?._id || "");
+        setSelectedId((current) =>
+          items.some((e) => e._id === current) ? current : items[0]?._id || ""
+        );
       })
       .catch((e: Error) => !cancelled && setError(e.message))
       .finally(() => !cancelled && setLoading(false));

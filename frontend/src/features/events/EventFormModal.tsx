@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Loader2 } from "lucide-react";
-import { createEvent, updateEvent, type EventRecord, type EventStatus } from "./api";
+import { createEvent, updateEvent, type EventInput, type EventRecord, type EventStatus } from "./api";
 
 // datetime-local wants "YYYY-MM-DDTHH:mm" in local time.
 const toLocalInput = (iso?: string) => {
@@ -24,7 +24,7 @@ export default function EventFormModal({
   const [location, setLocation] = useState(event?.location ?? "");
   const [startsAt, setStartsAt] = useState(toLocalInput(event?.startsAt));
   const [endsAt, setEndsAt] = useState(toLocalInput(event?.endsAt));
-  const [capacity, setCapacity] = useState(event?.capacity ? String(event.capacity) : "");
+  const [capacity, setCapacity] = useState(event?.capacity != null ? String(event.capacity) : "");
   const [status, setStatus] = useState<EventStatus>(event?.status ?? "draft");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,13 +38,15 @@ export default function EventFormModal({
     setSaving(true);
     setError(null);
     try {
-      const payload = {
+      // On edit, emptied fields must be sent as ""/null so the backend clears them.
+      const empty = event ? null : undefined;
+      const payload: EventInput = {
         title,
-        description: description || undefined,
-        location: location || undefined,
+        description: event ? description : description || undefined,
+        location: event ? location : location || undefined,
         startsAt: new Date(startsAt).toISOString(),
-        endsAt: endsAt ? new Date(endsAt).toISOString() : undefined,
-        capacity: capacity ? Number(capacity) : undefined,
+        endsAt: endsAt ? new Date(endsAt).toISOString() : empty,
+        capacity: capacity ? Number(capacity) : empty,
         status,
       };
       onSaved(event ? await updateEvent(event._id, payload) : await createEvent(payload));

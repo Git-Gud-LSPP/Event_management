@@ -1,4 +1,4 @@
-import type { IncidentRecord } from "../service";
+import type { IncidentRecord } from "../api";
 import { PriorityBadge, StatusBadge } from "./IncidentBadges";
 
 interface IncidentListProps {

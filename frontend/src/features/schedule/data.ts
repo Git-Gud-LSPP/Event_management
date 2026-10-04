@@ -12,21 +12,4 @@ export interface Task {
   status: TaskStatus;
   dependsOn?: string;
   delayed?: boolean;
-
-  // Used for Gantt positioning
-  startMinutes: number;
-  durationMinutes: number;
-  delayMinutes?: number;
 }
-
-export const timelineHours = [
-  "6:00",
-  "7:00",
-  "8:00",
-  "9:00",
-  "10:00",
-  "11:00",
-  "12:00",
-  "13:00",
-  "14:00",
-];
