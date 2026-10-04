@@ -1,5 +1,5 @@
 // The Incident backend doesn't exist yet
-export const USE_MOCK = true;
+export const USE_MOCK = false;
 
 export type {
   IncidentRecord,

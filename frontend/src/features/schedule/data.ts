@@ -2,7 +2,7 @@
 export type TaskStatus = "Done" | "In Progress" | "Blocked" | "Pending";
 
 export interface Task {
-  id: string;
+  id: number;
   name: string;
   owner: string;
   ownerId?: string;
@@ -29,4 +29,19 @@ export const timelineHours = [
   "12:00",
   "13:00",
   "14:00",
+];
+
+export const tasks: Task[] = [
+  {
+    id: 1,
+    name: "Task 1",
+    owner: "John Doe",
+    ownerId: "john.doe",
+    initials: "JD",
+    start: "2023-10-01T09:00:00Z",
+    duration: "2 hours",
+    status: "Pending",
+    startMinutes: 540,
+    durationMinutes: 120,
+  },
 ];

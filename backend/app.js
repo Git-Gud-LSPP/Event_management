@@ -10,6 +10,7 @@ const authRoutes = require('./auth/auth.route');
 const scheduleRoutes = require('./schedule/schedule.routes');
 const floorplanRoutes = require('./floorplan/floorplan.routes');
 const vendorsRoutes = require('./vendor/vendor.routes');
+const incidentRoutes = require('./incident/incident.routes');
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/events/:eventId/schedule', scheduleRoutes);
 app.use('/api/events/:eventId/floorplan', floorplanRoutes);
+app.use('/api/events/:eventId/incidents', incidentRoutes);
 app.use('/api/vendors', vendorsRoutes);
 
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));
