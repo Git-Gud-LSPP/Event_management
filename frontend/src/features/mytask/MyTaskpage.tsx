@@ -36,7 +36,7 @@ const priorityById: Record<number, "High" | "Medium" | "Low"> = {
 };
 
 const getTaskById = (id: number): Task | undefined => {
-  return tasks.find((task) => task.id === id);
+  return tasks.find((task) => task.id == id);
 };
 
 const getStatusClasses = (status: Task["status"]) => {
