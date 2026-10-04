@@ -1,3 +1,4 @@
+import "leaflet/dist/leaflet.css"; // only this page renders a map
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { API_BASE } from "../../services/api";

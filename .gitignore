@@ -28,3 +28,7 @@ Thumbs.db
 # Others
 DESIGN.md
 TODO.md
+# HyperFrames: masters, snapshots and per-clip copies of the shared assets are regenerated
+videos/*/renders/
+videos/**/snapshots/
+videos/eventhq-clips/*/assets/

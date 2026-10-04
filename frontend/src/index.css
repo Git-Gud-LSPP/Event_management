@@ -1,2 +1,187 @@
 @import "tailwindcss";
-@import "leaflet/dist/leaflet.css";
+@import "@fontsource-variable/geist/wght.css";
+@import "@fontsource-variable/geist-mono/wght.css";
+
+/* EventHQ design tokens. Docs: docs/design/04-design-system.md
+   Raw values live on --eh-*; Tailwind utilities point at them (bg-paper, text-ink, border-line, ...).
+   Light everywhere by default. `.eh-auto` opts a subtree into system dark mode
+   (public pages today; add it to MainLayout once the app redesign lands). */
+:root {
+  --eh-bg: #f6f7f5;
+  --eh-surface: #fdfdfc;
+  --eh-sunken: #eef0ed;
+  --eh-ink: #111614;
+  --eh-ink-2: #4a524e;
+  --eh-ink-3: #626b66;
+  --eh-line: #dce0dd;
+  --eh-line-strong: #7f8883;
+  --eh-accent: #b83a0b;
+  --eh-accent-ink: #fdfdfc;
+  --eh-accent-soft: #f8e7df;
+  --eh-grid: rgb(17 22 20 / 0.045);
+  --eh-danger: #b42318;
+  --eh-danger-soft: #fdecea;
+  --eh-shadow: 0 16px 40px -16px rgb(17 22 20 / 0.22);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  .eh-auto {
+    --eh-bg: #0e1211;
+    --eh-surface: #151a18;
+    --eh-sunken: #0a0d0c;
+    --eh-ink: #eceeed;
+    --eh-ink-2: #a7b0ab;
+    --eh-ink-3: #8a938e;
+    --eh-line: #232a27;
+    --eh-line-strong: #5a645f;
+    --eh-accent: #ff7a45;
+    --eh-accent-ink: #0e1211;
+    --eh-accent-soft: #2a1a12;
+    --eh-grid: rgb(236 238 237 / 0.04);
+    --eh-danger: #ff8a7a;
+    --eh-danger-soft: #3a1612;
+    --eh-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.6);
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--eh-bg);
+  --color-surface: var(--eh-surface);
+  --color-sunken: var(--eh-sunken);
+  --color-ink: var(--eh-ink);
+  --color-ink-2: var(--eh-ink-2);
+  --color-ink-3: var(--eh-ink-3);
+  --color-line: var(--eh-line);
+  --color-line-strong: var(--eh-line-strong);
+  --color-accent: var(--eh-accent);
+  --color-accent-ink: var(--eh-accent-ink);
+  --color-accent-soft: var(--eh-accent-soft);
+  --color-danger: var(--eh-danger);
+  --color-danger-soft: var(--eh-danger-soft);
+  --shadow-overlay: var(--eh-shadow);
+}
+
+@theme {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quint: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Focus: one visible ring everywhere, 2px accent with offset (WCAG 2.4.7 / 2.4.11). */
+:focus-visible {
+  outline: 2px solid var(--eh-accent);
+  outline-offset: 2px;
+}
+
+/* Headings focused programmatically (step changes) shouldn't show a ring. */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* Hairline grid background. Used only where it organises content (hero, diagrams). */
+.eh-grid-bg {
+  background-image:
+    linear-gradient(var(--eh-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--eh-grid) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Motion. Everything below collapses to the final state under reduced motion. */
+.eh-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 560ms var(--ease-out-expo),
+    transform 560ms var(--ease-out-expo);
+  transition-delay: calc(var(--i, 0) * 60ms);
+}
+.eh-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Self-drawing strokes: give the path pathLength="1". */
+.eh-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 1400ms var(--ease-in-out-quint);
+  transition-delay: calc(var(--i, 0) * 90ms);
+}
+.is-in .eh-draw {
+  stroke-dashoffset: 0;
+}
+
+/* Module grid assembling: cells scale up in a diagonal cascade. */
+.eh-cell {
+  opacity: 0;
+  transform: scale(0.92);
+  transition:
+    opacity 400ms var(--ease-out-expo),
+    transform 400ms var(--ease-out-expo),
+    background-color 180ms,
+    border-color 180ms,
+    color 180ms;
+  transition-delay: calc(var(--i, 0) * 8ms);
+}
+.is-in .eh-cell {
+  opacity: 1;
+  transform: none;
+}
+
+/* Diagram cells switch on once their connecting line has drawn in. */
+.eh-light {
+  transition: fill 300ms, stroke 300ms;
+  transition-delay: calc(var(--i, 0) * 90ms + 1100ms);
+}
+.is-in .eh-light {
+  fill: var(--eh-accent-soft);
+  stroke: var(--eh-accent);
+}
+
+/* Value swaps (pricing toggle): remount with key= and this plays. */
+@keyframes eh-swap {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.eh-swap {
+  animation: eh-swap 240ms var(--ease-out-expo);
+}
+
+.eh-press {
+  transition: transform 150ms var(--ease-out-expo), background-color 180ms, border-color 180ms, color 180ms;
+}
+.eh-press:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eh-reveal,
+  .eh-cell {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .eh-draw {
+    stroke-dashoffset: 0;
+    transition: none;
+  }
+  .eh-light,
+  .eh-swap {
+    transition: none;
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto !important;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}

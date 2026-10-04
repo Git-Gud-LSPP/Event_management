@@ -33,7 +33,7 @@ export default function EventOpsAuth(): React.JSX.Element {
         <div className="max-w-300 mx-auto flex justify-between items-center px-9 py-3">
           <div className="flex items-center gap-3">
             <Flower2 className="w-6 h-6 text-[#001f1f] fill-[#001f1f]" />
-            <span className="text-[22px] font-medium text-[#001f1f] tracking-tight">EventOps</span>
+            <span className="text-[22px] font-medium text-[#001f1f] tracking-tight">EventHQ</span>
           </div>
           <button
             type="button"
@@ -142,7 +142,7 @@ export default function EventOpsAuth(): React.JSX.Element {
                     disabled={auth.isLoading}
                     value={auth.email}
                     onChange={(e) => auth.setEmail(e.target.value)}
-                    placeholder="jane@eventops.com"
+                    placeholder="jane@agency.com"
                     className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0 disabled:opacity-50"
                   />
                 </div>
@@ -213,7 +213,7 @@ export default function EventOpsAuth(): React.JSX.Element {
       <footer className="w-full bg-[#f7f6f2] mt-auto">
         <div className="max-w-300 mx-auto flex flex-col md:flex-row justify-between items-center px-9 py-8">
           <div className="text-sm text-[#414848] mb-4 md:mb-0">
-            © {new Date().getFullYear()} EventOps. All rights reserved.
+            © {new Date().getFullYear()} EventHQ. All rights reserved.
           </div>
           <div className="flex gap-8">
             <a href="#privacy" className="text-sm text-[#414848] hover:text-[#001f1f] transition-colors duration-200">

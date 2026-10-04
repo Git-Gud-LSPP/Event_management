@@ -6,22 +6,33 @@ import {
   Outlet,
   useLocation,
 } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import Sidebar from "./components/Sidebar";
-import AgentPanel from "./features/agent/AgentPanel";
-import AuthPage from "./features/auth/AuthPage";
-import EventsDashboard from "./features/events/EventsDashboard";
-import EventDetail from "./features/events/EventDetail";
-import StaffDashboard from "./features/staff/StaffDashboard";
-import SchedulePage from "./features/schedule/SchedulePage";
-import MyTasksPage from "./features/mytask/MyTaskpage";
-import VendorsPage from "./features/vendors/VendorsPage";
-import IncidentsPage from "./features/incidents/IncidentsPage";
-import FloorPlanPage from "./features/floorplan/FloorPlanPage";
-import VendorDetailPage from "./features/vendors/VendorDetailPage";
-import DocumentsPage from "./features/documents/DocumentsPage";
+import LandingPage from "./marketing/LandingPage";
+import Gate from "./features/billing/Gate";
 import { isLoggedIn } from "./services/authApi";
+
+// Landing stays in the main chunk (it's the LCP page); everything behind it loads on demand,
+// so visitors don't download Leaflet/Konva/Gantt to read the homepage.
+const AgentPanel = lazy(() => import("./features/agent/AgentPanel"));
+const AuthPage = lazy(() => import("./features/auth/AuthPage"));
+const SignupPage = lazy(() => import("./features/billing/SignupPage"));
+const OnboardingPage = lazy(() => import("./features/billing/OnboardingPage"));
+const ContactSalesPage = lazy(() => import("./marketing/ContactSalesPage"));
+const ModulesPage = lazy(() => import("./features/billing/ModulesPage"));
+const BillingPage = lazy(() => import("./features/billing/BillingPage"));
+const CheckoutPage = lazy(() => import("./features/billing/CheckoutPage"));
+const EventsDashboard = lazy(() => import("./features/events/EventsDashboard"));
+const EventDetail = lazy(() => import("./features/events/EventDetail"));
+const StaffDashboard = lazy(() => import("./features/staff/StaffDashboard"));
+const SchedulePage = lazy(() => import("./features/schedule/SchedulePage"));
+const MyTasksPage = lazy(() => import("./features/mytask/MyTaskpage"));
+const VendorsPage = lazy(() => import("./features/vendors/VendorsPage"));
+const IncidentsPage = lazy(() => import("./features/incidents/IncidentsPage"));
+const FloorPlanPage = lazy(() => import("./features/floorplan/FloorPlanPage"));
+const VendorDetailPage = lazy(() => import("./features/vendors/VendorDetailPage"));
+const DocumentsPage = lazy(() => import("./features/documents/DocumentsPage"));
 
 // Layout wrapper for authenticated application routes.
 // No token -> straight to the login screen, remembering where they were headed.
@@ -55,7 +66,9 @@ const MainLayout = () => {
       {/* <main className="flex-1 overflow-y-auto p-6"> */}
       <main className="h-screen min-w-0 flex-1 overflow-y-auto p-6">
         {/* Child routes render here */}
-        <Outlet key={dataVersion} />
+        <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-gray-100 motion-reduce:animate-none" aria-label="Loading" />}>
+          <Outlet key={dataVersion} />
+        </Suspense>
       </main>
       {!agentOpen && (
         <button
@@ -68,11 +81,13 @@ const MainLayout = () => {
           <Sparkles className="h-5 w-5" />
         </button>
       )}
-      <AgentPanel
-        open={agentOpen}
-        onClose={() => setAgentOpen(false)}
-        onDataChanged={() => setDataVersion((v) => v + 1)}
-      />
+      <Suspense>
+        <AgentPanel
+          open={agentOpen}
+          onClose={() => setAgentOpen(false)}
+          onDataChanged={() => setDataVersion((v) => v + 1)}
+        />
+      </Suspense>
     </div>
   );
 };
@@ -81,26 +96,35 @@ const App = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 1. Full-screen Public Route */}
-        <Route path="/login" element={<AuthPage />} />
+        {/* 1. Public */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Suspense><AuthPage /></Suspense>} />
+        <Route path="/signup" element={<Suspense><SignupPage /></Suspense>} />
+        <Route path="/contact-sales" element={<Suspense><ContactSalesPage /></Suspense>} />
+        <Route
+          path="/welcome"
+          element={isLoggedIn() ? <Suspense><OnboardingPage /></Suspense> : <Navigate to="/signup" replace />}
+        />
 
-        {/* 2. Main App Routes inside MainLayout (login required) */}
+        {/* 2. App (login required). Add-on modules sit behind <Gate>, which shows a preview when locked. */}
         <Route element={<MainLayout />}>
-          <Route path="/" element={<Navigate to="/events" replace />} />
           <Route path="/events" element={<EventsDashboard />} />
           <Route path="/events/:eventId" element={<EventDetail />} />
           <Route path="/schedule" element={<SchedulePage />} />
           <Route path="/my-tasks" element={<MyTasksPage />} />
-          <Route path="/vendors" element={<VendorsPage />} />
-          <Route path="/vendors/:vendorId" element={<VendorDetailPage />} />
-          <Route path="/incidents" element={<IncidentsPage />} />
+          <Route path="/vendors" element={<Gate id="vendors"><VendorsPage /></Gate>} />
+          <Route path="/vendors/:vendorId" element={<Gate id="vendors"><VendorDetailPage /></Gate>} />
+          <Route path="/incidents" element={<Gate id="incidents"><IncidentsPage /></Gate>} />
           <Route path="/staffs" element={<StaffDashboard />} />
-          <Route path="/floorplan" element={<FloorPlanPage />} />
+          <Route path="/floorplan" element={<Gate id="floor-plan"><FloorPlanPage /></Gate>} />
           <Route path="/documents" element={<DocumentsPage />} />
+          <Route path="/modules" element={<ModulesPage />} />
+          <Route path="/billing" element={<BillingPage />} />
+          <Route path="/billing/checkout" element={<CheckoutPage />} />
         </Route>
 
-        {/* 3. Fallback Route */}
-        <Route path="*" element={<Navigate to="/events" replace />} />
+        {/* 3. Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

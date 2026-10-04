@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1600, height=1000" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/ui.css" />
+    <style>
+      .layout { position: absolute; left: 348px; right: 48px; top: 168px; bottom: 48px; display: grid; grid-template-columns: 1fr 380px; gap: 28px; }
+      .list { overflow: hidden; }
+      .lhead { display: grid; grid-template-columns: 1fr 170px 200px; padding: 18px 28px; border-bottom: 2px solid var(--line); font-size: 20px; color: var(--ink-3); }
+      .inc { display: grid; grid-template-columns: 1fr 170px 200px; align-items: center; padding: 0 28px; height: 116px; border-bottom: 2px solid var(--line); }
+      .inc .t { font-size: 25px; font-weight: 500; }
+      .inc .m { font-size: 20px; color: var(--ink-3); margin-top: 6px; }
+      .stack { position: relative; }
+      #new { position: absolute; left: 0; right: 0; top: 0; background: var(--surface); }
+      .rows { position: relative; }
+      .status { position: relative; height: 38px; }
+      .status .pill { position: absolute; left: 0; top: 0; white-space: nowrap; }
+      .log { padding: 28px; position: relative; }
+      .log h3 { font-size: 24px; font-weight: 600; }
+      .ev { position: relative; padding-left: 34px; margin-top: 26px; }
+      .ev::before { content: ""; position: absolute; left: 0; top: 8px; width: 14px; height: 14px; border-radius: 999px; background: var(--accent); }
+      .ev .tm { font-size: 19px; color: var(--ink-3); }
+      .ev .tx { font-size: 22px; margin-top: 2px; }
+      #spine { position: absolute; left: 34px; top: 157px; width: 2px; height: 154px; background: var(--line-strong); transform-origin: top; }
+      .owner { display: flex; align-items: center; gap: 10px; font-size: 21px; color: var(--ink-2); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="incidents" data-start="0" data-duration="8" data-width="1600" data-height="1000">
+      <div class="shell">
+        <aside class="side">
+          <div class="brand">
+            <svg viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="8.5" height="8.5" rx="1.5" fill="none" stroke="#111614" stroke-width="1.5"/><rect x="13" y="2.5" width="8.5" height="8.5" rx="1.5" fill="#b83a0b"/><rect x="2.5" y="13" width="8.5" height="8.5" rx="1.5" fill="none" stroke="#111614" stroke-width="1.5"/><rect x="13" y="13" width="8.5" height="8.5" rx="1.5" fill="none" stroke="#111614" stroke-width="1.5"/></svg>
+            EventHQ
+          </div>
+          <div class="nav"><i></i>Events</div>
+          <div class="nav"><i></i>My Tasks</div>
+          <div class="nav"><i></i>Run-of-show</div>
+          <div class="nav"><i></i>Staff</div>
+          <div class="nav"><i></i>Documents</div>
+          <div class="nav"><i></i>Floor Plan</div>
+          <div class="nav on"><i></i>Incidents<span class="tag mono" id="count">1 open</span></div>
+        </aside>
+        <main class="main">
+          <div class="topbar">
+            <div>
+              <div class="h1">Incidents</div>
+              <div class="sub">Hollow Pines Festival 2027, Saturday</div>
+            </div>
+            <div class="btn primary">Report incident</div>
+          </div>
+        </main>
+      </div>
+      <div class="layout">
+        <div class="card list">
+          <div class="lhead"><span>Incident</span><span>Severity</span><span>Status</span></div>
+          <div class="stack">
+            <div class="rows" id="rows">
+              <div class="inc"><div><div class="t">Card reader offline, Bar 2</div><div class="m">Reported by Kofi Mensah, 21:12</div></div><span><span class="pill warn">Medium</span></span><span><span class="pill ok">Resolved</span></span></div>
+              <div class="inc"><div><div class="t">Lost lanyard at check-in</div><div class="m">Reported by Hana Sato, 20:47</div></div><span><span class="pill neutral">Low</span></span><span><span class="pill ok">Resolved</span></span></div>
+              <div class="inc"><div><div class="t">Signage missing, Hall C</div><div class="m">Reported by Ines Park, 19:58</div></div><span><span class="pill neutral">Low</span></span><span><span class="pill ok">Resolved</span></span></div>
+              <div class="inc" style="border-bottom: 0"><div><div class="t">Shuttle 3 running late</div><div class="m">Reported by Sam Whitaker, 19:20</div></div><span><span class="pill warn">Medium</span></span><span><span class="pill ok">Resolved</span></span></div>
+            </div>
+            <div class="inc" id="new">
+              <div>
+                <div class="t">Spill near Gate B</div>
+                <div class="m" id="who">Reported by Ana Lima, 21:42</div>
+              </div>
+              <span><span class="pill accent">High</span></span>
+              <span class="status">
+                <span class="pill neutral" id="s-open">Open</span>
+                <span class="pill warn" id="s-prog">In progress</span>
+                <span class="pill ok" id="s-done">Resolved</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="card log" id="log">
+          <h3>Spill near Gate B</h3>
+          <div class="owner" id="owner" style="margin-top: 14px"><span class="avatar">RO</span>Rui Okafor, site lead</div>
+          <div id="spine"></div>
+          <div class="ev" id="e1"><div class="tm mono">21:42</div><div class="tx">Reported from Gate B</div></div>
+          <div class="ev" id="e2"><div class="tm mono">21:43</div><div class="tx">Assigned to Rui Okafor</div></div>
+          <div class="ev" id="e3"><div class="tm mono">21:48</div><div class="tx">Resolved, area reopened</div></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      // A new report lands at the top; existing rows make room.
+      tl.fromTo("#rows", { y: 0 }, { y: 116, duration: 0.5, ease: "expo.out" }, 0.6)
+        .fromTo("#new", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.5, ease: "expo.out" }, 0.7)
+        .to("#new", { backgroundColor: "#fdfdfc", duration: 1.6, ease: "power1.out" }, 1.2)
+        .fromTo("#count", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.8)
+        .fromTo("#log", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.5, ease: "expo.out" }, 1.4)
+        .fromTo("#owner", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 1.4)
+        .fromTo("#e1", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.35, ease: "expo.out" }, 1.6)
+        .set(["#s-prog", "#s-done", "#e2", "#e3"], { opacity: 0 }, 0)
+        .set("#new", { backgroundColor: "#f8e7df" }, 0)
+        // Assigned: owner shows, status moves to In progress.
+        .fromTo("#spine", { scaleY: 0 }, { scaleY: 0.5, duration: 0.5, ease: "power2.inOut" }, 2.3)
+        .fromTo("#e2", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.35, ease: "expo.out" }, 2.6)
+        .to("#s-open", { opacity: 0, duration: 0.2 }, 2.7)
+        .fromTo("#s-prog", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.3, ease: "expo.out" }, 2.75)
+        // Resolved with a timestamped trail.
+        .to("#spine", { scaleY: 1, duration: 0.5, ease: "power2.inOut" }, 4.0)
+        .fromTo("#e3", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.35, ease: "expo.out" }, 4.3)
+        .to("#s-prog", { opacity: 0, duration: 0.2 }, 4.4)
+        .fromTo("#s-done", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.3, ease: "expo.out" }, 4.45)
+        .to("#count", { opacity: 0, duration: 0.3 }, 4.6)
+        // Loop reset to frame 0.
+        .to(["#log", "#new"], { opacity: 0, duration: 0.4, ease: "power2.in" }, 7.0)
+        .to("#rows", { y: 0, duration: 0.5, ease: "power3.inOut" }, 7.3)
+        .set(["#e1", "#e2", "#e3", "#owner", "#s-done"], { opacity: 0 }, 7.45)
+        .set("#new", { backgroundColor: "#f8e7df" }, 7.45)
+        .set("#s-open", { opacity: 1 }, 7.45)
+        .set("#spine", { scaleY: 0 }, 7.45);
+      window.__timelines["incidents"] = tl;
+    </script>
+  </body>
+</html>
