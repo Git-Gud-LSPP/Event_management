@@ -21,6 +21,17 @@ const eventSchema = new mongoose.Schema(
       enum: ['draft', 'published', 'cancelled'],
       default: 'draft',
     },
+    organizer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    staff: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
   { timestamps: true }
 );

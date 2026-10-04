@@ -1,21 +1,12 @@
 import { Plus } from 'lucide-react';
 
-interface ButtonProps {
-  label: string;
-  onClick?: () => void;
-  disabled?: boolean;
-  type?: 'button' | 'submit';
-}
-
-const Button = ({ label, onClick, disabled = false, type = 'button' }: ButtonProps) => {
+const Button = ({ label, onClick }: { label: string; onClick?: () => void }) => {
     return (
         <div>
             <button
-              type={type}
+              type="button"
               onClick={onClick}
-              disabled={disabled}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#f3f8f7] text-[#021814] rounded-full font-medium text-sm hover:bg-slate-800 transition-colors shadow-sm self-start sm:self-auto cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#f3f8f7] text-[#021814] rounded-full font-medium text-sm hover:bg-slate-800 hover:text-white transition-colors shadow-sm self-start sm:self-auto cursor-pointer">
           <Plus className="w-4 h-4" />
           <span>{label}</span>
         </button>

@@ -1,16 +1,39 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+  useLocation,
+} from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import AuthPage from "./features/auth/AuthPage";
 import EventsDashboard from "./features/events/EventsDashboard";
 import EventDetail from "./features/events/EventDetail";
 import StaffDashboard from "./features/staff/StaffDashboard";
+import SchedulePage from "./features/schedule/SchedulePage";
+import MyTasksPage from "./features/mytask/MyTaskpage";
+import VendorsPage from "./features/vendors/VendorsPage";
+import IncidentsPage from "./features/incidents/IncidentsPage";
+import FloorPlanPage from "./features/floorplan/FloorPlanPage";
+import VendorDetailPage from "./features/vendors/VendorDetailPage";
+import { isLoggedIn } from "./services/authApi";
 
-// Layout wrapper for authenticated application routes
+// Layout wrapper for authenticated application routes.
+// No token -> straight to the login screen, remembering where they were headed.
 const MainLayout = () => {
+  const location = useLocation();
+
+  if (!isLoggedIn()) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+
   return (
     <div className="flex min-h-screen bg-[#FBFBF9] text-slate-900">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-6">
+      {/* Main content */}
+      {/* <main className="flex-1 overflow-y-auto p-6"> */}
+      <main className="h-screen min-w-0 flex-1 overflow-y-auto p-6">
         {/* Child routes render here */}
         <Outlet />
       </main>
@@ -25,12 +48,18 @@ const App = () => {
         {/* 1. Full-screen Public Route */}
         <Route path="/login" element={<AuthPage />} />
 
-        {/* 2. Main App Routes inside MainLayout */}
+        {/* 2. Main App Routes inside MainLayout (login required) */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<Navigate to="/events" replace />} />
           <Route path="/events" element={<EventsDashboard />} />
           <Route path="/events/:eventId" element={<EventDetail />} />
+          <Route path="/schedule" element={<SchedulePage />} />
+          <Route path="/my-tasks" element={<MyTasksPage />} />
+          <Route path="/vendors" element={<VendorsPage />} />
+          <Route path="/vendors/:vendorId" element={<VendorDetailPage />} />
+          <Route path="/incidents" element={<IncidentsPage />} />
           <Route path="/staffs" element={<StaffDashboard />} />
+          <Route path="/floorplan" element={<FloorPlanPage />} />
         </Route>
 
         {/* 3. Fallback Route */}
