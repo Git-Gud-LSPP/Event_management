@@ -1,53 +1,44 @@
-import { Mail, Trash2, ClipboardList } from "lucide-react";
 import type { StaffRef } from "../events/api";
+import { initialsOf, pillOf } from "../../components/ui";
 
-const initialsOf = (name: string) =>
-  name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
+export interface StaffLoad {
+  status: "On task" | "Blocked" | "Available";
+  now?: string; // name of the in-progress (or blocked) task
+  total: number;
+  done: number;
+}
 
-export default function StaffCard({
-  member,
-  taskCount,
-  onRemove,
-}: {
-  member: StaffRef;
-  taskCount?: number;
-  onRemove?: () => void;
-}) {
+export default function StaffCard({ member, load, onRemove }: { member: StaffRef; load: StaffLoad; onRemove?: () => void }) {
+  const row = "flex justify-between gap-2.5 border-b border-line-soft py-[9px] last:border-0";
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-800">
-            {initialsOf(member.name)}
-          </div>
-          <div className="min-w-0">
-            <h3 className="truncate text-base font-bold tracking-tight text-gray-900">
-              {member.name}
-            </h3>
-            <p className="flex items-center gap-1 truncate text-xs text-gray-500">
-              <Mail className="h-3.5 w-3.5 shrink-0" />
-              {member.email}
-            </p>
-          </div>
+    <div className={`flex flex-col gap-3.5 rounded-2xl border bg-surface p-[18px] ${load.status === "Blocked" ? "border-[#F0CDB8]" : "border-line"}`}>
+      <div className="flex items-center gap-3">
+        <span className="grid size-10 flex-none place-items-center rounded-xl bg-[#E4EEE6] text-[13px]">{initialsOf(member.name)}</span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[15px] font-medium">{member.name}</div>
+          <div className="truncate text-[12.5px] text-ink-3">Event staff</div>
         </div>
-
-        {onRemove && (
-          <button
-            onClick={onRemove}
-            title="Remove from this event"
-            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        )}
+        <span className={pillOf(load.status)}>{load.status.toUpperCase()}</span>
       </div>
-
-      <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-3 text-xs font-medium text-gray-500">
-        <ClipboardList className="h-3.5 w-3.5" />
-        {taskCount === undefined
-          ? "Assigned to this event"
-          : `${taskCount} task${taskCount === 1 ? "" : "s"} on this event`}
+      <div className="border-t border-line-soft text-[13px]">
+        <div className={row}>
+          <span className="text-ink-3">Now</span>
+          <span className={`truncate text-right ${load.status === "Blocked" ? "text-danger" : ""}`}>{load.now ?? "—"}</span>
+        </div>
+        <div className={row}>
+          <span className="text-ink-3">Tasks</span>
+          <span>{load.total ? `${load.done} of ${load.total} done` : "None assigned"}</span>
+        </div>
+        <div className={row}>
+          <span className="text-ink-3">Email</span>
+          <a href={`mailto:${member.email}`} className="truncate font-mono text-xs hover:text-accent">{member.email}</a>
+        </div>
       </div>
+      {onRemove && (
+        <button type="button" onClick={onRemove} className="cursor-pointer self-start text-xs text-ink-3 hover:text-danger">
+          Remove from event
+        </button>
+      )}
     </div>
   );
 }

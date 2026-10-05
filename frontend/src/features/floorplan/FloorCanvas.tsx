@@ -114,10 +114,10 @@ export default function FloorCanvas({
   return (
     <div
       ref={wrapRef}
-      className="relative h-full w-full overflow-hidden rounded-xl border border-gray-200 bg-white"
+      className="relative h-full w-full overflow-hidden rounded-xl border border-line bg-surface"
       style={{
         backgroundImage:
-          "linear-gradient(#eef2f7 1px, transparent 1px), linear-gradient(90deg, #eef2f7 1px, transparent 1px)",
+          "linear-gradient(#EDF2EC 1px, transparent 1px), linear-gradient(90deg, #EDF2EC 1px, transparent 1px)",
         backgroundSize: "24px 24px",
       }}
       onDragOver={(e) => e.preventDefault()}
@@ -161,7 +161,7 @@ export default function FloorCanvas({
                   width={room.width}
                   height={room.height}
                   fill={room.color}
-                  stroke={selectedId === room.id ? "#4f46e5" : "#94a3b8"}
+                  stroke={selectedId === room.id ? "#16231C" : "#C4CEC6"}
                   strokeWidth={selectedId === room.id ? 2 : 1}
                   cornerRadius={4}
                   draggable
@@ -189,7 +189,7 @@ export default function FloorCanvas({
                   text={room.name}
                   fontSize={14}
                   fontStyle="bold"
-                  fill="#0f172a"
+                  fill="#16231C"
                   listening={false}
                 />
                 <Text
@@ -197,7 +197,7 @@ export default function FloorCanvas({
                   y={room.y + 26}
                   text={occupied + " / " + room.capacity}
                   fontSize={12}
-                  fill={occupied > room.capacity ? "#dc2626" : "#64748b"}
+                  fill={occupied > room.capacity ? "#8A2E52" : "#5C6A62"}
                   listening={false}
                 />
               </Group>
@@ -220,7 +220,7 @@ export default function FloorCanvas({
                 );
               }}
             >
-              <Circle radius={16} fill="#4f46e5" stroke="white" strokeWidth={2} />
+              <Circle radius={16} fill="#16231C" stroke="white" strokeWidth={2} />
               <Text
                 x={-16}
                 y={-5}
@@ -239,7 +239,7 @@ export default function FloorCanvas({
                 align="center"
                 text={nameOf(p.user)}
                 fontSize={11}
-                fill="#0f172a"
+                fill="#16231C"
                 listening={false}
               />
             </Group>
@@ -256,13 +256,13 @@ export default function FloorCanvas({
       </Stage>
 
       {/* Zoom controls */}
-      <div className="absolute bottom-4 left-4 z-10 flex items-center gap-1 rounded-lg border border-gray-200 bg-white/95 p-1 shadow-sm backdrop-blur">
+      <div className="absolute bottom-4 left-4 z-10 flex items-center gap-1 rounded-lg border border-line bg-surface/95 p-1 shadow-sm backdrop-blur">
         <button
           onClick={() => zoomTo(view.scale - 0.2)}
           disabled={view.scale <= MIN_ZOOM}
           title="Zoom out"
           aria-label="Zoom out"
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-40"
+          className="rounded p-1.5 text-ink-2 hover:bg-sunken disabled:opacity-40"
         >
           <Minus className="h-4 w-4" />
         </button>
@@ -270,7 +270,7 @@ export default function FloorCanvas({
           onClick={() => zoomTo(1)}
           title="Reset to 100%"
           aria-label="Reset zoom to 100%"
-          className="min-w-14 rounded px-1 py-1 text-xs font-medium text-gray-700 tabular-nums hover:bg-gray-100"
+          className="min-w-14 rounded px-1 py-1 text-xs font-medium text-ink-2 tabular-nums hover:bg-sunken"
         >
           {Math.round(view.scale * 100)}%
         </button>
@@ -279,16 +279,16 @@ export default function FloorCanvas({
           disabled={view.scale >= MAX_ZOOM}
           title="Zoom in"
           aria-label="Zoom in"
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-40"
+          className="rounded p-1.5 text-ink-2 hover:bg-sunken disabled:opacity-40"
         >
           <Plus className="h-4 w-4" />
         </button>
-        <span className="mx-0.5 h-5 w-px bg-gray-200" />
+        <span className="mx-0.5 h-5 w-px bg-sunken" />
         <button
           onClick={fit}
           title="Fit plan to screen"
           aria-label="Fit plan to screen"
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-100"
+          className="rounded p-1.5 text-ink-2 hover:bg-sunken"
         >
           <Maximize className="h-4 w-4" />
         </button>
@@ -299,7 +299,7 @@ export default function FloorCanvas({
         <input
           autoFocus
           defaultValue={renamingRoom.name}
-          className="absolute z-10 rounded border border-indigo-400 px-1 text-sm outline-none"
+          className="absolute z-10 rounded border border-ink px-1 text-sm outline-none"
           style={{
             left: renamingRoom.x * view.scale + view.x + 8,
             top: renamingRoom.y * view.scale + view.y + 6,

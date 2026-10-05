@@ -1,33 +1,50 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
-// Incidents, inventory and dependency chains have no backend yet, so those panels
-// still read the sample file. Everything else on this page is live.
-import { incidents, dependencyChains } from './data'
-import type { DependencyChain } from './data'
-import { getEvent, type EventRecord } from './api'
+import { Loader2, Pencil } from 'lucide-react'
+import {
+  getEvent, listInventory, listDependencyChains,
+  type EventRecord, type InventoryRecord, type DependencyChainRecord,
+} from './api'
+import { listIncidents, type IncidentRecord } from '../incidents/api'
 import { listSchedule, toTask } from '../schedule/api'
 import type { Task } from '../schedule/data'
+import { listEventVendors, type EventVendor } from '../documents/api'
+import { getStoredUser } from '../../services/authApi'
+import EventFormModal from './EventFormModal'
+import { STATUS_PILL, fmtDate } from './format'
+import { card, cardHead, mono, pill, pillOf, initialsOf } from '../../components/ui'
+
 
 export default function EventDetail({ eventId: propEventId }: { eventId?: string } = {}) {
-  // Extract route parameter from URL
   const { eventId: paramEventId } = useParams<{ eventId: string }>()
-
-  // Fall back to prop if provided, otherwise route parameter
   const eventId = propEventId || paramEventId || ''
 
   const [event, setEvent] = useState<EventRecord | null>(null)
   const [eventTasks, setEventTasks] = useState<Task[]>([])
+  const [eventIncidents, setEventIncidents] = useState<IncidentRecord[]>([])
+  const [inventory, setInventory] = useState<InventoryRecord[]>([])
+  const [eventChains, setEventChains] = useState<DependencyChainRecord[]>([])
+  const [vendors, setVendors] = useState<EventVendor[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
 
   useEffect(() => {
     if (!eventId) return
     setLoading(true)
-    Promise.all([getEvent(eventId), listSchedule(eventId)])
-      .then(([ev, schedule]) => {
+    Promise.all([
+      getEvent(eventId), listSchedule(eventId), listIncidents(eventId),
+      listInventory(eventId), listDependencyChains(eventId),
+      // Vendors are a nice-to-have here; don't fail the whole page over them.
+      listEventVendors(eventId).catch(() => [] as EventVendor[]),
+    ])
+      .then(([ev, schedule, inc, inv, chains, vend]) => {
         setEvent(ev)
         setEventTasks(schedule.items.map(toTask))
+        setEventIncidents(inc.items)
+        setInventory(inv.items)
+        setEventChains(chains.items)
+        setVendors(vend)
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
@@ -35,7 +52,7 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 p-8 text-sm text-mist">
+      <div className="flex items-center gap-2 py-16 text-sm text-ink-3">
         <Loader2 size={16} className="animate-spin" /> Loading event…
       </div>
     )
@@ -43,307 +60,229 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
 
   if (error || !event) {
     return (
-      <div className="p-8">
-        <p className="rounded-xl bg-[#fee2e2] px-4 py-3 text-sm font-medium text-[#dc2626]">
-          {error || 'Event not found.'}
-        </p>
-        <Link to="/events" className="mt-4 inline-block text-sm text-lichen-gray hover:underline">
-          ← Back to events
-        </Link>
+      <div>
+        <p className="rounded-xl bg-danger-soft px-4 py-3 text-sm font-medium text-danger">{error || 'Event not found.'}</p>
+        <Link to="/events" className="mt-4 inline-block text-sm text-ink-3 hover:underline">← Back to events</Link>
       </div>
     )
   }
 
+  const isOrganizer = getStoredUser()?.id === event.organizer
   const eventStaff = event.staff ?? []
-  const eventIncidents = incidents
-  const eventChains = dependencyChains
+  const inventoryAlerts = inventory.filter(i => i.status !== 'Available')
 
   const doneTasks = eventTasks.filter(t => t.status === 'Done').length
   const blockedTasks = eventTasks.filter(t => t.status === 'Blocked').length
   const openIncidents = eventIncidents.filter(i => i.status !== 'Resolved').length
-  const criticalIncidents = eventIncidents.filter(i => i.severity === 'Critical').length
+  const criticalIncidents = eventIncidents.filter(i => i.priority === 'Critical' && i.status !== 'Resolved').length
 
-  const start = new Date(event.startsAt)
-  const end = event.endsAt ? new Date(event.endsAt) : null
+  const start = new Date(event.startsAt).getTime()
+  const end = event.endsAt ? new Date(event.endsAt).getTime() : null
   const now = Date.now()
-  const timeLabel = now < start.getTime() ? 'Upcoming' : end && now > end.getTime() ? 'Completed' : 'Live'
-  const progress = eventTasks.length
-    ? Math.round((doneTasks / eventTasks.length) * 100)
-    : 0
+  const timeLabel = event.status === 'cancelled' ? 'Cancelled' : now < start ? 'Upcoming' : end && now > end ? 'Completed' : 'Live'
+  const progress = eventTasks.length ? Math.round((doneTasks / eventTasks.length) * 100) : 0
 
   const needsAttention = [
     ...eventTasks.filter(t => t.status === 'Blocked').map(t => ({
-      id: t.id, type: 'task' as const, label: `${t.name} blocked`, person: t.owner, time: t.start, severity: 'High' as const,
+      id: t.id, tag: 'BLOCKED', sev: 'High', label: t.name, sub: `${t.owner} · ${t.start}`,
     })),
     ...eventIncidents.filter(i => i.status !== 'Resolved').map(i => ({
-      id: i.id, type: 'incident' as const, label: i.title, person: i.who.split(' ·')[0], time: i.timeAgo, severity: i.severity,
+      id: i._id, tag: i.priority.toUpperCase(), sev: i.priority, label: i.title,
+      sub: `${i.reportedBy?.name ?? '—'} · ${new Date(i.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`,
     })),
-  ].slice(0, 5)
+  ].slice(0, 6)
+
+  const kpis = [
+    { l: 'Task progress', v: `${progress}%`, s: `${doneTasks} of ${eventTasks.length} tasks done`, c: '' },
+    { l: 'In progress', v: eventTasks.filter(t => t.status === 'In Progress').length, s: `${blockedTasks} blocked`, c: '' },
+    { l: 'Staff assigned', v: eventStaff.length, s: eventStaff.length ? 'On this event' : 'Add staff on the Staff page', c: '' },
+    { l: 'Open incidents', v: openIncidents, s: criticalIncidents ? `${criticalIncidents} critical` : 'No critical alerts', c: criticalIncidents ? 'text-danger' : '' },
+  ]
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
-      {/* Page header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <StatusDot status={timeLabel} />
-            <span className="text-[11px] font-medium text-lichen-gray uppercase tracking-[0.08em]">{event.status} · {timeLabel}</span>
+    <div>
+      <Link to="/events" className="mb-[18px] inline-block text-[13px] text-ink-3 hover:text-ink">← All events</Link>
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5 font-mono text-xs tracking-[.04em] text-ink-3">
+            EVENT · {event.status.toUpperCase()}
+            <span className={`${pill} ${STATUS_PILL[timeLabel]}`}>{timeLabel.toUpperCase()}</span>
           </div>
-          <h1 className="text-[28px] font-semibold text-forest-ink leading-tight tracking-[-0.4px]">{event.title}</h1>
-          <p className="text-stone text-sm mt-0.5">
-            {start.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+          <h1 className="mt-2.5 mb-1.5 text-[clamp(30px,3.4vw,44px)] leading-none font-medium tracking-[-0.045em]">{event.title}</h1>
+          <div className="text-[15px] text-ink-3">
+            {fmtDate(event.startsAt)}
             {event.location ? ` · ${event.location}` : ''}
-          </p>
-          {event.description && <p className="text-stone text-sm mt-2 max-w-2xl">{event.description}</p>}
-        </div>
-        <div className="flex items-center gap-2">
-          {event.capacity != null && (
-            <span className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-meadow text-forest-ink border border-forest-ink/10">
-              Capacity {event.capacity}
-            </span>
-          )}
-          <Link
-            to="/schedule"
-            className="flex items-center gap-1.5 text-[13px] font-medium px-4 py-2 rounded-full border border-forest-ink/15 text-forest-ink hover:bg-forest-ink/5 transition-colors"
-          >
-            Manage schedule
-          </Link>
-        </div>
-      </div>
-
-      {/* KPI row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Task Progress" value={`${progress}%`} sub={`${doneTasks}/${eventTasks.length} tasks done`} surface="bg-mint-surface" accent="#003d3d" progress={progress} />
-        <KpiCard label="Active Tasks" value={String(eventTasks.filter(t => t.status === 'In Progress').length)} sub={`${blockedTasks} blocked`} surface="bg-lime-surface" accent="#515c0b" alertCount={blockedTasks} />
-        <KpiCard label="Staff Assigned" value={String(eventStaff.length)} sub={eventStaff.length ? 'On this event' : 'Add staff on the Staff page'} surface="bg-lavender-surface" accent="#652ea3" />
-        <KpiCard label="Open Incidents" value={String(openIncidents)} sub={criticalIncidents > 0 ? `${criticalIncidents} critical` : 'No critical alerts'} surface="bg-blush-surface" accent="#7a2251" alertCount={criticalIncidents} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Needs Attention */}
-        <div className="lg:col-span-2 bg-white rounded-[14px] shadow-[var(--shadow-card)] p-6">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-semibold text-forest-ink text-[15px]">Needs Attention</h2>
-            <span className="text-[11px] font-medium text-mist uppercase tracking-[0.06em]">Live</span>
+            {event.capacity != null ? ` · capacity ${event.capacity}` : ''}
           </div>
-          {needsAttention.length === 0 ? (
-            <div className="text-center py-10 text-mist text-sm">All clear — no issues right now.</div>
-          ) : (
-            <div className="space-y-2">
-              {needsAttention.map(item => (
-                <div key={item.id} className="flex items-center gap-3 p-3 rounded-[10px] hover:bg-parchment transition-colors group">
-                  <SeverityIcon severity={item.severity} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-forest-ink truncate">{item.label}</p>
-                    <p className="text-[12px] text-mist">{item.person} · {item.time}</p>
+          {event.description && <p className="mt-2 max-w-2xl text-sm text-ink-3">{event.description}</p>}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {isOrganizer && (
+            <button type="button" onClick={() => setEditing(true)} className="flex cursor-pointer items-center gap-1.5 rounded-full bg-surface px-4 py-2.5 text-sm ring-1 ring-transparent hover:ring-ink">
+              <Pencil size={14} aria-hidden="true" /> Edit
+            </button>
+          )}
+          <Link to="/schedule" className="rounded-full bg-surface px-4 py-2.5 text-sm ring-1 ring-transparent hover:ring-ink">Open schedule</Link>
+          <Link to="/floorplan" className="rounded-full bg-ink px-4 py-2.5 text-sm text-paper hover:bg-ink-hover">Floor plan</Link>
+        </div>
+      </div>
+
+      <div className="mb-6 grid gap-px overflow-hidden rounded-2xl bg-line [grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))]">
+        {kpis.map(k => (
+          <div key={k.l} className="bg-surface px-5 py-[18px]">
+            <div className="text-[12.5px] text-ink-3">{k.l}</div>
+            <div className={`mt-1.5 text-[34px] font-medium tracking-[-0.045em] ${k.c}`}>{k.v}</div>
+            <div className="mt-0.5 text-xs text-[#6E7C73]">{k.s}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr))]">
+        <div className="flex flex-col gap-4">
+          {eventChains.length > 0 && (
+            <section className={card}>
+              <div className={cardHead}>
+                <h2 className="text-[15px] font-medium">Dependency alert chains</h2>
+                <span className={`${mono} text-accent`}>FROM SCHEDULE</span>
+              </div>
+              {eventChains.slice(0, 3).map(c => (
+                <div key={c.id} className="border-b border-line-soft px-[18px] py-4 last:border-0">
+                  <div className="flex items-center justify-between gap-2.5">
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      <span className={`${pill} bg-danger-soft text-danger`}>{c.trigger.type.toUpperCase()}</span>
+                      {c.trigger.label}
+                    </span>
+                    <span className={`${mono} text-[#6E7C73]`}>{new Date(c.trigger.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
                   </div>
-                  <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${severityBadge(item.severity)}`}>
-                    {item.severity}
-                  </span>
+                  <ol className="mt-3 ml-1.5 flex flex-col gap-2.5 border-l border-dashed border-[#CBD6CC] pl-4">
+                    {c.chain.map(s => (
+                      <li key={s.id} className="relative text-[13px]">
+                        <span aria-hidden="true" className={`absolute top-[5px] -left-[21px] size-[9px] rounded-full shadow-[0_0_0_3px_#fff] ${s.severity === 'critical' ? 'bg-[#C9668E]' : 'bg-[#C9A54A]'}`} />
+                        <div>{s.label}</div>
+                        <div className="mt-px text-[12.5px] text-ink-3">{s.impact}</div>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
               ))}
-            </div>
+            </section>
           )}
-        </div>
 
-        {/* Staff on this event */}
-        <div className="bg-white rounded-[14px] shadow-[var(--shadow-card)] p-6">
-          <h2 className="font-semibold text-forest-ink text-[15px] mb-5">Staff on this Event</h2>
-          {eventStaff.length === 0 ? (
-            <p className="text-[13px] text-mist">Nobody assigned yet.</p>
-          ) : (
-            <div className="space-y-2.5">
-              {eventStaff.slice(0, 6).map(s => (
-                <div key={s._id} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-meadow flex items-center justify-center text-[11px] font-semibold text-forest-ink flex-shrink-0">
-                    {initialsOf(s.name)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-forest-ink truncate">{s.name}</p>
-                    <p className="text-[11px] text-mist truncate">{s.email}</p>
+          <section className={card}>
+            <div className={cardHead}>
+              <h2 className="text-[15px] font-medium">Needs attention</h2>
+              <span className={`${mono} text-[#6E7C73]`}>{needsAttention.length} ITEMS</span>
+            </div>
+            {needsAttention.length === 0 ? (
+              <p className="px-[18px] py-8 text-center text-sm text-ink-3">All clear: no blocked tasks or open incidents.</p>
+            ) : (
+              needsAttention.map(item => (
+                <div key={item.id} className="flex items-center gap-3 border-b border-line-soft px-[18px] py-3 text-[13.5px] last:border-0">
+                  <span className={`${pill} ${SEVERITY_PILL[item.sev] ?? 'bg-sunken text-ink-2'}`}>{item.tag}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate">{item.label}</div>
+                    <div className="mt-px text-xs text-[#6E7C73]">{item.sub}</div>
                   </div>
                 </div>
-              ))}
+              ))
+            )}
+          </section>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <section className={card}>
+            <div className={cardHead}>
+              <h2 className="text-[15px] font-medium">Staff on this event</h2>
+              <Link to="/staffs" className="text-[12.5px] text-ink-3 hover:text-ink">View all →</Link>
             </div>
-          )}
-          <Link to="/staffs" className="block w-full mt-4 text-[12px] font-medium text-lichen-gray hover:text-forest-ink transition-colors py-1">
-            Manage staff →
-          </Link>
-        </div>
-      </div>
-
-      {/* Dependency alert chains */}
-      {eventChains.length > 0 && (
-        <div className="bg-white rounded-[14px] shadow-[var(--shadow-card)] p-6">
-          <div className="flex items-center gap-2 mb-5">
-            <h2 className="font-semibold text-forest-ink text-[15px]">Dependency Alert Chains</h2>
-            <SampleBadge />
-          </div>
-          <div className="space-y-4">
-            {eventChains.slice(0, 2).map(chain => (
-              <DependencyChainCard key={chain.id} chain={chain} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Vendor status mini */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-[14px] shadow-[var(--shadow-card)] p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="font-semibold text-forest-ink text-[15px]">Vendor Status</h2>
-            <SampleBadge />
-          </div>
-          <div className="space-y-2">
-            {[
-              { name: 'SoundWave Productions', service: 'AV & Sound', status: 'Confirmed' },
-              { name: 'Harvest Table Catering', service: 'Catering', status: 'At Risk' },
-              { name: 'BrightLux Lighting', service: 'Lighting', status: 'Confirmed' },
-              { name: 'Citywide Security', service: 'Security', status: 'Confirmed' },
-            ].map((v, i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-forest-ink/5 last:border-0">
-                <div>
-                  <p className="text-[13px] font-medium text-forest-ink">{v.name}</p>
-                  <p className="text-[11px] text-mist">{v.service}</p>
-                </div>
-                <VendorStatusBadge status={v.status} />
+            {eventStaff.length === 0 ? (
+              <p className="px-[18px] py-6 text-[13px] text-ink-3">Nobody assigned yet.</p>
+            ) : (
+              <div className="grid [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]">
+                {eventStaff.slice(0, 8).map(s => (
+                  <div key={s._id} className="flex items-center gap-2.5 border-b border-line-soft px-[18px] py-[11px]">
+                    <span className="grid size-[30px] flex-none place-items-center rounded-full bg-[#E4EEE6] text-[10.5px]">{initialsOf(s.name)}</span>
+                    <div className="min-w-0">
+                      <div className="truncate text-[13px] font-medium">{s.name}</div>
+                      <div className="truncate text-[11.5px] text-[#6E7C73]">{s.email}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            )}
+          </section>
 
-        <div className="bg-white rounded-[14px] shadow-[var(--shadow-card)] p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="font-semibold text-forest-ink text-[15px]">Inventory Alerts</h2>
-            <SampleBadge />
-          </div>
-          <div className="space-y-2">
-            {[
-              { name: 'Wireless Lavalier Mic', stock: '2 of 12', status: 'Low Stock', color: 'text-[#d97706]' },
-              { name: 'HDMI to USB-C Adapter', stock: '1 of 8', status: 'Damaged', color: 'text-[#dc2626]' },
-              { name: 'First Aid Kits', stock: '3 of 10', status: 'Low Stock', color: 'text-[#d97706]' },
-              { name: 'Power Extension Cables', stock: '0 of 20', status: 'Ordered', color: 'text-[#6b7280]' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-forest-ink/5 last:border-0">
-                <div>
-                  <p className="text-[13px] font-medium text-forest-ink">{item.name}</p>
-                  <p className="text-[11px] text-mist">Stock: {item.stock}</p>
-                </div>
-                <span className={`text-[11px] font-medium ${item.color}`}>{item.status}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const initialsOf = (name: string) =>
-  name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || '?'
-
-function StatusDot({ status }: { status: string }) {
-  const colors: Record<string, string> = { Live: 'bg-[#16a34a]', Upcoming: 'bg-[#4f46e5]', Completed: 'bg-[#889494]', 'At Risk': 'bg-[#dc2626]' }
-  return <span className={`w-2 h-2 rounded-full ${colors[status] || 'bg-mist'} ${status === 'Live' ? 'animate-pulse' : ''}`} />
-}
-
-function KpiCard({ label, value, sub, surface, accent, progress, alertCount }: {
-  label: string; value: string; sub: string; surface: string; accent: string; progress?: number; alertCount?: number;
-}) {
-  return (
-    <div className={`${surface} rounded-[14px] p-5`}>
-      <p className="text-[11px] font-medium uppercase tracking-[0.08em] mb-2" style={{ color: accent }}>{label}</p>
-      <div className="flex items-end gap-2">
-        <span className="text-[28px] font-semibold leading-none" style={{ color: accent }}>{value}</span>
-        {alertCount != null && alertCount > 0 && (
-          <span className="mb-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-[#fee2e2] text-[#dc2626]">{alertCount} blocked</span>
-        )}
-      </div>
-      {progress !== undefined && (
-        <div className="h-1 bg-white/60 rounded-full mt-3 mb-1.5 overflow-hidden">
-          <div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: accent }} />
-        </div>
-      )}
-      <p className="text-[12px] mt-2" style={{ color: accent + 'aa' }}>{sub}</p>
-    </div>
-  )
-}
-
-function SeverityIcon({ severity }: { severity: string }) {
-  const colors: Record<string, string> = {
-    Critical: 'bg-[#fee2e2] text-[#dc2626]',
-    High: 'bg-[#fff7ed] text-[#ea580c]',
-    Medium: 'bg-buttercream text-saffron',
-    Low: 'bg-parchment text-mist',
-  }
-  return (
-    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[13px] ${colors[severity]}`}>
-      {severity === 'Critical' ? '🔴' : severity === 'High' ? '🟠' : severity === 'Medium' ? '🟡' : 'ℹ'}
-    </div>
-  )
-}
-
-function severityBadge(s: string) {
-  return {
-    Critical: 'bg-[#fee2e2] text-[#dc2626]',
-    High: 'bg-[#fff7ed] text-[#ea580c]',
-    Medium: 'bg-buttercream text-saffron',
-    Low: 'bg-parchment text-mist',
-  }[s] || 'bg-parchment text-mist'
-}
-
-function SampleBadge() {
-  return (
-    <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-parchment text-mist">
-      Sample data
-    </span>
-  )
-}
-
-function VendorStatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    Confirmed: 'text-[#16a34a]',
-    'At Risk': 'text-[#dc2626]',
-    Pending: 'text-[#4f46e5]',
-    Delayed: 'text-[#d97706]',
-  }
-  return <span className={`text-[12px] font-medium ${map[status] || 'text-mist'}`}>{status}</span>
-}
-
-function DependencyChainCard({ chain }: { chain: DependencyChain }) {
-  const triggerColors = { delay: 'bg-buttercream text-saffron', risk: 'bg-[#fff7ed] text-[#ea580c]', blocked: 'bg-[#fee2e2] text-[#dc2626]' }
-  return (
-    <div className="border border-forest-ink/8 rounded-[10px] p-4">
-      <div className="flex items-start gap-3 mb-3">
-        <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${triggerColors[chain.trigger.type as keyof typeof triggerColors]}`}>
-          TRIGGER
-        </span>
-        <div>
-          <p className="text-[13px] font-medium text-forest-ink">{chain.trigger.label}</p>
-          <p className="text-[11px] text-mist">{chain.trigger.time}</p>
-        </div>
-      </div>
-      <div className="ml-4 space-y-2 mb-3">
-        {chain.chain.map((item) => {
-          const sevColors = { critical: 'border-[#fecaca] bg-[#fff5f5]', high: 'border-[#fed7aa] bg-[#fffbf5]', medium: 'border-[#fde68a] bg-[#fffdf0]' }
-          return (
-            <div key={item.id} className="flex items-start gap-2">
-              <div className="flex flex-col items-center">
-                <div className="w-px h-2 bg-forest-ink/15 mt-0.5" />
-                <div className="w-1.5 h-1.5 rounded-full bg-forest-ink/30 flex-shrink-0" />
-              </div>
-              <div className={`flex-1 border rounded-[8px] px-3 py-2 ${sevColors[item.severity as keyof typeof sevColors]}`}>
-                <p className="text-[12px] font-medium text-forest-ink">{item.label}</p>
-                <p className="text-[11px] text-stone">{item.impact}</p>
-              </div>
+          <section className={card}>
+            <div className={cardHead}>
+              <h2 className="text-[15px] font-medium">Vendor status</h2>
+              <Link to="/vendors" className="text-[12.5px] text-ink-3 hover:text-ink">Find vendors →</Link>
             </div>
-          )
-        })}
+            {vendors.length === 0 ? (
+              <p className="px-[18px] py-6 text-[13px] text-ink-3">No vendors on this event yet.</p>
+            ) : (
+              vendors.slice(0, 6).map(v => (
+                <div key={v._id} className="flex items-center gap-3 border-b border-line-soft px-[18px] py-3 text-[13.5px] last:border-0">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate">{v.name}</div>
+                    <div className="mt-px truncate text-xs text-[#6E7C73]">{[v.type, v.scope].filter(Boolean).join(' · ') || '—'}</div>
+                  </div>
+                  <span className={pillOf(v.stage)}>{v.stage.toUpperCase()}</span>
+                </div>
+              ))
+            )}
+          </section>
+
+          <section className={card}>
+            <div className={cardHead}>
+              <h2 className="text-[15px] font-medium">Inventory alerts</h2>
+              <span className={`${mono} text-[#6E7C73]`}>{inventoryAlerts.length} ITEMS</span>
+            </div>
+            {inventoryAlerts.length === 0 ? (
+              <p className="px-[18px] py-6 text-[13px] text-ink-3">No inventory alerts.</p>
+            ) : (
+              inventoryAlerts.slice(0, 6).map(i => (
+                <div key={i._id} className="border-b border-line-soft px-[18px] py-3 text-[13.5px] last:border-0">
+                  <div className="flex justify-between gap-2.5">
+                    <span>{i.name}</span>
+                    <span className={`${pill} ${INVENTORY_PILL[i.status] ?? 'bg-sunken text-ink-2'}`}>{i.status.toUpperCase()}</span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2.5">
+                    <div className="h-1 flex-1 overflow-hidden rounded-sm bg-line-soft">
+                      <div
+                        className={`h-full ${i.status === 'Damaged' ? 'bg-[#C9668E]' : i.status === 'Low Stock' ? 'bg-[#C9A54A]' : 'bg-ink'}`}
+                        style={{ width: `${i.maxStock ? Math.round((i.stock / i.maxStock) * 100) : 0}%` }}
+                      />
+                    </div>
+                    <span className={`${mono} text-[#6E7C73]`}>{i.stock}/{i.maxStock}{i.location ? ` · ${i.location}` : ''}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </section>
+        </div>
       </div>
-      <div className="bg-sage-glow rounded-[8px] px-3 py-2.5 flex items-start gap-2">
-        <span className="text-[11px] font-semibold text-deep-forest uppercase tracking-wide flex-shrink-0 mt-0.5">→ Action</span>
-        <p className="text-[12px] text-deep-forest">{chain.suggestedAction}</p>
-      </div>
+
+      {editing && (
+        <EventFormModal
+          event={event}
+          onClose={() => setEditing(false)}
+          // PATCH returns staff as bare ids; keep the populated list we already have.
+          onSaved={(saved) => setEvent((prev) => ({ ...saved, staff: prev?.staff ?? [] }))}
+        />
+      )}
     </div>
   )
 }
+
+const SEVERITY_PILL: Record<string, string> = {
+  Critical: 'bg-danger-soft text-danger',
+  High: 'bg-warn-soft text-warn',
+  Medium: 'bg-[#D6E4F5] text-[#24518A]',
+  Low: 'bg-sunken text-ink-2',
+}
+
+const INVENTORY_PILL: Record<string, string> = {
+  'Low Stock': 'bg-warn-soft text-warn', Damaged: 'bg-danger-soft text-danger', Ordered: 'bg-[#D6E4F5] text-[#24518A]', 'Checked Out': 'bg-sunken text-ink-2',
+}
+
+

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1600, height=1000" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/ui.css" />
+    <style>
+      .editor { position: absolute; left: 348px; right: 48px; top: 168px; bottom: 48px; display: grid; grid-template-columns: 210px 1fr; }
+      .tools { border-right: 2px solid var(--line); padding: 20px 16px; display: flex; flex-direction: column; gap: 8px; }
+      .tool { display: flex; align-items: center; gap: 12px; height: 54px; padding: 0 12px; border-radius: 12px; font-size: 22px; color: var(--ink-2); }
+      .tool b { width: 22px; height: 22px; border: 2px solid var(--line-strong); border-radius: 5px; display: block; flex: none; }
+      .tool.on { background: var(--accent-soft); color: var(--ink); }
+      .tool.on b { border-color: var(--accent); }
+      .canvas { position: relative; border-radius: 0 18px 18px 0; overflow: hidden; }
+      #plan { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .saved { position: absolute; right: 48px; top: 52px; }
+      .item { font-family: "Geist", sans-serif; font-size: 20px; font-weight: 500; }
+      .dim { font-family: "Geist Mono", monospace; font-size: 18px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="floorplan" data-start="0" data-duration="8" data-width="1600" data-height="1000">
+      <div class="shell">
+        <aside class="side">
+          <div class="brand">
+            <svg viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="8.5" height="8.5" rx="1.5" fill="none" stroke="#111614" stroke-width="1.5"/><rect x="13" y="2.5" width="8.5" height="8.5" rx="1.5" fill="#b83a0b"/><rect x="2.5" y="13" width="8.5" height="8.5" rx="1.5" fill="none" stroke="#111614" stroke-width="1.5"/><rect x="13" y="13" width="8.5" height="8.5" rx="1.5" fill="none" stroke="#111614" stroke-width="1.5"/></svg>
+            EventHQ
+          </div>
+          <div class="nav"><i></i>Events</div>
+          <div class="nav"><i></i>My Tasks</div>
+          <div class="nav"><i></i>Run-of-show</div>
+          <div class="nav"><i></i>Staff</div>
+          <div class="nav"><i></i>Documents</div>
+          <div class="nav on"><i></i>Floor Plan</div>
+          <div class="nav"><i></i>Incidents</div>
+        </aside>
+        <main class="main">
+          <div class="h1">Floor Plan</div>
+          <div class="sub">Hollow Pines Festival 2027, Hall A</div>
+        </main>
+      </div>
+      <div class="pill ok saved" id="saved">Saved to Hollow Pines Festival 2027</div>
+      <div class="card editor">
+        <div class="tools">
+          <div class="tool" id="t-stage"><b></b>Stage</div>
+          <div class="tool"><b></b>Bar</div>
+          <div class="tool"><b></b>First aid</div>
+          <div class="tool"><b></b>Exit</div>
+          <div class="tool"><b></b>Booth</div>
+          <div class="tool"><b></b>Text</div>
+        </div>
+        <div class="canvas grid-bg">
+          <svg id="plan" viewBox="0 0 1000 784">
+            <!-- Hall outline draws first: the venue, measured. -->
+            <path id="hall" pathLength="1" d="M80 70 H920 V560 H700 V714 H300 V560 H80 Z" fill="none" stroke="#111614" stroke-width="4" stroke-dasharray="1" stroke-dashoffset="1" />
+            <g id="dim-w" opacity="0">
+              <path d="M80 40 H920 M80 30 V50 M920 30 V50" stroke="#626b66" stroke-width="2" />
+              <text x="500" y="30" text-anchor="middle" class="dim" fill="#4a524e">42 m</text>
+            </g>
+            <g id="stage" opacity="0">
+              <rect x="320" y="96" width="360" height="160" rx="10" fill="#111614" />
+              <text x="500" y="184" text-anchor="middle" class="item" fill="#f6f7f5">Main stage</text>
+            </g>
+            <g id="sel" opacity="0">
+              <rect x="312" y="88" width="376" height="176" rx="14" fill="none" stroke="#b83a0b" stroke-width="3" stroke-dasharray="10 8" />
+              <text x="500" y="292" text-anchor="middle" class="dim" fill="#b83a0b">18 × 8 m</text>
+            </g>
+            <g id="foh" opacity="0">
+              <rect x="440" y="400" width="120" height="70" rx="8" fill="#fdfdfc" stroke="#111614" stroke-width="3" />
+              <text x="500" y="442" text-anchor="middle" class="item" fill="#111614">FOH</text>
+            </g>
+            <g id="bar1" opacity="0">
+              <rect x="110" y="300" width="70" height="200" rx="8" fill="#f8e7df" stroke="#b83a0b" stroke-width="3" />
+              <text x="145" y="408" text-anchor="middle" class="item" fill="#111614">Bar</text>
+            </g>
+            <g id="bar2" opacity="0">
+              <rect x="820" y="300" width="70" height="200" rx="8" fill="#f8e7df" stroke="#b83a0b" stroke-width="3" />
+              <text x="855" y="408" text-anchor="middle" class="item" fill="#111614">Bar</text>
+            </g>
+            <g id="aid" opacity="0">
+              <rect x="330" y="600" width="130" height="80" rx="8" fill="#fdfdfc" stroke="#1f6b45" stroke-width="3" />
+              <path d="M355 640 h20 M365 630 v20" stroke="#1f6b45" stroke-width="4" />
+              <text x="415" y="648" text-anchor="middle" class="item" fill="#111614">Aid</text>
+            </g>
+            <g id="exits" opacity="0">
+              <rect x="560" y="700" width="100" height="28" rx="6" fill="#1f6b45" />
+              <text x="610" y="720" text-anchor="middle" class="dim" fill="#fdfdfc">EXIT</text>
+              <rect x="66" y="150" width="28" height="100" rx="6" fill="#1f6b45" />
+              <rect x="906" y="150" width="28" height="100" rx="6" fill="#1f6b45" />
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const drop = { opacity: 1, y: 0, duration: 0.45, ease: "back.out(1.6)" };
+      tl.to("#hall", { strokeDashoffset: 0, duration: 1.3, ease: "power2.inOut" }, 0.2)
+        .to("#dim-w", { opacity: 1, duration: 0.4 }, 1.3)
+        .fromTo("#t-stage", { backgroundColor: "rgba(248,231,223,0)" }, { backgroundColor: "rgba(248,231,223,1)", duration: 0.25 }, 1.5)
+        .fromTo("#stage", { opacity: 0, y: -24 }, drop, 1.8)
+        .fromTo("#sel", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 2.25)
+        .fromTo("#foh", { opacity: 0, y: -24 }, drop, 2.7)
+        .fromTo(["#bar1", "#bar2"], { opacity: 0, y: -24 }, { ...drop, stagger: 0.18 }, 3.1)
+        .fromTo("#aid", { opacity: 0, y: -24 }, drop, 3.6)
+        .fromTo("#exits", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 4.0)
+        .fromTo("#saved", { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.4, ease: "expo.out" }, 4.8)
+        // Loop reset to the empty canvas of frame 0.
+        .to(["#stage", "#sel", "#foh", "#bar1", "#bar2", "#aid", "#exits", "#dim-w", "#saved"], { opacity: 0, duration: 0.45, ease: "power2.in" }, 7.0)
+        .to("#t-stage", { backgroundColor: "rgba(248,231,223,0)", duration: 0.3 }, 7.0)
+        .to("#hall", { strokeDashoffset: 1, duration: 0.5, ease: "power2.in" }, 7.35);
+      window.__timelines["floorplan"] = tl;
+    </script>
+  </body>
+</html>

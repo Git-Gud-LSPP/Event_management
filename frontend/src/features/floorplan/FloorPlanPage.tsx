@@ -4,9 +4,10 @@ import FloorCanvas from "./FloorCanvas";
 import { roomAt } from "./geometry";
 import DetailsPanel from "./DetailsPanel";
 import { getFloorPlan, listEvents, saveFloorPlan } from "./api";
+import { getSelectedEventId, setSelectedEventId } from "../../services/selectedEvent";
 import type { EventSummary, Floor, Placement, Room, RosterMember } from "./types";
 
-const ROOM_TINTS = ["#e4f7f9", "#e8f6ec", "#fdeaea", "#fff3c2", "#f3e8fd", "#e8eefd"];
+const ROOM_TINTS = ["#e4f7f9", "#E3F1E7", "#F4DCE6", "#F3E7C8", "#f3e8fd", "#e8eefd"];
 
 const newFloor = (n: number): Floor => ({ name: `Floor ${n}`, rooms: [], placements: [] });
 
@@ -24,13 +25,15 @@ export default function FloorPlanPage() {
     listEvents()
       .then((items) => {
         setEvents(items);
-        if (items.length) setEventId(items[0]._id);
+        const stored = getSelectedEventId();
+        if (items.length) setEventId(items.some((e) => e._id === stored) ? stored : items[0]._id);
       })
       .catch((e) => setStatus(e.message));
   }, []);
 
   useEffect(() => {
     if (!eventId) return;
+    setSelectedEventId(eventId);
     getFloorPlan(eventId)
       .then(({ floors, roster }) => {
         setFloors(floors);
@@ -123,12 +126,12 @@ export default function FloorPlanPage() {
     <div className="flex h-[calc(100vh-3rem)] flex-col gap-4">
       {/* Top bar */}
       <header className="flex flex-wrap items-center gap-3">
-        <h1 className="text-xl font-semibold text-gray-900">Floor Plan</h1>
+        <h1 className="text-xl font-semibold text-ink">Floor Plan</h1>
 
         <select
           value={eventId}
           onChange={(e) => setEventId(e.target.value)}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-indigo-400 focus:outline-none"
+          className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm focus:border-ink focus:outline-none"
         >
           {events.length === 0 && <option value="">No events</option>}
           {events.map((ev) => (
@@ -148,8 +151,8 @@ export default function FloorPlanPage() {
               }}
               className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
                 i === active
-                  ? "border border-indigo-200 bg-indigo-50 text-indigo-600"
-                  : "text-gray-500 hover:bg-gray-100"
+                  ? "border border-line bg-accent-soft text-accent"
+                  : "text-ink-3 hover:bg-sunken"
               }`}
             >
               {f.name}
@@ -161,37 +164,37 @@ export default function FloorPlanPage() {
               setActive(floors.length);
               setDirty(true);
             }}
-            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-ink-3 hover:bg-sunken"
           >
             <Plus className="h-4 w-4" /> Add Floor
           </button>
         </div>
 
         <div className="ml-auto flex items-center gap-3">
-          {status && <span className="text-xs text-gray-500">{status}</span>}
+          {status && <span className="text-xs text-ink-3">{status}</span>}
           <button
             onClick={save}
             disabled={!eventId}
-            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-ink px-4 py-1.5 text-sm font-medium text-white hover:bg-ink-hover disabled:opacity-50"
           >
             <Save className="h-4 w-4" /> Save
-            {dirty && <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />}
+            {dirty && <span className="h-1.5 w-1.5 rounded-full bg-warn" />}
           </button>
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1 gap-4">
         {/* Palette */}
-        <div className="flex w-24 shrink-0 flex-col gap-2 rounded-xl border border-gray-200 bg-white p-2">
+        <div className="flex w-24 shrink-0 flex-col gap-2 rounded-xl border border-line bg-surface p-2">
           <div
             draggable
             onDragStart={(e) => e.dataTransfer.setData("text/plain", "room")}
-            className="flex cursor-grab flex-col items-center gap-1 rounded-lg border border-gray-200 px-2 py-3 text-xs text-gray-600 hover:bg-gray-50 active:cursor-grabbing"
+            className="flex cursor-grab flex-col items-center gap-1 rounded-lg border border-line px-2 py-3 text-xs text-ink-2 hover:bg-soft active:cursor-grabbing"
           >
             <Square className="h-5 w-5" />
             Room
           </div>
-          <div className="flex flex-col items-center gap-1 rounded-lg border border-dashed border-gray-200 px-2 py-3 text-center text-[11px] text-gray-400">
+          <div className="flex flex-col items-center gap-1 rounded-lg border border-dashed border-line px-2 py-3 text-center text-[11px] text-ink-3">
             <UserPlus className="h-5 w-5" />
             Drag staff from the list on the right
           </div>

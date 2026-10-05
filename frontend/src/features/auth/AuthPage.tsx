@@ -1,233 +1,121 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Flower2,
-  HelpCircle,
-  Mail,
-  Lock,
-  User,
-  AlertCircle,
-  Loader2
-} from 'lucide-react';
-import { useOrganizerAuth } from '../../hooks/useOrganizerAuth';
+import React from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { useOrganizerAuth } from "../../hooks/useOrganizerAuth";
+import { Wordmark } from "../../marketing/ui";
 
-type TabType = 'organizer' | 'staff';
+// Example of the overnight summary the AI panel shows. Illustrative copy, not account data.
+const AWAY = [
+  ["16 tasks drafted from the TechSummit brief", "AI · PLAN"],
+  ["Catering vendor flagged: delivery window overlaps load-in", "AI · VENDORS"],
+  ["Run-of-show re-planned around the AV check", "AI · SCHEDULE"],
+];
+
+const input =
+  "h-11 rounded-[10px] border border-line-strong/60 bg-surface px-3.5 text-[15px] text-ink outline-none placeholder:text-ink-3 focus:border-ink disabled:opacity-50";
+const label = "flex flex-col gap-1.5 text-[13px] text-ink-2";
 
 export default function EventOpsAuth(): React.JSX.Element {
   const navigate = useNavigate();
-  const auth = useOrganizerAuth(() => navigate('/events', { replace: true }));
+  const from = (useLocation().state as { from?: string } | null)?.from;
+  const auth = useOrganizerAuth(() => navigate(from ?? "/events", { replace: true }));
+  const isRegister = auth.mode === "register";
 
-  // The tab is just which role a new account gets; signing in works the same either way.
-  const activeTab: TabType = auth.role;
-  const isRegister = auth.mode === 'register';
-
-  const handleTabSwitch = (tab: TabType) => {
-    auth.setRole(tab);
-    auth.clearError();
-  };
+  const tab = (on: boolean) => `cursor-pointer rounded-full px-4 py-[7px] ${on ? "bg-surface shadow-[0_1px_2px_rgba(0,0,0,.08)]" : "text-ink-2"}`;
+  const roleCls = (on: boolean) => `cursor-pointer rounded-[10px] border bg-surface px-3.5 py-3 text-left ${on ? "border-ink" : "border-line"}`;
 
   return (
-    <div className="min-h-screen flex flex-col font-sans text-[#121d1e] bg-[#f7f6f2]">
-      {/* 1. Header */}
-      <header className="w-full bg-[#f7f6f2]">
-        <div className="max-w-300 mx-auto flex justify-between items-center px-9 py-3">
-          <div className="flex items-center gap-3">
-            <Flower2 className="w-6 h-6 text-[#001f1f] fill-[#001f1f]" />
-            <span className="text-[22px] font-medium text-[#001f1f] tracking-tight">EventOps</span>
-          </div>
-          <button
-            type="button"
-            className="text-[#414848] hover:text-[#001f1f] transition-colors text-sm flex items-center gap-2 cursor-pointer"
-          >
-            <span>Help</span>
-            <HelpCircle className="w-4.5 h-4.5" />
-          </button>
-        </div>
-      </header>
+    <div className="grid min-h-screen bg-paper text-ink [grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr))]">
+      <div className="flex flex-col px-[clamp(20px,5vw,64px)] py-7">
+        <Link to="/" aria-label="EventOps home" className="self-start"><Wordmark /></Link>
+        <div className="my-auto w-full max-w-[400px] py-12">
+          <div className="font-mono text-xs tracking-[.04em] text-ink-3">{isRegister ? "CREATE ACCOUNT" : "WELCOME BACK"}</div>
+          <h1 className="mt-3 mb-2.5 text-[clamp(34px,4vw,48px)] leading-[1.02] font-medium tracking-[-0.045em]">
+            {isRegister ? "Start running events." : "Sign in to EventOps."}
+          </h1>
+          <p className="mb-7 text-[15px] leading-[1.55] text-ink-3">
+            {isRegister ? "Organizers create and run events. Staff get their tasks and shifts." : "Pick up where your team left off."}
+          </p>
 
-      {/* 2. Main Canvas */}
-      <main className="grow flex items-center justify-center p-5">
-        <div className="w-full max-w-md bg-white rounded-[14px] shadow-[0_4px_12px_rgba(0,31,31,0.06),0_1px_2px_rgba(0,31,31,0.04),0_0_0_1px_rgba(0,31,31,0.05)] p-12">
-
-          {/* Role tabs — only relevant when creating an account */}
-          <div className="flex border-b border-[#d9e5e5] mb-8">
-            <button
-              type="button"
-              onClick={() => handleTabSwitch('organizer')}
-              className={`flex-1 py-3 text-sm text-center transition-all cursor-pointer ${
-                activeTab === 'organizer'
-                  ? 'text-[#001f1f] border-b-2 border-[#001f1f] font-medium'
-                  : 'text-[#414848] border-b-2 border-transparent hover:text-[#001f1f]'
-              }`}
-            >
-              Organizer
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTabSwitch('staff')}
-              className={`flex-1 py-3 text-sm text-center transition-all cursor-pointer ${
-                activeTab === 'staff'
-                  ? 'text-[#001f1f] border-b-2 border-[#001f1f] font-medium'
-                  : 'text-[#414848] border-b-2 border-transparent hover:text-[#001f1f]'
-              }`}
-            >
-              Event Staff
-            </button>
+          <div className="mb-[22px] flex w-max rounded-full bg-sunken p-[3px] text-[13px]" role="group" aria-label="Sign in or create account">
+            <button type="button" aria-pressed={!isRegister} onClick={() => auth.switchMode("login")} className={tab(!isRegister)}>Sign in</button>
+            <button type="button" aria-pressed={isRegister} onClick={() => auth.switchMode("register")} className={tab(isRegister)}>Create account</button>
           </div>
 
-          {/* Error Banner */}
           {auth.errorMessage && (
-            <div className="mb-6 p-3 bg-[#ffdad6] border border-[#ba1a1a]/20 rounded-xl flex items-center gap-2 text-[#93000a] text-xs font-medium">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div role="alert" className="mb-5 flex items-center gap-2 rounded-xl bg-danger-soft p-3 text-[13px] text-danger">
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span>{auth.errorMessage}</span>
             </div>
           )}
 
-          <div className="mb-8">
-            <h2 className="text-[22px] font-medium text-[#001f1f] mb-2 leading-tight">
-              {isRegister
-                ? activeTab === 'staff'
-                  ? 'Create a Staff Account'
-                  : 'Create an Organizer Account'
-                : 'Sign in'}
-            </h2>
-            <p className="text-sm text-[#414848]">
-              {activeTab === 'staff'
-                ? 'See the tasks and floor plan for events you are on.'
-                : 'Manage your events and production teams.'}
-            </p>
-          </div>
-
-          <form onSubmit={auth.handleLogin} className="space-y-5">
-            <div className="space-y-3">
-              {/* Name — sign-up only */}
-              {isRegister && (
-                <div>
-                  <label
-                    htmlFor="auth-name"
-                    className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase"
-                  >
-                    Full Name
-                  </label>
-                  <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
-                    <User className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
-                    <input
-                      id="auth-name"
-                      type="text"
-                      required
-                      disabled={auth.isLoading}
-                      value={auth.name}
-                      onChange={(e) => auth.setName(e.target.value)}
-                      placeholder="Alex Morgan"
-                      className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0 disabled:opacity-50"
-                    />
+          <form onSubmit={auth.handleLogin} className="flex flex-col gap-3.5">
+            {isRegister && (
+              <>
+                <label className={label}>
+                  Full name
+                  <input type="text" required autoComplete="name" disabled={auth.isLoading} value={auth.name} onChange={(e) => auth.setName(e.target.value)} placeholder="Alex Morgan" className={input} />
+                </label>
+                <fieldset className={label}>
+                  <legend className="mb-1.5">I'm joining as</legend>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([["organizer", "Organizer", "Create and run events"], ["staff", "Staff", "Get tasks and shifts"]] as const).map(([r, t, d]) => (
+                      <button key={r} type="button" aria-pressed={auth.role === r} onClick={() => (auth.setRole(r), auth.clearError())} className={roleCls(auth.role === r)}>
+                        <div className="text-sm font-medium text-ink">{t}</div>
+                        <div className="mt-0.5 text-xs text-ink-3">{d}</div>
+                      </button>
+                    ))}
                   </div>
-                </div>
-              )}
-
-              {/* Email Field */}
-              <div>
-                <label
-                  htmlFor="auth-email"
-                  className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase"
-                >
-                  Email Address
-                </label>
-                <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
-                  <Mail className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
-                  <input
-                    id="auth-email"
-                    type="email"
-                    required
-                    disabled={auth.isLoading}
-                    value={auth.email}
-                    onChange={(e) => auth.setEmail(e.target.value)}
-                    placeholder="jane@eventops.com"
-                    className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0 disabled:opacity-50"
-                  />
-                </div>
-              </div>
-
-              {/* Password Field */}
-              <div>
-                <label
-                  htmlFor="auth-password"
-                  className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase"
-                >
-                  Password
-                </label>
-                <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
-                  <Lock className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
-                  <input
-                    id="auth-password"
-                    type="password"
-                    required
-                    minLength={6}
-                    disabled={auth.isLoading}
-                    value={auth.password}
-                    onChange={(e) => auth.setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0 disabled:opacity-50"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Submit Button */}
+                </fieldset>
+              </>
+            )}
+            <label className={label}>
+              Work email
+              <input type="email" required autoComplete="email" disabled={auth.isLoading} value={auth.email} onChange={(e) => auth.setEmail(e.target.value)} placeholder="jane@agency.com" className={input} />
+            </label>
+            <label className={label}>
+              Password
+              <input type="password" required minLength={6} autoComplete={isRegister ? "new-password" : "current-password"} disabled={auth.isLoading} value={auth.password} onChange={(e) => auth.setPassword(e.target.value)} placeholder="••••••••" className={input} />
+            </label>
             <button
               type="submit"
               disabled={auth.isLoading}
-              className="w-full h-12 bg-[#001f1f] text-white rounded-[29px] text-sm font-medium hover:bg-opacity-90 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="mt-1.5 flex h-[46px] cursor-pointer items-center justify-center gap-2 rounded-full bg-ink text-[15px] text-paper hover:bg-ink-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {auth.isLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{isRegister ? 'Creating account...' : 'Signing in...'}</span>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  {isRegister ? "Creating account…" : "Signing in…"}
                 </>
               ) : (
-                <span>{isRegister ? 'Create account' : 'Sign in to Dashboard'}</span>
+                <>{isRegister ? "Create account" : "Sign in"} →</>
               )}
-            </button>
-
-            {/* Divider */}
-            <div className="relative flex py-2 items-center">
-              <div className="grow border-t border-[#d9e5e5]"></div>
-              <span className="shrink-0 mx-3 text-[11px] font-medium text-[#c1c8c7] uppercase tracking-wider">
-                Or
-              </span>
-              <div className="grow border-t border-[#d9e5e5]"></div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => auth.switchMode(isRegister ? 'login' : 'register')}
-              className="w-full h-12 border-[1.5px] border-[#001f1f] text-[#001f1f] rounded-[29px] text-sm font-medium hover:bg-[#001f1f]/5 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-            >
-              {isRegister ? 'I already have an account' : 'Create a new account'}
             </button>
           </form>
         </div>
-      </main>
+        <div className="text-[12.5px] text-[#6E7C73]">© 2026 EventOps, Inc.</div>
+      </div>
 
-      {/* 3. Footer */}
-      <footer className="w-full bg-[#f7f6f2] mt-auto">
-        <div className="max-w-300 mx-auto flex flex-col md:flex-row justify-between items-center px-9 py-8">
-          <div className="text-sm text-[#414848] mb-4 md:mb-0">
-            © {new Date().getFullYear()} EventOps. All rights reserved.
+      <div aria-hidden="true" className="relative m-3 flex min-h-[520px] items-end overflow-hidden rounded-[22px] bg-[#CFE5D5] p-[clamp(20px,4vw,48px)]">
+        <div className="absolute -inset-1/4 blur-[24px] [background:radial-gradient(38%_46%_at_22%_30%,#F1F7EA_0%,rgba(241,247,234,0)_70%),radial-gradient(34%_44%_at_80%_22%,#9CCBAE_0%,rgba(156,203,174,0)_72%),radial-gradient(44%_50%_at_62%_86%,#BFE0CF_0%,rgba(191,224,207,0)_70%),radial-gradient(30%_40%_at_8%_92%,#88BC9E_0%,rgba(136,188,158,0)_70%)]" />
+        <div className="relative w-full max-w-[460px] rounded-2xl bg-ink p-[22px] text-paper shadow-[0_40px_90px_-30px_rgba(25,70,45,.35)]">
+          <div className="flex items-center gap-2 font-mono text-[11px] tracking-[.04em] text-ai">
+            <span className="size-1.5 rounded-full bg-live" />WHILE YOU WERE AWAY
           </div>
-          <div className="flex gap-8">
-            <a href="#privacy" className="text-sm text-[#414848] hover:text-[#001f1f] transition-colors duration-200">
-              Privacy Policy
-            </a>
-            <a href="#terms" className="text-sm text-[#414848] hover:text-[#001f1f] transition-colors duration-200">
-              Terms of Service
-            </a>
-            <a href="#support" className="text-sm text-[#414848] hover:text-[#001f1f] transition-colors duration-200">
-              Contact Support
-            </a>
+          <p className="mt-3 mb-[18px] text-[19px] leading-[1.35] tracking-[-0.02em]">
+            EventOps AI drafted 16 tasks for TechSummit, flagged a catering risk and re-planned tomorrow's run-of-show.
+          </p>
+          <div className="flex flex-col border-t border-[#2E3E35]">
+            {AWAY.map(([a, b]) => (
+              <div key={a} className="flex justify-between gap-3 border-b border-[#2E3E35] py-2.5 text-[13px]">
+                <span className="text-[#DCE6DE]">{a}</span>
+                <span className="font-mono text-[10.5px] whitespace-nowrap text-[#95A39A]">{b}</span>
+              </div>
+            ))}
           </div>
+          <div className="mt-3.5 text-xs text-[#95A39A]">Example of an overnight summary.</div>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
