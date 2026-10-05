@@ -40,9 +40,9 @@ export default function DetailsPanel({
   return (
     <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto">
       {/* Room details */}
-      <section className="rounded-xl border border-gray-200 bg-white p-4">
+      <section className="rounded-xl border border-line bg-surface p-4">
         {!selectedRoom ? (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-ink-3">
             Select a room to edit it, or drag <strong>Room</strong> from the left onto the canvas.
           </p>
         ) : (
@@ -52,22 +52,22 @@ export default function DetailsPanel({
                 <input
                   value={selectedRoom.name}
                   onChange={(e) => onPatchRoom(selectedRoom.id, { name: e.target.value })}
-                  className="w-full rounded border border-transparent px-1 text-base font-semibold text-gray-900 hover:border-gray-200 focus:border-indigo-400 focus:outline-none"
+                  className="w-full rounded border border-transparent px-1 text-base font-semibold text-ink hover:border-line focus:border-ink focus:outline-none"
                 />
-                <p className="px-1 text-xs text-gray-500">{floorName} · Room</p>
+                <p className="px-1 text-xs text-ink-3">{floorName} · Room</p>
               </div>
               <button
                 onClick={() => onDeleteRoom(selectedRoom.id)}
                 title="Delete room"
-                className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                className="rounded p-1 text-ink-3 hover:bg-danger-soft hover:text-danger"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <dl className="space-y-2 border-t border-gray-100 pt-3 text-sm">
+            <dl className="space-y-2 border-t border-line pt-3 text-sm">
               <div className="flex items-center justify-between">
-                <dt className="flex items-center gap-2 text-gray-500">
+                <dt className="flex items-center gap-2 text-ink-3">
                   <Users className="h-4 w-4" /> Capacity
                 </dt>
                 <dd>
@@ -80,47 +80,47 @@ export default function DetailsPanel({
                         capacity: Math.max(0, Number(e.target.value) || 0),
                       })
                     }
-                    className="w-20 rounded border border-gray-200 px-2 py-0.5 text-right focus:border-indigo-400 focus:outline-none"
+                    className="w-20 rounded border border-line px-2 py-0.5 text-right focus:border-ink focus:outline-none"
                   />
                 </dd>
               </div>
               <div className="flex items-center justify-between">
-                <dt className="text-gray-500">Current occupancy</dt>
+                <dt className="text-ink-3">Current occupancy</dt>
                 <dd
                   className={
                     inRoom.length > selectedRoom.capacity
-                      ? "font-semibold text-red-600"
-                      : "font-semibold text-gray-900"
+                      ? "font-semibold text-danger"
+                      : "font-semibold text-ink"
                   }
                 >
                   {inRoom.length}
                 </dd>
               </div>
               <div className="flex items-center justify-between">
-                <dt className="flex items-center gap-2 text-gray-500">
+                <dt className="flex items-center gap-2 text-ink-3">
                   <Maximize2 className="h-4 w-4" /> Area
                 </dt>
-                <dd className="text-gray-900">
+                <dd className="text-ink">
                   {Math.round((selectedRoom.width * selectedRoom.height) / (PX_PER_M * PX_PER_M))} m²
                 </dd>
               </div>
             </dl>
 
-            <p className="mt-4 mb-2 text-sm font-semibold text-gray-900">People in this room</p>
+            <p className="mt-4 mb-2 text-sm font-semibold text-ink">People in this room</p>
             {inRoom.length === 0 ? (
-              <p className="text-sm text-gray-400">Nobody assigned yet.</p>
+              <p className="text-sm text-ink-3">Nobody assigned yet.</p>
             ) : (
               <ul className="space-y-2">
                 {inRoom.map((p) => (
                   <li key={p.user} className="flex items-center gap-2 text-sm">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[10px] font-bold text-white">
                       {initials(nameOf(p.user))}
                     </span>
-                    <span className="flex-1 truncate text-gray-800">{nameOf(p.user)}</span>
+                    <span className="flex-1 truncate text-ink">{nameOf(p.user)}</span>
                     <button
                       onClick={() => onUnplace(p.user)}
                       title="Remove from plan"
-                      className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                      className="rounded p-1 text-ink-3 hover:bg-sunken hover:text-ink-2"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -133,20 +133,20 @@ export default function DetailsPanel({
       </section>
 
       {/* Roster */}
-      <section className="rounded-xl border border-gray-200 bg-white p-4">
-        <p className="mb-3 text-sm font-semibold text-gray-900">People ({roster.length})</p>
+      <section className="rounded-xl border border-line bg-surface p-4">
+        <p className="mb-3 text-sm font-semibold text-ink">People ({roster.length})</p>
         <div className="relative mb-3">
-          <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-ink-3" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search people..."
-            className="w-full rounded-lg border border-gray-200 py-1.5 pr-2 pl-8 text-sm focus:border-indigo-400 focus:outline-none"
+            className="w-full rounded-lg border border-line py-1.5 pr-2 pl-8 text-sm focus:border-ink focus:outline-none"
           />
         </div>
 
         {roster.length === 0 && (
-          <p className="text-sm text-gray-400">No staff on this event yet.</p>
+          <p className="text-sm text-ink-3">No staff on this event yet.</p>
         )}
 
         <ul className="space-y-1">
@@ -158,14 +158,14 @@ export default function DetailsPanel({
                 draggable={!placed}
                 onDragStart={(e) => e.dataTransfer.setData("application/x-staff-id", m._id)}
                 className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
-                  placed ? "opacity-50" : "cursor-grab hover:bg-gray-50 active:cursor-grabbing"
+                  placed ? "opacity-50" : "cursor-grab hover:bg-soft active:cursor-grabbing"
                 }`}
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-200 text-[10px] font-bold text-gray-700">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sunken text-[10px] font-bold text-ink-2">
                   {initials(m.name)}
                 </span>
-                <span className="flex-1 truncate text-gray-800">{m.name}</span>
-                <span className="text-xs text-gray-400">
+                <span className="flex-1 truncate text-ink">{m.name}</span>
+                <span className="text-xs text-ink-3">
                   {placed ? "On plan" : "Drag to place"}
                 </span>
               </li>

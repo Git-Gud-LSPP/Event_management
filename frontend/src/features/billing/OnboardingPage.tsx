@@ -37,8 +37,8 @@ export default function OnboardingPage() {
 
   const finish = (trial: boolean) => {
     const base = { onboarded: true, eventTypes: types, notify: waitlist };
-    if (trial && picks.length) startTrial(picks, { ...base, plan: rec.id === "growth" ? "growth" : "starter" });
-    else saveWorkspace({ ...readWorkspace(), ...base, plan: "free", cycle: "monthly", addOns: picks, trialEndsAt: undefined });
+    if (trial && picks.length) startTrial(picks, { ...base, plan: rec.id === "enterprise" ? "scale" : rec.id });
+    else saveWorkspace({ ...readWorkspace(), ...base, plan: "starter", cycle: "monthly", addOns: picks, trialEndsAt: undefined });
     saveStack([]);
     navigate("/events", { replace: true });
   };
@@ -143,20 +143,20 @@ export default function OnboardingPage() {
             )}
 
             <div className="mt-8 border-t border-line pt-6" aria-live="polite">
-              {picks.length ? (
+              {rec.id !== "starter" ? (
                 <p className="text-ink-2">
-                  {rec.name} covers this. Try it free for 14 days, no card. Afterwards you can stay on Free with the core modules.
+                  {rec.name} covers this. Try it free for 14 days, no card. Afterwards you can stay on Starter with up to 5 modules.
                 </p>
               ) : (
-                <p className="text-ink-2">The core modules are free forever.</p>
+                <p className="text-ink-2">Starter covers this: the core modules plus 5 of your choice, free forever.</p>
               )}
               <div className="mt-5 flex flex-wrap gap-3">
-                {picks.length ? (
+                {rec.id !== "starter" ? (
                   <>
                     <button type="button" onClick={() => finish(true)} className={buttonCls.primary}>
                       Start free trial with {picks.length} module{picks.length === 1 ? "" : "s"}
                     </button>
-                    <button type="button" onClick={() => finish(false)} className={buttonCls.secondary}>Continue on Free</button>
+                    <button type="button" onClick={() => finish(false)} className={buttonCls.secondary}>Continue on Starter</button>
                   </>
                 ) : (
                   <button type="button" onClick={() => finish(false)} className={buttonCls.primary}>Go to my workspace</button>

@@ -1,39 +1,48 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
-import StaffCard from "./StaffCard";
+import StaffCard, { type StaffLoad } from "./StaffCard";
 import AddStaffModal from "./AddStaffModal";
-import DashboardHeader from "../../components/DashboardHeader";
+import Button from "../../components/Button";
+import SearchBar from "../../components/SearchBar";
+import { FilterChips, PageHeader } from "../../components/DashboardHeader";
 import EventPicker, { useEventSelection } from "../../components/EventPicker";
 import { removeStaff, type EventRecord } from "../events/api";
-import { listSchedule } from "../schedule/api";
+import { listSchedule, type ScheduleItem } from "../schedule/api";
 import { getStoredUser } from "../../services/authApi";
 
+const FILTERS = ["All", "On task", "Blocked", "Available"] as const;
+
+// What each person is doing right now comes from the schedule, where owners live.
+const loadOf = (staffId: string, items: ScheduleItem[]): StaffLoad => {
+  const mine = items.filter((i) => i.owner?._id === staffId);
+  const blocked = mine.find((i) => i.status === "Blocked");
+  const active = mine.find((i) => i.status === "In Progress");
+  return {
+    status: blocked ? "Blocked" : active ? "On task" : "Available",
+    now: (blocked ?? active)?.name,
+    total: mine.length,
+    done: mine.filter((i) => i.status === "Done").length,
+  };
+};
+
 const StaffDashboard = (): React.JSX.Element => {
-  const { events, selected, selectedId, setSelectedId, loading, error, setEvents } =
-    useEventSelection();
+  const { events, selected, selectedId, setSelectedId, loading, error, setEvents } = useEventSelection();
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<string>("All");
   const [showAdd, setShowAdd] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [taskCounts, setTaskCounts] = useState<Record<string, number>>({});
+  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
 
   const isOrganizer = getStoredUser()?.role === "organizer";
 
-  // "How busy is each person" comes from the schedule, where owners live.
   useEffect(() => {
     if (!selectedId) return;
     listSchedule(selectedId)
-      .then(({ items }) => {
-        const counts: Record<string, number> = {};
-        for (const item of items) {
-          if (item.owner?._id) counts[item.owner._id] = (counts[item.owner._id] ?? 0) + 1;
-        }
-        setTaskCounts(counts);
-      })
-      .catch(() => setTaskCounts({}));
+      .then(({ items }) => setSchedule(items))
+      .catch(() => setSchedule([]));
   }, [selectedId]);
 
-  const replaceEvent = (updated: EventRecord) =>
-    setEvents((prev) => prev.map((e) => (e._id === updated._id ? updated : e)));
+  const replaceEvent = (updated: EventRecord) => setEvents((prev) => prev.map((e) => (e._id === updated._id ? updated : e)));
 
   const drop = async (staffId: string) => {
     if (!selectedId) return;
@@ -45,82 +54,55 @@ const StaffDashboard = (): React.JSX.Element => {
     }
   };
 
-  const roster = selected?.staff ?? [];
-  const visible = useMemo(
-    () =>
-      roster.filter(
-        (s) =>
-          s.name.toLowerCase().includes(search.toLowerCase()) ||
-          s.email.toLowerCase().includes(search.toLowerCase())
-      ),
-    [roster, search]
+  const roster = useMemo(
+    () => (selected?.staff ?? []).map((member) => ({ member, load: loadOf(member._id, schedule) })),
+    [selected, schedule]
+  );
+  const counts = Object.fromEntries(FILTERS.map((f) => [f, f === "All" ? roster.length : roster.filter((r) => r.load.status === f).length]));
+  const q = search.toLowerCase();
+  const visible = roster.filter(
+    (r) => (filter === "All" || r.load.status === filter) && (r.member.name.toLowerCase().includes(q) || r.member.email.toLowerCase().includes(q))
   );
 
   return (
-    <div className="p-8 bg-[#FBFBF9] min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <EventPicker events={events} selectedId={selectedId} onSelect={setSelectedId} />
-        </div>
+    <div>
+      <PageHeader
+        eyebrow={`Staff${selected ? ` · ${selected.title}` : ""}`}
+        title="Staff management"
+        subtitle={selected ? `${roster.length} people · ${counts["On task"]} on a task right now` : "Pick an event to see its crew"}
+      >
+        <EventPicker events={events} selectedId={selectedId} onSelect={setSelectedId} />
+        {isOrganizer && selected && <Button label="Add staff" onClick={() => setShowAdd(true)} />}
+      </PageHeader>
 
-        <DashboardHeader
-          title="Staff Management"
-          subtitle={
-            selected
-              ? `${roster.length} people on ${selected.title}`
-              : "Pick an event to see its crew"
-          }
-          label="Add Staff"
-          categoriesList={["All"]}
-          counts={{ All: roster.length }}
-          activeCategory="All"
-          onAction={() => setShowAdd(true)}
-          search={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Search staff..."
-        />
-
-        {(error || actionError) && (
-          <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-            {error || actionError}
-          </p>
-        )}
-
-        {loading ? (
-          <div className="flex items-center gap-2 py-16 text-sm text-gray-400">
-            <Loader2 size={16} className="animate-spin" /> Loading…
-          </div>
-        ) : !selected ? (
-          <p className="py-16 text-center text-sm text-gray-400">
-            No events yet — create one on the Events page first.
-          </p>
-        ) : visible.length === 0 ? (
-          <p className="py-16 text-center text-sm text-gray-400">
-            {roster.length === 0
-              ? "Nobody on this event yet — use Add Staff."
-              : "No staff match that search."}
-          </p>
-        ) : (
-          <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-            {visible.map((member) => (
-              <StaffCard
-                key={member._id}
-                member={member}
-                taskCount={taskCounts[member._id] ?? 0}
-                onRemove={isOrganizer ? () => drop(member._id) : undefined}
-              />
-            ))}
-          </main>
-        )}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <FilterChips options={[...FILTERS]} counts={counts} active={filter} onChange={setFilter} />
+        <SearchBar placeholder="Search staff…" value={search} onChange={setSearch} />
       </div>
 
-      {showAdd && selected && (
-        <AddStaffModal
-          event={selected}
-          onClose={() => setShowAdd(false)}
-          onAdded={replaceEvent}
-        />
+      {(error || actionError) && (
+        <p role="alert" className="mb-4 rounded-xl bg-danger-soft px-4 py-3 text-sm font-medium text-danger">{error || actionError}</p>
       )}
+
+      {loading ? (
+        <div className="flex items-center gap-2 py-16 text-sm text-ink-3">
+          <Loader2 size={16} className="animate-spin" /> Loading…
+        </div>
+      ) : !selected ? (
+        <p className="py-16 text-center text-sm text-ink-3">No events yet. Create one on the Events page first.</p>
+      ) : visible.length === 0 ? (
+        <p className="py-16 text-center text-sm text-ink-3">
+          {roster.length === 0 ? "Nobody on this event yet. Use Add staff." : "No staff match this filter."}
+        </p>
+      ) : (
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))]">
+          {visible.map(({ member, load }) => (
+            <StaffCard key={member._id} member={member} load={load} onRemove={isOrganizer ? () => drop(member._id) : undefined} />
+          ))}
+        </div>
+      )}
+
+      {showAdd && selected && <AddStaffModal event={selected} onClose={() => setShowAdd(false)} onAdded={replaceEvent} />}
     </div>
   );
 };

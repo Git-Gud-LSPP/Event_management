@@ -2,7 +2,7 @@
 // `live` = shipped in this codebase. Everything else is roadmap: shown honestly as "In development".
 
 export type EventType = "conference" | "festival" | "corporate" | "wedding" | "webinar";
-export type PlanId = "free" | "starter" | "growth" | "enterprise";
+export type PlanId = "starter" | "growth" | "scale" | "enterprise";
 
 export interface Module {
   id: string;
@@ -146,7 +146,7 @@ const TABLE: Record<string, Row[]> = {
     ["Calendar sync", "Google and Outlook calendars stay current.", "cfowb"],
     ["Slack & Teams", "Alerts and approvals where your team talks.", "cfo"],
     ["Webhooks & Zapier", "Trigger anything when something changes.", "cfob"],
-    ["Public API", "Build on EventHQ with a REST API.", "cfob"],
+    ["Public API", "Build on EventOps with a REST API.", "cfob"],
     ["Custom roles", "Fine-grained permissions beyond organizer/staff.", "cfo"],
     ["Multi-language", "Translate agendas, forms and emails.", "cfb"],
     ["SSO / SAML", "Sign in with your identity provider.", "o", { enterpriseOnly: true }],
@@ -186,11 +186,17 @@ export interface Plan {
 }
 
 export const PLANS: Plan[] = [
-  { id: "free", name: "Free", monthly: 0, annual: 0, slots: 0, events: 2, seats: 5, pitch: "The core toolkit, free forever." },
-  { id: "starter", name: "Starter", monthly: 49, annual: 39, slots: 5, events: 10, seats: 25, pitch: "Core plus 5 modules you pick." },
-  { id: "growth", name: "Growth", monthly: 149, annual: 119, slots: 20, events: null, seats: 100, pitch: "Core plus 20 modules you pick." },
-  { id: "enterprise", name: "Enterprise", monthly: null, annual: null, slots: Infinity, events: null, seats: null, pitch: "Every module, with SSO and an SLA." },
+  { id: "starter", name: "Starter", monthly: 0, annual: 0, slots: 5, events: 3, seats: 2, pitch: "For a first event or a small team trying the platform." },
+  { id: "growth", name: "Growth", monthly: 290, annual: 240, slots: 25, events: 25, seats: 10, pitch: "For teams running a regular calendar of events." },
+  { id: "scale", name: "Scale", monthly: 790, annual: 650, slots: 60, events: null, seats: 40, pitch: "For portfolios of large, multi-track events." },
+  { id: "enterprise", name: "Enterprise", monthly: null, annual: null, slots: Infinity, events: null, seats: null, pitch: "Every module, custom ones too, with a team behind you." },
 ];
+
+/** Paid plans offer a 14-day no-card trial; Starter is free forever. */
+export const TRIAL_PLAN: PlanId = "growth";
+
+/** The next plan up, or null at the top. */
+export const nextPlan = (id: PlanId) => PLANS[PLANS.findIndex((p) => p.id === id) + 1] ?? null;
 
 export const planById = (id: PlanId) => PLANS.find((p) => p.id === id)!;
 

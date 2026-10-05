@@ -21,13 +21,13 @@ import {
 const FILTERS = ["All", ...DOC_CATEGORIES];
 
 const STATUS_STYLE: Record<string, string> = {
-  Draft: "bg-gray-100 text-gray-600",
-  Sent: "bg-blue-50 text-blue-700",
-  Received: "bg-blue-50 text-blue-700",
-  Approved: "bg-emerald-50 text-emerald-700",
-  Signed: "bg-emerald-50 text-emerald-700",
-  Paid: "bg-emerald-100 text-emerald-800",
-  Void: "bg-red-50 text-red-600",
+  Draft: "bg-sunken text-ink-2",
+  Sent: "bg-[#D6E4F5] text-[#24518A]",
+  Received: "bg-[#D6E4F5] text-[#24518A]",
+  Approved: "bg-accent-soft text-accent",
+  Signed: "bg-accent-soft text-accent",
+  Paid: "bg-accent-soft text-accent",
+  Void: "bg-danger-soft text-danger",
 };
 
 const money = (amount?: number, currency?: string) =>
@@ -120,7 +120,7 @@ export default function DocumentsPage() {
   const vendorCell = "px-3 py-2.5";
 
   return (
-    <div className="min-h-screen bg-[#FBFBF9]">
+    <div className="">
       <div className="mb-6">
         <EventPicker events={events} selectedId={selectedId} onSelect={setSelectedId} />
       </div>
@@ -142,33 +142,33 @@ export default function DocumentsPage() {
       />
 
       {(error || eventsError) && (
-        <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">{error || eventsError}</p>
+        <p className="mb-4 rounded-xl bg-danger-soft px-4 py-3 text-sm font-medium text-danger">{error || eventsError}</p>
       )}
 
       {eventsLoading || loading ? (
-        <div className="flex items-center gap-2 py-16 text-sm text-gray-400">
+        <div className="flex items-center gap-2 py-16 text-sm text-ink-3">
           <Loader2 size={16} className="animate-spin" /> Loading documents…
         </div>
       ) : !selectedId ? (
-        <p className="py-16 text-center text-sm text-gray-400">No events yet — create one on the Events page first.</p>
+        <p className="py-16 text-center text-sm text-ink-3">No events yet — create one on the Events page first.</p>
       ) : (
         <div className="space-y-8">
           {/* Procurement pipeline */}
-          <section className="rounded-2xl border border-gray-200 bg-white">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+          <section className="rounded-2xl border border-line bg-surface">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4">
               <div>
-                <h2 className="font-semibold text-gray-900">Procurement</h2>
-                <p className="text-xs text-gray-500">
+                <h2 className="font-semibold text-ink">Procurement</h2>
+                <p className="text-xs text-ink-3">
                   {booked.length} booked · committed{" "}
                   {money(booked.reduce((s, v) => s + (v.quoteAmount ?? 0), 0), booked[0]?.currency)}
-                  {" · "}find vendors on the <Link to="/vendors" className="text-indigo-600 hover:underline">Vendors page</Link>{" "}
+                  {" · "}find vendors on the <Link to="/vendors" className="text-accent hover:underline">Vendors page</Link>{" "}
                   and use “Add to event”
                 </p>
               </div>
               {isOrganizer && (
                 <button
                   onClick={() => setNewVendor({ name: "", type: "", phone: "", email: "" })}
-                  className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-1.5 text-sm font-medium text-ink-2 hover:bg-soft"
                 >
                   <Plus size={14} /> Add vendor
                 </button>
@@ -176,7 +176,7 @@ export default function DocumentsPage() {
             </div>
 
             {newVendor && (
-              <form onSubmit={saveNewVendor} className="grid grid-cols-2 gap-2 border-b border-gray-100 px-5 py-3 md:grid-cols-5">
+              <form onSubmit={saveNewVendor} className="grid grid-cols-2 gap-2 border-b border-line px-5 py-3 md:grid-cols-5">
                 {(["name", "type", "phone", "email"] as const).map((k) => (
                   <input
                     key={k}
@@ -185,12 +185,12 @@ export default function DocumentsPage() {
                     placeholder={k === "type" ? "Type (e.g. catering)" : k[0].toUpperCase() + k.slice(1)}
                     value={newVendor[k]}
                     onChange={(e) => setNewVendor({ ...newVendor, [k]: e.target.value })}
-                    className="rounded-xl border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
+                    className="rounded-xl border border-line px-3 py-1.5 text-sm outline-none focus:border-ink"
                   />
                 ))}
                 <div className="flex gap-2">
-                  <button className="rounded-xl bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700">Add</button>
-                  <button type="button" onClick={() => setNewVendor(null)} className="rounded-xl px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100">
+                  <button className="rounded-xl bg-ink px-3 py-1.5 text-sm font-semibold text-white hover:bg-ink-hover">Add</button>
+                  <button type="button" onClick={() => setNewVendor(null)} className="rounded-xl px-3 py-1.5 text-sm text-ink-2 hover:bg-sunken">
                     Cancel
                   </button>
                 </div>
@@ -198,13 +198,13 @@ export default function DocumentsPage() {
             )}
 
             {vendors.length === 0 ? (
-              <p className="px-5 py-6 text-sm text-gray-400">
+              <p className="px-5 py-6 text-sm text-ink-3">
                 No vendors yet. Ask the assistant <Sparkles size={13} className="inline" /> to “plan procurement for this event”.
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="text-left text-xs uppercase tracking-wide text-gray-400">
+                  <thead className="text-left text-xs uppercase tracking-wide text-ink-3">
                     <tr>
                       <th className={vendorCell}>Vendor</th>
                       <th className={vendorCell}>Contact</th>
@@ -214,14 +214,14 @@ export default function DocumentsPage() {
                       <th className={vendorCell} />
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-line">
                     {vendors.map((v) => (
                       <tr key={v._id}>
                         <td className={vendorCell}>
-                          <p className="font-medium text-gray-900">{v.name}</p>
-                          <p className="text-xs capitalize text-gray-500">{[v.type, v.scope].filter(Boolean).join(" · ")}</p>
+                          <p className="font-medium text-ink">{v.name}</p>
+                          <p className="text-xs capitalize text-ink-3">{[v.type, v.scope].filter(Boolean).join(" · ")}</p>
                         </td>
-                        <td className={`${vendorCell} text-xs text-gray-600`}>
+                        <td className={`${vendorCell} text-xs text-ink-2`}>
                           {[v.contactName, v.phone, v.email].filter(Boolean).join(" · ") || "—"}
                         </td>
                         <td className={vendorCell}>
@@ -229,7 +229,7 @@ export default function DocumentsPage() {
                             <select
                               value={v.stage}
                               onChange={(e) => void setStage(v, e.target.value as VendorStage)}
-                              className="rounded-lg border border-gray-200 px-2 py-1 text-xs"
+                              className="rounded-lg border border-line px-2 py-1 text-xs"
                             >
                               {VENDOR_STAGES.map((s) => (
                                 <option key={s}>{s}</option>
@@ -241,7 +241,7 @@ export default function DocumentsPage() {
                         </td>
                         <td className={`${vendorCell} text-xs`}>{money(v.quoteAmount, v.currency)}</td>
                         <td className={`${vendorCell} text-xs`}>
-                          <button onClick={() => setSearch(v.name)} className="text-indigo-600 hover:underline">
+                          <button onClick={() => setSearch(v.name)} className="text-accent hover:underline">
                             {docs.filter((d) => d.vendor?._id === v._id).length}
                           </button>
                         </td>
@@ -250,11 +250,11 @@ export default function DocumentsPage() {
                             <>
                               <button
                                 onClick={() => setModal({ doc: null, vendorId: v._id })}
-                                className="mr-2 text-xs font-medium text-indigo-600 hover:underline"
+                                className="mr-2 text-xs font-medium text-accent hover:underline"
                               >
                                 New doc
                               </button>
-                              <button onClick={() => removeVendor(v)} title="Remove vendor" aria-label={`Remove ${v.name}`} className="text-gray-400 hover:text-red-600">
+                              <button onClick={() => removeVendor(v)} title="Remove vendor" aria-label={`Remove ${v.name}`} className="text-ink-3 hover:text-danger">
                                 <Trash2 size={14} />
                               </button>
                             </>
@@ -270,7 +270,7 @@ export default function DocumentsPage() {
 
           {/* Document list */}
           {visible.length === 0 ? (
-            <p className="py-10 text-center text-sm text-gray-400">
+            <p className="py-10 text-center text-sm text-ink-3">
               {docs.length ? "No documents match." : "No documents yet. Upload one, write one, or ask the assistant to draft an RFQ, PO or contract."}
             </p>
           ) : (
@@ -279,21 +279,21 @@ export default function DocumentsPage() {
                 <button
                   key={d._id}
                   onClick={() => setModal({ doc: d })}
-                  className="rounded-2xl border border-gray-200 bg-white p-4 text-left transition hover:border-indigo-200 hover:shadow-sm"
+                  className="rounded-2xl border border-line bg-surface p-4 text-left transition hover:border-line hover:shadow-sm"
                 >
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2">
-                      {d.file ? <Paperclip size={16} className="shrink-0 text-gray-400" /> : <FileText size={16} className="shrink-0 text-indigo-500" />}
-                      <p className="truncate font-medium text-gray-900">{d.title}</p>
+                      {d.file ? <Paperclip size={16} className="shrink-0 text-ink-3" /> : <FileText size={16} className="shrink-0 text-accent" />}
+                      <p className="truncate font-medium text-ink">{d.title}</p>
                     </div>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_STYLE[d.status]}`}>{d.status}</span>
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-ink-3">
                     {d.category}
                     {d.vendor && ` · ${d.vendor.name}`}
                     {d.amount != null && ` · ${money(d.amount, d.currency)}`}
                   </p>
-                  <p className="mt-2 text-[11px] text-gray-400">
+                  <p className="mt-2 text-[11px] text-ink-3">
                     Updated {new Date(d.updatedAt).toLocaleDateString()} by {d.createdBy?.name ?? "unknown"}
                   </p>
                 </button>

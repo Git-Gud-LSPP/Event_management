@@ -158,7 +158,7 @@ const VendorMap = ({ userLocation, vendor, onRouteLoaded }: MapProps) => {
       const vendorIcon = L.divIcon({
         html: `
           <div style="
-            background: #4f46e5;
+            background: #16231C;
             border: 3px solid white;
             border-radius: 50% 50% 50% 0;
             width: 28px;
@@ -177,7 +177,7 @@ const VendorMap = ({ userLocation, vendor, onRouteLoaded }: MapProps) => {
         .addTo(map)
         .bindPopup(
           `<div style="font-weight:600;font-size:13px;">${vendor.name}</div>
-           <div style="color:#6b7280;font-size:12px;">${vendor.address || ""}</div>`,
+           <div style="color:#5C6A62;font-size:12px;">${vendor.address || ""}</div>`,
           { maxWidth: 200 }
         );
 
@@ -186,7 +186,7 @@ const VendorMap = ({ userLocation, vendor, onRouteLoaded }: MapProps) => {
         const userIcon = L.divIcon({
           html: `
             <div style="
-              background: #10b981;
+              background: #3F8A64;
               border: 3px solid white;
               border-radius: 50%;
               width: 22px;
@@ -213,7 +213,7 @@ const VendorMap = ({ userLocation, vendor, onRouteLoaded }: MapProps) => {
 
         // Draw a light dashed placeholder line immediately
         const placeholder = L.polyline([userLatLng, vendorLatLng], {
-          color: "#a5b4fc",
+          color: "#C9BDF2",
           weight: 2,
           opacity: 0.55,
           dashArray: "6, 8",
@@ -235,7 +235,7 @@ const VendorMap = ({ userLocation, vendor, onRouteLoaded }: MapProps) => {
             placeholder.remove();
             L.geoJSON(data.geometry, {
               style: {
-                color: "#4f46e5",
+                color: "#16231C",
                 weight: 4,
                 opacity: 0.85,
               },
@@ -245,12 +245,12 @@ const VendorMap = ({ userLocation, vendor, onRouteLoaded }: MapProps) => {
             onRouteLoaded({ distance_m: data.distance_m, duration_s: data.duration_s });
           } else {
             // OSRM returned an error -- solidify the placeholder, fall back to Haversine
-            placeholder.setStyle({ color: "#4f46e5", opacity: 0.7 });
+            placeholder.setStyle({ color: "#16231C", opacity: 0.7 });
             onRouteLoaded(null);
           }
         } catch {
           // Network error -- solidify the placeholder, fall back to Haversine
-          placeholder.setStyle({ color: "#4f46e5", opacity: 0.7 });
+          placeholder.setStyle({ color: "#16231C", opacity: 0.7 });
           onRouteLoaded(null);
         }
       } else {
@@ -291,11 +291,11 @@ const InfoRow = ({
   label: string;
   children: React.ReactNode;
 }) => (
-  <div className="py-4 border-b border-slate-100 last:border-0">
-    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">
+  <div className="py-4 border-b border-line last:border-0">
+    <p className="text-xs font-semibold uppercase tracking-wide text-ink-3 mb-1">
       {label}
     </p>
-    <div className="text-slate-800">{children}</div>
+    <div className="text-ink">{children}</div>
   </div>
 );
 
@@ -337,7 +337,7 @@ function AddToEventButton({ vendor }: { vendor: Vendor }) {
       onClick={add}
       disabled={state === "saving" || state === "added"}
       title={failed ? state : `Add to ${selected.title}`}
-      className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-70"
+      className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-line bg-surface py-2.5 text-sm font-semibold text-ink-2 transition-colors hover:bg-soft disabled:opacity-70"
     >
       {state === "added" ? <Check size={15} /> : <Plus size={15} />}
       {state === "added" ? `On ${selected.title}` : failed ? "Retry add" : `Add to ${selected.title}`}
@@ -362,14 +362,14 @@ const VendorDetailPage = () => {
   if (!vendor) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <MapPin size={40} className="text-slate-300" />
-        <h2 className="text-lg font-bold text-slate-700">Vendor not found</h2>
-        <p className="text-sm text-slate-500">
+        <MapPin size={40} className="text-line-strong" />
+        <h2 className="text-lg font-bold text-ink-2">Vendor not found</h2>
+        <p className="text-sm text-ink-3">
           Please go back and select a vendor from the list.
         </p>
         <button
           onClick={() => navigate("/vendors")}
-          className="mt-2 flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+          className="mt-2 flex items-center gap-2 rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink-hover"
         >
           <ArrowLeft size={16} />
           Back to Vendors
@@ -420,19 +420,19 @@ const VendorDetailPage = () => {
     !isNaN(vendor.longitude);
 
   return (
-    <div className="p-8 bg-[#FBFBF9] min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div className="">
+      <div className="">
       {/* -- Back button -- */}
       <button
         onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+        className="mb-6 flex items-center gap-2 text-sm font-semibold text-ink-3 hover:text-ink transition-colors"
       >
         <ArrowLeft size={16} />
         Back to Vendors
       </button>
 
       {/* -- Page title badge -- */}
-      <div className="mb-3 inline-block rounded-full bg-indigo-100 px-4 py-1.5 text-xs font-bold tracking-wide text-indigo-700">
+      <div className="mb-3 inline-block rounded-full bg-accent-soft px-4 py-1.5 text-xs font-bold tracking-wide text-accent">
         VENDOR DETAILS
       </div>
 
@@ -441,18 +441,18 @@ const VendorDetailPage = () => {
 
         {/* LEFT -- Info */}
         <div className="w-full lg:w-[420px] lg:shrink-0">
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="rounded-2xl border border-line bg-surface shadow-sm overflow-hidden">
 
             {/* Category pill + icon header */}
-            <div className="flex items-center gap-4 border-b border-slate-100 bg-slate-50 px-6 py-5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">
+            <div className="flex items-center gap-4 border-b border-line bg-soft px-6 py-5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-ink text-white">
                 <Icon size={24} />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
+                <p className="text-xs font-semibold uppercase tracking-wide text-accent">
                   {category?.name ?? vendor.type}
                 </p>
-                <h1 className="text-xl font-black tracking-tight text-slate-950 leading-snug">
+                <h1 className="text-xl font-black tracking-tight text-ink leading-snug">
                   {vendor.name}
                 </h1>
               </div>
@@ -463,7 +463,7 @@ const VendorDetailPage = () => {
               {/* Address */}
               <InfoRow label="Address">
                 <div className="flex items-start gap-2">
-                  <MapPin size={16} className="mt-0.5 shrink-0 text-slate-400" />
+                  <MapPin size={16} className="mt-0.5 shrink-0 text-ink-3" />
                   <span className="text-sm leading-relaxed">
                     {vendor.address || "Address not available"}
                   </span>
@@ -475,13 +475,13 @@ const VendorDetailPage = () => {
                 {vendor.phone ? (
                   <a
                     href={`tel:${vendor.phone}`}
-                    className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+                    className="flex items-center gap-2 text-sm font-medium text-accent hover:text-accent transition-colors"
                   >
                     <Phone size={15} />
                     {vendor.phone}
                   </a>
                 ) : (
-                  <span className="flex items-center gap-2 text-sm text-slate-400">
+                  <span className="flex items-center gap-2 text-sm text-ink-3">
                     <Phone size={15} />
                     Phone number not available
                   </span>
@@ -495,13 +495,13 @@ const VendorDetailPage = () => {
                     href={validWebsite}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+                    className="flex items-center gap-2 text-sm font-medium text-accent hover:text-accent transition-colors"
                   >
                     <ExternalLink size={15} />
                     Visit Website
                   </a>
                 ) : (
-                  <span className="flex items-center gap-2 text-sm text-slate-400">
+                  <span className="flex items-center gap-2 text-sm text-ink-3">
                     <Globe size={15} />
                     No website available
                   </span>
@@ -514,39 +514,39 @@ const VendorDetailPage = () => {
                   <div className="flex items-center gap-1.5">
                     <Star
                       size={16}
-                      className="fill-amber-400 text-amber-400"
+                      className="fill-warn text-warn"
                     />
-                    <span className="text-sm font-semibold text-slate-800">
+                    <span className="text-sm font-semibold text-ink">
                       {vendor.rating.toFixed(1)}
                     </span>
                   </div>
                 ) : (
-                  <span className="text-sm text-slate-400">Not available</span>
+                  <span className="text-sm text-ink-3">Not available</span>
                 )}
               </InfoRow>
 
               {/* Distance -- updates once OSRM responds */}
               <InfoRow label="Distance from You">
                 <div className="flex items-center gap-2">
-                  <Navigation size={16} className="shrink-0 text-indigo-500" />
+                  <Navigation size={16} className="shrink-0 text-accent" />
                   {!userLocation ? (
-                    <span className="text-lg font-bold text-slate-950">
+                    <span className="text-lg font-bold text-ink">
                       {formatDistance(distanceKm)}
-                      <span className="ml-1 text-xs font-normal text-slate-400">(location unavailable)</span>
+                      <span className="ml-1 text-xs font-normal text-ink-3">(location unavailable)</span>
                     </span>
                   ) : routeLoading ? (
-                    <span className="text-sm text-slate-400 animate-pulse">Calculating road distance...</span>
+                    <span className="text-sm text-ink-3 animate-pulse">Calculating road distance...</span>
                   ) : routeInfo ? (
-                    <span className="text-lg font-bold text-slate-950">
+                    <span className="text-lg font-bold text-ink">
                       {formatRoadDistance(routeInfo.distance_m)}
-                      <span className="ml-2 text-sm font-medium text-slate-500">
+                      <span className="ml-2 text-sm font-medium text-ink-3">
                         ~{Math.round(routeInfo.duration_s / 60)} min drive
                       </span>
                     </span>
                   ) : (
-                    <span className="text-lg font-bold text-slate-950">
+                    <span className="text-lg font-bold text-ink">
                       {formatDistance(distanceKm)}
-                      <span className="ml-1 text-xs font-normal text-slate-400">(straight-line)</span>
+                      <span className="ml-1 text-xs font-normal text-ink-3">(straight-line)</span>
                     </span>
                   )}
                 </div>
@@ -554,11 +554,11 @@ const VendorDetailPage = () => {
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
+            <div className="flex gap-3 border-t border-line bg-soft px-6 py-4">
               {vendor.phone && (
                 <a
                   href={`tel:${vendor.phone}`}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-ink py-2.5 text-sm font-semibold text-white hover:bg-ink-hover transition-colors"
                 >
                   <Phone size={15} />
                   Call
@@ -569,7 +569,7 @@ const VendorDetailPage = () => {
                   href={validWebsite}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-line bg-surface py-2.5 text-sm font-semibold text-ink-2 hover:bg-soft transition-colors"
                 >
                   <ExternalLink size={15} />
                   Website
@@ -577,7 +577,7 @@ const VendorDetailPage = () => {
               )}
               {getStoredUser()?.role === "organizer" && <AddToEventButton vendor={vendor} />}
               {!vendor.phone && !validWebsite && (
-                <p className="w-full text-center text-sm text-slate-400 py-1">
+                <p className="w-full text-center text-sm text-ink-3 py-1">
                   No contact information available
                 </p>
               )}
@@ -587,23 +587,23 @@ const VendorDetailPage = () => {
 
         {/* RIGHT -- Map */}
         <div className="flex-1">
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="rounded-2xl border border-line bg-surface shadow-sm overflow-hidden">
 
             {/* Map header */}
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+            <div className="flex items-center justify-between border-b border-line px-5 py-4">
               <div className="flex items-center gap-2">
-                <MapPin size={18} className="text-indigo-600" />
-                <span className="font-semibold text-slate-800">Location</span>
+                <MapPin size={18} className="text-accent" />
+                <span className="font-semibold text-ink">Location</span>
               </div>
-              <div className="flex items-center gap-4 text-xs text-slate-500">
+              <div className="flex items-center gap-4 text-xs text-ink-3">
                 <span className="flex items-center gap-1.5">
-                  <span className="inline-block h-3 w-3 rounded-full bg-emerald-500 border-2 border-white shadow" />
+                  <span className="inline-block h-3 w-3 rounded-full bg-live border-2 border-white shadow" />
                   Your Location
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span
                     className="inline-block h-3 w-3 rounded-full border-2 border-white shadow"
-                    style={{ background: "#4f46e5" }}
+                    style={{ background: "#16231C" }}
                   />
                   {vendor.name}
                 </span>
@@ -614,11 +614,11 @@ const VendorDetailPage = () => {
             <div className="relative" style={{ height: "440px" }}>
               {!hasCoordinates || mapError ? (
                 <div className="flex h-full flex-col items-center justify-center gap-3 text-center p-8">
-                  <MapPin size={36} className="text-slate-300" />
-                  <p className="font-semibold text-slate-600">
+                  <MapPin size={36} className="text-line-strong" />
+                  <p className="font-semibold text-ink-2">
                     Location unavailable
                   </p>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-ink-3">
                     This vendor's coordinates could not be loaded.
                   </p>
                 </div>
@@ -632,32 +632,32 @@ const VendorDetailPage = () => {
               )}
 
               {!userLocation && hasCoordinates && (
-                <div className="absolute bottom-3 left-3 right-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-700 shadow">
+                <div className="absolute bottom-3 left-3 right-3 rounded-xl border border-warn/30 bg-warn-soft px-4 py-2.5 text-xs font-medium text-warn shadow">
                   Your location is unavailable -- only the vendor is shown.
                 </div>
               )}
             </div>
 
             {/* Distance / route banner below map */}
-            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3">
+            <div className="flex items-center justify-between border-t border-line bg-soft px-5 py-3">
               {!userLocation ? (
-                <span className="text-sm text-slate-500">Straight-line distance</span>
+                <span className="text-sm text-ink-3">Straight-line distance</span>
               ) : routeLoading ? (
-                <span className="flex items-center gap-2 text-sm text-slate-400">
-                  <svg className="h-4 w-4 animate-spin text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <span className="flex items-center gap-2 text-sm text-ink-3">
+                  <svg className="h-4 w-4 animate-spin text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
                   Calculating road distance...
                 </span>
               ) : routeInfo ? (
-                <span className="text-sm font-medium text-emerald-600">Road distance</span>
+                <span className="text-sm font-medium text-accent">Road distance</span>
               ) : (
-                <span className="text-sm text-slate-500">Straight-line distance</span>
+                <span className="text-sm text-ink-3">Straight-line distance</span>
               )}
 
-              <span className="flex items-center gap-1.5 font-bold text-slate-950">
-                <Navigation size={15} className="text-indigo-500" />
+              <span className="flex items-center gap-1.5 font-bold text-ink">
+                <Navigation size={15} className="text-accent" />
                 {routeInfo
                   ? `${formatRoadDistance(routeInfo.distance_m)}  /  ~${Math.round(routeInfo.duration_s / 60)} min`
                   : formatDistance(distanceKm)}

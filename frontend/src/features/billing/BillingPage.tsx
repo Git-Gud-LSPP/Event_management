@@ -7,7 +7,7 @@ import { listEvents } from "../events/api";
 import { buttonCls } from "../../marketing/lib";
 import { Dialog, Meter } from "./shared";
 
-const RANK: Record<PlanId, number> = { free: 0, starter: 1, growth: 2, enterprise: 3 };
+const RANK: Record<PlanId, number> = { starter: 0, growth: 1, scale: 2, enterprise: 3 };
 const date = (iso?: string) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "");
 
 export default function BillingPage() {
@@ -40,7 +40,7 @@ export default function BillingPage() {
         <div role="status" className="mt-6 flex flex-wrap items-center gap-3 rounded-card border border-amber-700/30 bg-amber-50 p-4 text-sm text-amber-900">
           <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
           <span className="flex-1">
-            {w.pendingPlan === "free" ? "Your subscription is cancelled" : `You're moving to ${planById(w.pendingPlan).name}`}. {plan.name} stays active until {date(w.cancelAt)}.
+            {w.pendingPlan === "starter" ? "Your subscription is cancelled" : `You're moving to ${planById(w.pendingPlan).name}`}. {plan.name} stays active until {date(w.cancelAt)}.
           </span>
           <button type="button" onClick={undoScheduledChange} className="font-medium underline underline-offset-2">Keep {plan.name}</button>
         </div>
@@ -87,7 +87,7 @@ export default function BillingPage() {
         </div>
         {w.addOns.length === 0 ? (
           <p className="mt-3 rounded-card border border-dashed border-line-strong p-6 text-sm text-ink-2">
-            {w.plan === "free" ? "Free includes the core modules. Start a trial or upgrade to add more." : "No add-ons yet. Pick some from the catalog."}
+            No add-ons yet. Pick some from the catalog.
           </p>
         ) : (
           <ul className="mt-3 divide-y divide-line rounded-card border border-line bg-surface">
@@ -138,10 +138,10 @@ export default function BillingPage() {
         <p className="mt-2 text-sm text-ink-2">Invoices appear here after your first payment. Billing email and VAT details are set at checkout.</p>
       </section>
 
-      {w.plan !== "free" && !w.pendingPlan && (
+      {w.plan !== "starter" && !w.pendingPlan && (
         <section className="mt-10 border-t border-line pt-6">
           <h2 className="text-lg font-semibold">Cancel subscription</h2>
-          <p className="mt-1 text-sm text-ink-2">You'll move to Free at the end of the period. Nothing is deleted.</p>
+          <p className="mt-1 text-sm text-ink-2">You'll move to Starter (free) at the end of the period. Nothing is deleted.</p>
           <button type="button" onClick={() => setCancelling(true)} className={`${buttonCls.secondary} mt-4`}>Cancel subscription</button>
         </section>
       )}
@@ -218,17 +218,17 @@ function CancelDialog({ open, onClose }: { open: boolean; onClose: () => void })
         <>
           <ul className="space-y-1.5 text-sm text-ink-2">
             <li>{planById(w.plan).name} stays active until {date(w.renewsAt)}.</li>
-            <li>Then you're on Free: core modules, 2 active events, 5 seats.</li>
-            <li>Your {w.addOns.length} add-on module{w.addOns.length === 1 ? "" : "s"} become locked. Data is kept and you can export it any time.</li>
+            <li>Then you're on Starter: core modules plus 5 add-ons, 3 events a year, 2 seats.</li>
+            {w.addOns.length > 5 && <li>{w.addOns.length - 5} add-on module{w.addOns.length - 5 === 1 ? "" : "s"} become locked. Data is kept and you can export it any time.</li>}
           </ul>
           {reason === "Between events / seasonal" && (
             <p className="mt-5 rounded-card border border-line bg-sunken p-4 text-sm text-ink-2">
-              Running events seasonally? Cancelling keeps your setup and data on Free, ready for next season. Re-upgrade in one click when the next event starts.
+              Running events seasonally? Cancelling keeps your setup and data on Starter, ready for next season. Re-upgrade in one click when the next event starts.
             </p>
           )}
           <div className="mt-6 flex flex-wrap justify-end gap-3">
             <button type="button" onClick={close} className={buttonCls.secondary}>Keep my plan</button>
-            <button type="button" onClick={() => (scheduleChange("free", []), close())} className={buttonCls.secondary}>
+            <button type="button" onClick={() => (scheduleChange("starter", w.addOns.slice(0, 5)), close())} className={buttonCls.secondary}>
               Cancel subscription
             </button>
           </div>

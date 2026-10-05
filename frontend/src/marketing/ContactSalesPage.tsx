@@ -17,7 +17,7 @@ export default function ContactSalesPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sent, setSent] = useState(false);
   useEffect(() => {
-    document.title = "Book a demo · EventHQ";
+    document.title = "Book a demo · EventOps";
   }, []);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>

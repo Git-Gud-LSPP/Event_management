@@ -8,7 +8,6 @@ import {
   RotateCcw,
   Send,
   ShieldAlert,
-  Sparkles,
   Square,
   X,
 } from "lucide-react";
@@ -68,29 +67,29 @@ function ItemView({
     case "user":
       return (
         <div className="flex justify-end">
-          <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-indigo-600 px-3.5 py-2 text-sm text-white">
+          <p className="max-w-[85%] whitespace-pre-wrap rounded-[14px] bg-ink px-3.5 py-[11px] text-[13.5px] leading-normal text-paper">
             {item.text}
           </p>
         </div>
       );
     case "assistant":
       return (
-        <p className="max-w-[90%] whitespace-pre-wrap rounded-2xl rounded-bl-md border border-gray-100 bg-gray-50 px-3.5 py-2 text-sm text-gray-800">
+        <p className="max-w-[90%] whitespace-pre-wrap rounded-[14px] border border-line bg-surface px-3.5 py-[11px] text-[13.5px] leading-normal text-ink">
           {item.text}
         </p>
       );
     case "tool":
       return (
-        <p className="flex items-center gap-1.5 pl-1 text-xs text-gray-500">
+        <p className="flex items-center gap-1.5 pl-1 text-xs text-ink-3">
           {item.status === "running" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          {item.status === "done" && <Check className="h-3.5 w-3.5 text-emerald-600" />}
-          {item.status === "error" && <AlertCircle className="h-3.5 w-3.5 text-amber-600" />}
+          {item.status === "done" && <Check className="h-3.5 w-3.5 text-accent" />}
+          {item.status === "error" && <AlertCircle className="h-3.5 w-3.5 text-warn" />}
           {toolLabel(item.name)}
         </p>
       );
     case "error":
       return (
-        <p className="flex items-start gap-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="flex items-start gap-2 rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           {item.text}
         </p>
@@ -98,9 +97,9 @@ function ItemView({
     case "confirm": {
       const { action } = item;
       return (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-          <p className="flex items-start gap-2 text-sm font-medium text-gray-900">
-            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+        <div className="rounded-xl border border-warn/30 bg-warn-soft p-3">
+          <p className="flex items-start gap-2 text-sm font-medium text-ink">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warn" />
             {action.summary}
           </p>
           {action.status === "pending" ? (
@@ -109,7 +108,7 @@ function ItemView({
                 type="button"
                 disabled={item.busy}
                 onClick={() => onResolve(action.id, true)}
-                className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+                className="rounded-lg bg-ink px-3 py-1.5 text-xs font-medium text-white hover:bg-ink-2 disabled:opacity-50"
               >
                 Confirm
               </button>
@@ -117,7 +116,7 @@ function ItemView({
                 type="button"
                 disabled={item.busy}
                 onClick={() => onResolve(action.id, false)}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-xs font-medium text-ink-2 hover:bg-soft disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -125,7 +124,7 @@ function ItemView({
           ) : (
             <p
               className={`mt-1.5 pl-6 text-xs ${
-                action.status === "done" ? "text-emerald-700" : action.status === "failed" ? "text-red-700" : "text-gray-500"
+                action.status === "done" ? "text-accent" : action.status === "failed" ? "text-danger" : "text-ink-3"
               }`}
             >
               {ACTION_STATUS_TEXT[action.status]}
@@ -312,6 +311,8 @@ export default function AgentPanel({
   const thinking = busy && last?.kind !== "assistant";
 
   return (
+    <>
+    {open && <div onClick={onClose} aria-hidden="true" className="fixed inset-0 z-60 bg-[rgba(22,35,28,.28)]" />}
     <aside
       aria-label="AI assistant"
       inert={!open}
@@ -330,24 +331,20 @@ export default function AgentPanel({
         setDragging(false);
         addFiles(e.dataTransfer.files);
       }}
-      className={`fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l border-gray-200 bg-white shadow-2xl transition-transform duration-200 ${
+      className={`fixed inset-y-0 right-0 z-[61] flex w-full max-w-[440px] flex-col border-l border-line bg-[#F9FBF8] shadow-[-30px_0_60px_-30px_rgba(20,45,30,.35)] transition-transform duration-200 motion-reduce:transition-none ${
         open ? "translate-x-0" : "translate-x-full"
-      } ${dragging ? "ring-4 ring-inset ring-indigo-300" : ""}`}
+      } ${dragging ? "ring-4 ring-inset ring-line" : ""}`}
     >
-      <header className="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
-          <Sparkles className="h-4 w-4 text-white" />
-        </div>
+      <header className="flex h-[60px] items-center gap-3 border-b border-line px-[18px]">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-900">Assistant</p>
-          <p className="truncate text-xs text-gray-500">Ask anything or tell it what to do · Ctrl+K</p>
+          <p className="flex items-center gap-2 text-[15px] font-medium text-ink"><span className="size-2 rounded-full bg-live" aria-hidden="true" />EventOps AI</p>
         </div>
         <button
           type="button"
           onClick={newChat}
           aria-label="Start a new chat"
           title="New chat"
-          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+          className="rounded-lg p-2 text-ink-3 hover:bg-sunken hover:text-ink-2"
         >
           <RotateCcw className="h-4 w-4" />
         </button>
@@ -355,7 +352,7 @@ export default function AgentPanel({
           type="button"
           onClick={onClose}
           aria-label="Close assistant"
-          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+          className="rounded-lg p-2 text-ink-3 hover:bg-sunken hover:text-ink-2"
         >
           <X className="h-4 w-4" />
         </button>
@@ -364,7 +361,7 @@ export default function AgentPanel({
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {items.length === 0 && (
           <div className="space-y-2 pt-6">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-ink-3">
               I can look things up and make changes across events, schedules, staff, incidents, floor plans and vendors.
             </p>
             {SUGGESTIONS.map((s) => (
@@ -372,7 +369,7 @@ export default function AgentPanel({
                 key={s}
                 type="button"
                 onClick={() => send(s)}
-                className="block w-full rounded-xl border border-gray-200 px-3 py-2 text-left text-sm text-gray-700 hover:border-indigo-200 hover:bg-indigo-50"
+                className="block w-fit cursor-pointer rounded-full bg-surface px-[11px] py-1.5 text-left text-[12.5px] text-ink-2 ring-1 ring-transparent hover:ring-ink"
               >
                 {s}
               </button>
@@ -383,7 +380,7 @@ export default function AgentPanel({
           <ItemView key={i} item={item} onResolve={resolveAction} />
         ))}
         {thinking && (
-          <p className="flex items-center gap-1.5 pl-1 text-xs text-gray-400">
+          <p className="flex items-center gap-1.5 pl-1 text-xs text-ink-3">
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking…
           </p>
         )}
@@ -394,14 +391,14 @@ export default function AgentPanel({
           e.preventDefault();
           send(input);
         }}
-        className="border-t border-gray-100 p-3"
+        className="border-t border-line px-[18px] pt-3.5 pb-[18px]"
       >
         {files.length > 0 && (
           <ul className="mb-2 flex flex-wrap gap-1.5" aria-label="Attached files">
             {files.map((f, i) => (
               <li
                 key={`${f.name}-${i}`}
-                className="flex max-w-full items-center gap-1 rounded-lg border border-indigo-100 bg-indigo-50 py-1 pl-2 pr-1 text-xs text-indigo-800"
+                className="flex max-w-full items-center gap-1 rounded-lg border border-line bg-accent-soft py-1 pl-2 pr-1 text-xs text-accent"
               >
                 <Paperclip className="h-3 w-3 shrink-0" />
                 <span className="truncate">{f.name}</span>
@@ -409,7 +406,7 @@ export default function AgentPanel({
                   type="button"
                   onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
                   aria-label={`Remove ${f.name}`}
-                  className="rounded p-0.5 hover:bg-indigo-100"
+                  className="rounded p-0.5 hover:bg-accent-soft"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -417,7 +414,7 @@ export default function AgentPanel({
             ))}
           </ul>
         )}
-        <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 focus-within:border-indigo-300">
+        <div className="flex items-end gap-2 rounded-[22px] border border-line-strong/60 bg-surface px-3 py-2 focus-within:border-ink">
           <input
             ref={fileInputRef}
             type="file"
@@ -435,7 +432,7 @@ export default function AgentPanel({
             disabled={busy || files.length >= MAX_ATTACHMENTS}
             aria-label="Attach files"
             title="Attach PDF, Word, Excel, CSV or text (or drop files here)"
-            className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-200 hover:text-gray-700 disabled:opacity-40"
+            className="rounded-lg p-1.5 text-ink-3 hover:bg-sunken hover:text-ink-2 disabled:opacity-40"
           >
             <Paperclip className="h-4 w-4" />
           </button>
@@ -457,14 +454,14 @@ export default function AgentPanel({
                 : "e.g. Add Sita to TechConf staff and give her the sound check"
             }
             aria-label="Message the assistant"
-            className="field-sizing-content max-h-40 min-h-6 flex-1 resize-none bg-transparent py-0.5 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+            className="field-sizing-content max-h-40 min-h-6 flex-1 resize-none bg-transparent py-0.5 text-sm text-ink outline-none focus-visible:outline-none placeholder:text-ink-3"
           />
           {busy ? (
             <button
               type="button"
               onClick={() => abortRef.current?.abort()}
               aria-label="Stop"
-              className="rounded-lg bg-gray-900 p-2 text-white hover:bg-gray-700"
+              className="rounded-lg bg-ink p-2 text-white hover:bg-ink-2"
             >
               <Square className="h-3.5 w-3.5" fill="white" />
             </button>
@@ -473,13 +470,15 @@ export default function AgentPanel({
               type="submit"
               disabled={!input.trim() && files.length === 0}
               aria-label="Send"
-              className="rounded-lg bg-indigo-600 p-2 text-white hover:bg-indigo-700 disabled:opacity-40"
+              className="rounded-full bg-ink p-2 text-paper hover:bg-ink-hover disabled:opacity-40"
             >
               <Send className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
+        <p className="mt-2.5 text-[11.5px] text-ink-3">Deletes and floor-plan saves wait for your confirmation.</p>
       </form>
     </aside>
+    </>
   );
 }

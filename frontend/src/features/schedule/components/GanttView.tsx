@@ -7,12 +7,14 @@ import type { TaskStatus } from "../data";
 // SVAR React Gantt (MIT core): real date axis, dependency arrows, drag/resize.
 // Dependencies are edited in the task form, so link editing in the chart is off.
 
-const STATUS_COLOR: Record<TaskStatus, string> = {
-  Pending: "#86efac",
-  "In Progress": "#4f46e5",
-  Blocked: "#dc2626",
-  Done: "#9ca3af",
+// v2 bar styles: [background, border, text].
+const BAR: Record<TaskStatus, [string, string, string]> = {
+  "In Progress": ["#16231C", "#16231C", "#F2F5F1"],
+  Blocked: ["#8A2E52", "#8A2E52", "#FFFFFF"],
+  Done: ["#E1E8E0", "#E1E8E0", "#56645B"],
+  Pending: ["#FFFFFF", "#C4CEC6", "#56645B"],
 };
+const DELAY_STRIPES = "repeating-linear-gradient(135deg,#C9BDF2 0 3px,#F4DCE6 3px 6px)";
 
 const MIN = 60_000;
 const NO_END_MINUTES = 30; // tasks without endsAt still need a visible bar
@@ -28,8 +30,7 @@ const SCALES = [
 
 const COLUMNS = [
   { id: "text", header: "Task", flexgrow: 2 },
-  { id: "owner", header: "Owner", width: 110 },
-  { id: "status", header: "Status", width: 90 },
+  { id: "owner", header: "Owner", width: 120 },
 ];
 
 // Locked chart edits: we only persist start/end changes from drag and resize.
@@ -39,16 +40,16 @@ const BLOCKED_ACTIONS = [
 ];
 
 function TaskBar({ data }: { data: ITask }) {
-  const status = data.status as TaskStatus;
+  const [bg, border, fg] = BAR[data.status as TaskStatus] ?? BAR.Pending;
   return (
     <div
-      className="absolute inset-0 flex items-center gap-1.5 overflow-hidden rounded-[inherit] px-2 text-[11px] font-semibold text-white"
-      style={{ background: STATUS_COLOR[status] ?? STATUS_COLOR.Pending }}
+      className="absolute inset-0 flex items-center gap-1.5 overflow-hidden rounded-[inherit] border px-2 text-[11px]"
+      style={{ background: bg, borderColor: border, color: fg }}
       title={`${data.text} · ${fmtTime(data.start!)} - ${fmtTime(data.end!)} · ${status}`}
     >
-      <span className="truncate">{data.text}</span>
+      <span className="truncate">{data.status}</span>
       {data.delayMinutes > 0 && (
-        <span className="shrink-0 rounded bg-white/25 px-1">+{data.delayMinutes}m</span>
+        <span className="ml-auto shrink-0 rounded px-1 text-ink" style={{ background: DELAY_STRIPES }}>+{data.delayMinutes}m</span>
       )}
     </div>
   );
@@ -126,15 +127,15 @@ export default function Gantt({
 
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-12 text-center text-sm text-gray-400">
+      <div className="rounded-2xl border border-dashed border-line-strong bg-surface p-12 text-center text-sm text-ink-3">
         No tasks to chart yet.
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="h-[560px]">
+    <>
+      <div className="eh-gantt h-[560px] overflow-hidden rounded-2xl bg-surface">
         <Willow fonts={false}>
           <SvarGantt
             init={init}
@@ -145,24 +146,24 @@ export default function Gantt({
             durationUnit="hour"
             lengthUnit="minute"
             cellWidth={70}
-            cellHeight={40}
+            cellHeight={52}
+            scaleHeight={38}
             taskTemplate={TaskBar}
             readonly={!onReschedule}
           />
         </Willow>
       </div>
 
-      {/* Footer */}
-      <div className="flex flex-col gap-3 border-t border-gray-100 px-6 py-4 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-4">
-          {(Object.keys(STATUS_COLOR) as TaskStatus[]).map((s) => (
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-ink-3">
+        <div className="flex flex-wrap gap-[18px]">
+          {(Object.keys(BAR) as TaskStatus[]).map((s) => (
             <span key={s} className="flex items-center gap-1.5">
-              <span className="h-2 w-4 rounded-full" style={{ background: STATUS_COLOR[s] }} />
+              <span className="h-2 w-3.5 rounded-sm border" style={{ background: BAR[s][0], borderColor: BAR[s][1] }} />
               {s}
             </span>
           ))}
           <span className="flex items-center gap-1.5">
-            <span className="rounded bg-gray-200 px-1 text-[10px] font-semibold">+15m</span> Delay
+            <span className="h-2 w-3.5 rounded-sm" style={{ background: DELAY_STRIPES }} /> Delay
           </span>
         </div>
         <span>
@@ -170,6 +171,6 @@ export default function Gantt({
           Arrows show dependencies.
         </span>
       </div>
-    </div>
+    </>
   );
 }

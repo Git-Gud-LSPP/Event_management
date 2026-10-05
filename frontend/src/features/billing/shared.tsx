@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
-import { byId, planById } from "../../billing/catalog";
-import { slotsFor, startTrial, swapModule, useWorkspace } from "../../billing/plan";
+import { byId, nextPlan, planById } from "../../billing/catalog";
+import { slotsFor, swapModule, useWorkspace } from "../../billing/plan";
 import { buttonCls } from "../../marketing/lib";
 
 /** Native <dialog>: focus trap, Esc and inert background come free. */
@@ -56,32 +56,22 @@ const ago = (ms?: number) => {
   return d === 0 ? "opened today" : `last opened ${d} day${d === 1 ? "" : "s"} ago`;
 };
 
-/** Module limit reached: swap one out, or move up a plan. Free users get the no-card trial instead. */
+/** Module limit reached: swap one out, or move up a plan. */
 export function SlotDialog({ want, onClose }: { want: string | null; onClose: () => void }) {
   const w = useWorkspace();
   const navigate = useNavigate();
   const [out, setOut] = useState<string>("");
   const m = want ? byId(want) : null;
   const active = w.addOns.slice(0, slotsFor(w));
-  const next = w.plan === "starter" ? planById("growth") : null;
+  const up = nextPlan(w.plan);
+  const next = up && up.id !== "enterprise" ? up : null;
   const done = () => {
     onClose();
     if (m?.route) navigate(m.route);
   };
 
   return (
-    <Dialog open={!!m} onClose={onClose} title={w.plan === "free" ? `Add ${m?.name ?? ""}` : `All ${slotsFor(w)} ${planById(w.plan).name} slots are in use`}>
-      {w.plan === "free" ? (
-        <>
-          <p className="text-ink-2">Free includes the core modules. Try Starter for 14 days to add {m?.name} and 4 more of your choice. No card needed.</p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button type="button" className={buttonCls.primary} onClick={() => (startTrial([...w.addOns.filter((a) => a !== want), want!].slice(-5)), done())}>
-              Start 14-day trial
-            </button>
-            <button type="button" className={buttonCls.secondary} onClick={() => (onClose(), navigate("/billing"))}>Compare plans</button>
-          </div>
-        </>
-      ) : (
+    <Dialog open={!!m} onClose={onClose} title={`All ${slotsFor(w)} ${planById(w.plan).name} slots are in use`}>
         <>
           {active.length > 0 && (
             <fieldset>
@@ -104,21 +94,20 @@ export function SlotDialog({ want, onClose }: { want: string | null; onClose: ()
             {next ? (
               <>
                 <p className="text-sm text-ink-2">
-                  Or upgrade to <span className="font-medium text-ink">Growth</span>: {next.slots} slots, unlimited events.{" "}
-                  <span className="font-mono">+${next.monthly! - planById("starter").monthly!}/mo</span>, prorated today.
+                  Or upgrade to <span className="font-medium text-ink">{next.name}</span>: {next.slots} slots.{" "}
+                  <span className="font-mono">+${next.monthly! - planById(w.plan).monthly!}/mo</span>, prorated today.
                 </p>
-                <button type="button" className={`${buttonCls.primary} mt-3 w-full`} onClick={() => (onClose(), navigate(`/billing/checkout?plan=growth&add=${want}`))}>
-                  Upgrade to Growth
+                <button type="button" className={`${buttonCls.primary} mt-3 w-full`} onClick={() => (onClose(), navigate(`/billing/checkout?plan=${next.id}&add=${want}`))}>
+                  Upgrade to {next.name}
                 </button>
               </>
             ) : (
               <p className="text-sm text-ink-2">
-                Need more than 20? <a href="/contact-sales" className="font-medium text-ink underline underline-offset-2">Book a demo</a> for Enterprise, which includes every module.
+                Need more than 60? <a href="/contact-sales" className="font-medium text-ink underline underline-offset-2">Book a demo</a> for Enterprise, which includes every module.
               </p>
             )}
           </div>
         </>
-      )}
     </Dialog>
   );
 }

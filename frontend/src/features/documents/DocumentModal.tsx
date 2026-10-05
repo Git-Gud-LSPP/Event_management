@@ -21,7 +21,7 @@ import {
 
 // One stylesheet for the modal preview and the print window (which can't see Tailwind).
 const MD_CSS = `
-.doc-md { font-size: 14px; line-height: 1.6; color: #1f2937; }
+.doc-md { font-size: 14px; line-height: 1.6; color: #16231C; }
 .doc-md h1 { font-size: 1.5em; font-weight: 700; margin: 0.6em 0 0.4em; }
 .doc-md h2 { font-size: 1.25em; font-weight: 700; margin: 1em 0 0.4em; }
 .doc-md h3 { font-size: 1.05em; font-weight: 600; margin: 1em 0 0.3em; }
@@ -29,16 +29,16 @@ const MD_CSS = `
 .doc-md ul { list-style: disc; padding-left: 1.4em; }
 .doc-md ol { list-style: decimal; padding-left: 1.4em; }
 .doc-md table { border-collapse: collapse; width: 100%; margin: 0.8em 0; font-size: 13px; }
-.doc-md th, .doc-md td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; vertical-align: top; }
-.doc-md th { background: #f9fafb; font-weight: 600; }
-.doc-md hr { border: 0; border-top: 1px solid #e5e7eb; margin: 1.2em 0; }
-.doc-md code { background: #f3f4f6; padding: 0 4px; border-radius: 4px; }
-.doc-md blockquote { border-left: 3px solid #e5e7eb; padding-left: 0.8em; color: #6b7280; }
+.doc-md th, .doc-md td { border: 1px solid #C4CEC6; padding: 6px 8px; text-align: left; vertical-align: top; }
+.doc-md th { background: #F6F9F5; font-weight: 600; }
+.doc-md hr { border: 0; border-top: 1px solid #C4CEC6; margin: 1.2em 0; }
+.doc-md code { background: #EDF2EC; padding: 0 4px; border-radius: 4px; }
+.doc-md blockquote { border-left: 3px solid #C4CEC6; padding-left: 0.8em; color: #5C6A62; }
 `;
 
 const field =
-  "w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-500";
-const label = "mb-1 block text-xs font-semibold text-gray-600";
+  "w-full rounded-xl border border-line px-3 py-2 text-sm outline-none focus:border-ink";
+const label = "mb-1 block text-xs font-semibold text-ink-2";
 
 export default function DocumentModal({
   eventId,
@@ -152,14 +152,14 @@ export default function DocumentModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
       <style>{MD_CSS}</style>
-      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl bg-white shadow-xl">
-        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
+      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl bg-surface shadow-xl">
+        <div className="flex items-center justify-between gap-3 border-b border-line px-6 py-4">
           <div className="min-w-0">
-            <h2 className="truncate text-lg font-semibold text-gray-900">
+            <h2 className="truncate text-lg font-semibold text-ink">
               {doc ? shown?.title : "New document"}
             </h2>
             {shown && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-ink-3">
                 {shown.category} · {shown.status}
                 {shown.vendor && ` · ${shown.vendor.name}`}
                 {shown.amount != null && ` · ${shown.currency ?? ""} ${shown.amount.toLocaleString()}`}
@@ -198,18 +198,18 @@ export default function DocumentModal({
 
         <div className="overflow-y-auto px-6 py-5">
           {error && (
-            <p className="mb-4 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-600">{error}</p>
+            <p className="mb-4 rounded-xl bg-danger-soft px-3 py-2 text-xs font-medium text-danger">{error}</p>
           )}
 
           {!editing ? (
             !full ? (
-              <div className="flex items-center gap-2 py-10 text-sm text-gray-400">
+              <div className="flex items-center gap-2 py-10 text-sm text-ink-3">
                 <Loader2 size={16} className="animate-spin" /> Loading…
               </div>
             ) : (
               <>
                 {full.file && (
-                  <p className="mb-4 flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                  <p className="mb-4 flex items-center gap-2 rounded-xl bg-soft px-3 py-2 text-xs text-ink-2">
                     <Paperclip size={14} /> {full.file.name} ({Math.ceil(full.file.size / 1024)} KB)
                   </p>
                 )}
@@ -217,7 +217,7 @@ export default function DocumentModal({
                   {full.content ? (
                     <Markdown remarkPlugins={[remarkGfm]}>{full.content}</Markdown>
                   ) : (
-                    <p className="text-gray-400">No text preview. Download the file to view it.</p>
+                    <p className="text-ink-3">No text preview. Download the file to view it.</p>
                   )}
                 </div>
               </>
@@ -277,7 +277,7 @@ export default function DocumentModal({
                   <input
                     type="file"
                     accept={DOC_ACCEPT}
-                    className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-indigo-700"
+                    className="block w-full text-sm text-ink-2 file:mr-3 file:rounded-lg file:border-0 file:bg-accent-soft file:px-3 file:py-1.5 file:text-accent"
                     onChange={(e) => {
                       const f = e.target.files?.[0] ?? null;
                       setFile(f);
@@ -302,11 +302,11 @@ export default function DocumentModal({
         </div>
 
         {editing && (
-          <div className="flex justify-end gap-2 border-t border-gray-100 px-6 py-4">
+          <div className="flex justify-end gap-2 border-t border-line px-6 py-4">
             <button
               type="button"
               onClick={() => (doc ? setEditing(false) : onClose())}
-              className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+              className="rounded-xl px-4 py-2 text-sm font-medium text-ink-2 hover:bg-sunken"
             >
               Cancel
             </button>
@@ -314,7 +314,7 @@ export default function DocumentModal({
               type="submit"
               form="doc-form"
               disabled={busy}
-              className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+              className="flex items-center gap-2 rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-ink-hover disabled:opacity-60"
             >
               {busy && <Loader2 size={14} className="animate-spin" />}
               Save
@@ -333,7 +333,7 @@ function IconButton({ title, onClick, children }: { title: string; onClick: () =
       title={title}
       aria-label={title}
       onClick={onClick}
-      className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+      className="rounded-lg p-2 text-ink-3 hover:bg-sunken hover:text-ink"
     >
       {children}
     </button>

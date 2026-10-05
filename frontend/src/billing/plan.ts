@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { byId, planById, type EventType, type PlanId } from "./catalog";
+import { byId, planById, TRIAL_PLAN, type EventType, type PlanId } from "./catalog";
 
 // Workspace entitlements.
 // ponytail: client-side mock in localStorage, so it's trivially editable. Move to /api/billing and
@@ -24,9 +24,9 @@ const DAY = 86_400_000;
 const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 // Accounts that predate billing keep the modules they already use (as a Starter trial) instead of
-// waking up to locked pages. New signups get set to Free by onboarding.
+// waking up to locked pages. New signups get set to Starter (free) by onboarding.
 const legacyDefault = (): Workspace => ({
-  plan: "starter",
+  plan: TRIAL_PLAN,
   cycle: "monthly",
   addOns: ["vendors", "incidents", "floor-plan"],
   renewsAt: iso(Date.now() + 14 * DAY),
@@ -39,10 +39,13 @@ const listeners = new Set<() => void>();
 // Date-driven rules, applied on load and on every save.
 function normalize(w: Workspace): Workspace {
   const today = iso(Date.now());
+  // Pre-v2 workspaces stored a "free" plan; Starter is the free tier now.
+  if ((w.plan as string) === "free") w = { ...w, plan: "starter" };
+  if ((w.pendingPlan as string) === "free") w = { ...w, pendingPlan: "starter" };
   // A scheduled downgrade/cancel takes effect once its date passes. Kept add-ons are ordered first.
   if (w.pendingPlan && w.cancelAt && w.cancelAt <= today) w = { ...w, plan: w.pendingPlan, pendingPlan: undefined, cancelAt: undefined };
-  // Unpaid trial ran out: back to Free. Add-ons stay listed (locked, data kept) so upgrading restores them.
-  if (w.trialEndsAt && w.trialEndsAt < today) w = { ...w, plan: "free", trialEndsAt: undefined };
+  // Unpaid trial ran out: back to Starter (free). Add-ons stay listed (locked, data kept) so upgrading restores them.
+  if (w.trialEndsAt && w.trialEndsAt < today) w = { ...w, plan: "starter", trialEndsAt: undefined };
   return w;
 }
 
@@ -119,13 +122,13 @@ export function scheduleChange(plan: PlanId, keep: string[]) {
   update((w) => ({ pendingPlan: plan, cancelAt: w.renewsAt, addOns: [...keep, ...w.addOns.filter((a) => !keep.includes(a))] }));
 }
 
-/** 14-day trial (Starter unless extra.plan says otherwise), no card. Used from onboarding and locked-module previews. */
+/** 14-day trial (Growth unless extra.plan says otherwise), no card. Used from onboarding and locked-module previews. */
 export const startTrial = (addOns: string[], extra: Partial<Workspace> = {}) =>
   saveWorkspace({
     ...readWorkspace(),
-    plan: "starter",
+    plan: TRIAL_PLAN,
     cycle: "monthly",
-    addOns: addOns.slice(0, planById(extra.plan ?? "starter").slots),
+    addOns: addOns.slice(0, planById(extra.plan ?? TRIAL_PLAN).slots),
     renewsAt: iso(Date.now() + 14 * DAY),
     trialEndsAt: iso(Date.now() + 14 * DAY),
     cancelAt: undefined,

@@ -3,12 +3,15 @@ import {
   Routes,
   Route,
   Navigate,
+  NavLink,
   Outlet,
   useLocation,
 } from "react-router-dom";
 import { Suspense, lazy, useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
 import Sidebar from "./components/Sidebar";
+import { NAV } from "./components/nav";
+import { listEvents, type EventRecord } from "./features/events/api";
+import { getSelectedEventId } from "./services/selectedEvent";
 import LandingPage from "./marketing/LandingPage";
 import Gate from "./features/billing/Gate";
 import { isLoggedIn } from "./services/authApi";
@@ -34,6 +37,11 @@ const FloorPlanPage = lazy(() => import("./features/floorplan/FloorPlanPage"));
 const VendorDetailPage = lazy(() => import("./features/vendors/VendorDetailPage"));
 const DocumentsPage = lazy(() => import("./features/documents/DocumentsPage"));
 
+// Pages reach the assistant drawer through useOutletContext<LayoutContext>().
+export type LayoutContext = { openAgent: () => void };
+
+const EXTRA_CRUMBS: Record<string, string> = { "/modules": "Modules", "/billing": "Plan & billing", "/billing/checkout": "Checkout" };
+
 // Layout wrapper for authenticated application routes.
 // No token -> straight to the login screen, remembering where they were headed.
 const MainLayout = () => {
@@ -43,6 +51,12 @@ const MainLayout = () => {
   // ponytail: a remount also drops unsaved page state (e.g. an unsaved floor plan);
   // switch to per-page refetch hooks if that bites.
   const [dataVersion, setDataVersion] = useState(0);
+  const [events, setEvents] = useState<EventRecord[]>([]);
+
+  // The sidebar's "current event" card. Refetched when the agent changes data.
+  useEffect(() => {
+    if (isLoggedIn()) listEvents().then(({ items }) => setEvents(items)).catch(() => setEvents([]));
+  }, [dataVersion]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -59,28 +73,52 @@ const MainLayout = () => {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
+  const selectedId = getSelectedEventId();
+  const event = events.find((e) => e._id === selectedId) ?? events[0] ?? null;
+  const here = NAV.find((n) => location.pathname.startsWith(n.path))?.label ?? EXTRA_CRUMBS[location.pathname] ?? "Workspace";
+  const openAgent = () => setAgentOpen(true);
+
   return (
-    <div className="flex min-h-screen bg-[#FBFBF9] text-slate-900">
-      <Sidebar />
-      {/* Main content */}
-      {/* <main className="flex-1 overflow-y-auto p-6"> */}
-      <main className="h-screen min-w-0 flex-1 overflow-y-auto p-6">
-        {/* Child routes render here */}
-        <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-gray-100 motion-reduce:animate-none" aria-label="Loading" />}>
-          <Outlet key={dataVersion} />
-        </Suspense>
+    <div className="flex min-h-screen bg-paper text-ink">
+      <Sidebar event={event} onOpenAgent={openAgent} />
+      <main className="h-screen min-w-0 flex-1 overflow-y-auto">
+        <div className="sticky top-0 z-20 border-b border-line bg-[rgba(242,245,241,.86)] backdrop-blur-[14px]">
+          <div className="flex h-[60px] items-center justify-between gap-4 px-[clamp(16px,3vw,32px)]">
+            <div className="flex min-w-0 items-center gap-2 text-[13px]">
+              <span className="truncate whitespace-nowrap text-ink-3">{event?.title ?? "EventOps"}</span>
+              <span className="text-[#C4CEC6]" aria-hidden="true">/</span>
+              <span className="truncate font-medium">{here}</span>
+            </div>
+            <button
+              type="button"
+              onClick={openAgent}
+              aria-keyshortcuts="Control+K"
+              className="flex h-9 min-w-0 flex-[0_1_340px] cursor-pointer items-center gap-2.5 rounded-full bg-surface px-3 text-[13px] text-ink-3 ring-1 ring-transparent hover:ring-ink"
+            >
+              <span className="size-1.5 flex-none rounded-full bg-live" aria-hidden="true" />
+              <span className="flex-1 truncate text-left">Ask AI about tasks, staff, vendors…</span>
+              <span className="font-mono text-[10.5px]">Ctrl K</span>
+            </button>
+          </div>
+          {/* Narrow screens: the sidebar is hidden, so workspaces become a scrolling pill row. */}
+          <nav aria-label="Workspaces" className="flex gap-1.5 overflow-x-auto px-4 pb-2.5 lg:hidden">
+            {NAV.map((n) => (
+              <NavLink
+                key={n.path}
+                to={n.path}
+                className={({ isActive }) => `rounded-full px-3 py-1.5 text-[13px] whitespace-nowrap ${isActive ? "bg-ink text-paper" : "bg-surface text-ink-2"}`}
+              >
+                {n.label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+        <div className="mx-auto max-w-[1240px] px-[clamp(16px,3vw,32px)] pt-[clamp(24px,4vw,44px)] pb-20">
+          <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-sunken motion-reduce:animate-none" aria-label="Loading" />}>
+            <Outlet key={dataVersion} context={{ openAgent } satisfies LayoutContext} />
+          </Suspense>
+        </div>
       </main>
-      {!agentOpen && (
-        <button
-          type="button"
-          onClick={() => setAgentOpen(true)}
-          aria-label="Open assistant (Ctrl+K)"
-          title="Assistant (Ctrl+K)"
-          className="fixed bottom-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700"
-        >
-          <Sparkles className="h-5 w-5" />
-        </button>
-      )}
       <Suspense>
         <AgentPanel
           open={agentOpen}

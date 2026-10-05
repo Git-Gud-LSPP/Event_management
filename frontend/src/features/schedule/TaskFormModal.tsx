@@ -71,40 +71,40 @@ export default function TaskFormModal({
   };
 
   const field =
-    "w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500";
+    "w-full rounded-xl border border-line px-3 py-2 text-sm outline-none focus:border-accent";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-lg rounded-2xl bg-surface p-6 shadow-xl">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="text-lg font-semibold text-ink">
             {task ? "Edit task" : "New task"}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
+          <button onClick={onClose} className="text-ink-3 hover:text-ink-2">
             <X size={18} />
           </button>
         </div>
 
         {error && (
-          <p className="mb-4 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
+          <p className="mb-4 rounded-xl bg-danger-soft px-3 py-2 text-xs font-medium text-danger">
             {error}
           </p>
         )}
 
         {staff.length === 0 && (
-          <p className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+          <p className="mb-4 rounded-xl bg-warn-soft px-3 py-2 text-xs font-medium text-warn">
             This event has no staff yet. Add people on the Staff page first — a task needs an owner.
           </p>
         )}
 
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-gray-600">Task name</label>
+            <label className="mb-1 block text-xs font-semibold text-ink-2">Task name</label>
             <input className={field} required value={name} onChange={(e) => setName(e.target.value)} />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-gray-600">Owner</label>
+            <label className="mb-1 block text-xs font-semibold text-ink-2">Owner</label>
             <select className={field} value={owner} onChange={(e) => setOwner(e.target.value)} required>
               <option value="">Select staff…</option>
               {staff.map((s) => (
@@ -117,7 +117,7 @@ export default function TaskFormModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-gray-600">Starts</label>
+              <label className="mb-1 block text-xs font-semibold text-ink-2">Starts</label>
               <input
                 className={field}
                 type="datetime-local"
@@ -127,7 +127,7 @@ export default function TaskFormModal({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-gray-600">Ends</label>
+              <label className="mb-1 block text-xs font-semibold text-ink-2">Ends</label>
               <input
                 className={field}
                 type="datetime-local"
@@ -139,7 +139,7 @@ export default function TaskFormModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-gray-600">Status</label>
+              <label className="mb-1 block text-xs font-semibold text-ink-2">Status</label>
               <select
                 className={field}
                 value={status}
@@ -153,7 +153,7 @@ export default function TaskFormModal({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-gray-600">Delay (minutes)</label>
+              <label className="mb-1 block text-xs font-semibold text-ink-2">Delay (minutes)</label>
               <input
                 className={field}
                 type="number"
@@ -165,7 +165,7 @@ export default function TaskFormModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-gray-600">Depends on</label>
+            <label className="mb-1 block text-xs font-semibold text-ink-2">Depends on</label>
             <select className={field} value={dependsOn} onChange={(e) => setDependsOn(e.target.value)}>
               <option value="">Nothing</option>
               {siblings
@@ -182,14 +182,14 @@ export default function TaskFormModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+              className="rounded-full px-4 py-2 text-sm font-medium text-ink-2 hover:bg-sunken"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-full bg-[#002F2B] px-5 py-2 text-sm font-medium text-white disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-full bg-[#16231C] px-5 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
               {saving && <Loader2 size={14} className="animate-spin" />}
               {task ? "Save changes" : "Create task"}

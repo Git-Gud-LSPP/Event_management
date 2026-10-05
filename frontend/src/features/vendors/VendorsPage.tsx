@@ -1,600 +1,320 @@
-import { useState, useRef, useEffect, type ElementType } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import "leaflet/dist/leaflet.css";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Loader2, LocateFixed } from "lucide-react";
+import L from "leaflet";
+import { MapContainer, Marker, TileLayer, Tooltip, useMap } from "react-leaflet";
 import { API_BASE } from "../../services/api";
-import {
-  Camera,
-  CakeSlice,
-  Utensils,
-  Flower2,
-  Music,
-  Palette,
-  Hotel,
-  UtensilsCrossed,
-  Search,
-  MapPin,
-  ChevronDown,
-  Navigation,
-  X,
-  Loader2,
-} from "lucide-react";
+import { PageHeader } from "../../components/DashboardHeader";
+import EventPicker, { useEventSelection } from "../../components/EventPicker";
+import { card, mono, pillOf, tableHead } from "../../components/ui";
+import { listEventVendors, type EventVendor } from "../documents/api";
+import type { Vendor } from "./vendorTypes";
 
 const categories = [
-  { name: "Photographers", value: "photographer", icon: Camera },
-  { name: "Bakeries",      value: "bakery",       icon: CakeSlice },
-  { name: "Catering",      value: "catering",     icon: Utensils },
-  { name: "Florists",      value: "florist",      icon: Flower2 },
-  { name: "Entertainment", value: "entertainment",icon: Music },
-  { name: "Decoration",    value: "decoration",   icon: Palette },
-  { name: "Hotels",        value: "hotel",        icon: Hotel },
-  { name: "Restaurants",   value: "restaurant",   icon: UtensilsCrossed },
+  { name: "Catering", value: "catering" },
+  { name: "Photographers", value: "photographer" },
+  { name: "Bakeries", value: "bakery" },
+  { name: "Florists", value: "florist" },
+  { name: "Entertainment", value: "entertainment" },
+  { name: "Decoration", value: "decoration" },
+  { name: "Hotels", value: "hotel" },
+  { name: "Restaurants", value: "restaurant" },
 ];
+const labelOf = (type: string) => categories.find((c) => c.value === type)?.name ?? type;
 
-type Vendor = {
-  id: string;
-  name: string;
-  type: string;
-  latitude: number;
-  longitude: number;
-  address?: string;
-  phone?: string;
-  website?: string;
-  image?: string;
-  distance: number;
-};
+type Loc = { latitude: number; longitude: number; label?: string };
 
-/* ------------------------------------------------------------------ */
-/*  VendorImage                                                         */
-/* ------------------------------------------------------------------ */
-type VendorImageProps = { src: string | null; name: string; Icon: ElementType };
-
-const NoImageFallback = ({ Icon }: { Icon: ElementType }) => (
-  <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
-    <Icon size={32} />
-    <span className="text-xs font-medium">No image available</span>
-  </div>
-);
-
-const VendorImage = ({ src, name, Icon }: VendorImageProps) => {
-  const [failed, setFailed] = useState(false);
-  if (!src || failed) {
-    return (
-      <div className="mb-5 h-32 overflow-hidden rounded-lg bg-slate-100">
-        <NoImageFallback Icon={Icon} />
-      </div>
-    );
-  }
-  return (
-    <div className="mb-5 h-32 overflow-hidden rounded-lg bg-slate-100">
-      <img src={src} alt={name} className="h-full w-full object-cover" onError={() => setFailed(true)} />
-    </div>
-  );
-};
-
-/* ------------------------------------------------------------------ */
-/*  Session-storage snapshot                                            */
-/* ------------------------------------------------------------------ */
+// Restored when coming back from a vendor's detail page.
 const SESSION_KEY = "vendorsPage_snapshot";
-
-type VendorsSnapshot = {
-  selectedCategory: string;
-  searchText: string;
-  location: { latitude: number; longitude: number; label?: string } | null;
-  vendors: Vendor[];
-  visibleCount: number;
-};
-
-function saveSnapshot(snapshot: VendorsSnapshot) {
-  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(snapshot)); } catch { /* ignore */ }
-}
-function loadSnapshot(): VendorsSnapshot | null {
+type Snapshot = { category: string; near: string; location: Loc | null; vendors: Vendor[] };
+const loadSnapshot = (): Snapshot | null => {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as VendorsSnapshot) : null;
-  } catch { return null; }
-}
-function clearSnapshot() {
-  try { sessionStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
-}
-
-/* ------------------------------------------------------------------ */
-/*  Nominatim geocoding (address -> coordinates)                        */
-/* ------------------------------------------------------------------ */
-type NominatimResult = {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
+    return raw ? (JSON.parse(raw) as Snapshot) : null;
+  } catch {
+    return null;
+  }
+};
+const saveSnapshot = (s: Snapshot) => {
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
+  } catch {
+    /* storage full or blocked: the page still works, it just won't restore */
+  }
 };
 
-async function geocodeAddress(query: string): Promise<NominatimResult[]> {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`;
-  const resp = await fetch(url, { headers: { "Accept-Language": "en" } });
-  if (!resp.ok) throw new Error("Geocoding failed");
-  return resp.json();
+async function geocode(query: string): Promise<Loc> {
+  const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`, {
+    headers: { "Accept-Language": "en" },
+  });
+  if (!resp.ok) throw new Error("Location search failed. Try again.");
+  const [hit] = (await resp.json()) as { lat: string; lon: string; display_name: string }[];
+  if (!hit) throw new Error(`No location found for "${query}".`);
+  return { latitude: parseFloat(hit.lat), longitude: parseFloat(hit.lon), label: hit.display_name };
 }
 
-/* ------------------------------------------------------------------ */
-/*  Location picker modal                                               */
-/* ------------------------------------------------------------------ */
-type LocationPickerProps = {
-  onClose: () => void;
-  onSelect: (loc: { latitude: number; longitude: number; label?: string }) => void;
-};
+const pin = (active: boolean) =>
+  L.divIcon({
+    className: "",
+    html: `<span style="display:block;width:100%;height:100%;border-radius:50%;background:${active ? "#16231C" : "#8A75D1"};box-shadow:0 0 0 3px #fff,0 6px 14px -4px rgba(0,0,0,.35)"></span>`,
+    iconSize: active ? [18, 18] : [12, 12],
+  });
+const venuePin = L.divIcon({
+  className: "",
+  html: `<span style="display:block;width:14px;height:14px;border-radius:3px;background:#3F8A64;box-shadow:0 0 0 3px #fff"></span>`,
+  iconSize: [14, 14],
+});
 
-const LocationPicker = ({ onClose, onSelect }: LocationPickerProps) => {
-  const [tab, setTab] = useState<"gps" | "search">("gps");
-  const [gpsLoading, setGpsLoading] = useState(false);
-  const [gpsError, setGpsError] = useState("");
-  const [query, setQuery] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<NominatimResult[]>([]);
-  const [searchError, setSearchError] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
+function FitTo({ points }: { points: [number, number][] }) {
+  const map = useMap();
+  const key = JSON.stringify(points);
   useEffect(() => {
-    if (tab === "search") inputRef.current?.focus();
-  }, [tab]);
+    if (points.length) map.fitBounds(points, { padding: [40, 40], maxZoom: 15 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refit only when the set of points changes
+  }, [key]);
+  return null;
+}
 
-  const handleGps = () => {
-    if (!navigator.geolocation) {
-      setGpsError("Geolocation is not supported by your browser.");
-      return;
-    }
-    setGpsLoading(true);
-    setGpsError("");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        onSelect({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, label: "Your current location" });
-        setGpsLoading(false);
-        onClose();
-      },
-      () => {
-        setGpsError("Could not get your location. Please allow location access in your browser.");
-        setGpsLoading(false);
-      }
-    );
-  };
+const money = (v: EventVendor) =>
+  v.quoteAmount == null ? "—" : new Intl.NumberFormat([], { style: "currency", currency: v.currency || "USD", maximumFractionDigits: 0 }).format(v.quoteAmount);
 
-  const handleSearch = async () => {
-    if (!query.trim()) return;
-    setSearching(true);
-    setSearchError("");
-    setResults([]);
-    try {
-      const r = await geocodeAddress(query.trim());
-      if (r.length === 0) setSearchError("No locations found. Try a different search.");
-      setResults(r);
-    } catch {
-      setSearchError("Search failed. Please try again.");
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  return (
-    /* Backdrop */
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <div className="flex items-center gap-2">
-            <MapPin size={18} className="text-indigo-600" />
-            <span className="font-bold text-slate-900">Set Location</span>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-slate-100">
-          <button
-            onClick={() => setTab("gps")}
-            className={`flex flex-1 items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors ${
-              tab === "gps"
-                ? "border-b-2 border-indigo-600 text-indigo-600"
-                : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            <Navigation size={15} />
-            Use My Location
-          </button>
-          <button
-            onClick={() => setTab("search")}
-            className={`flex flex-1 items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors ${
-              tab === "search"
-                ? "border-b-2 border-indigo-600 text-indigo-600"
-                : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            <Search size={15} />
-            Search a Location
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-6">
-          {tab === "gps" && (
-            <div className="flex flex-col items-center gap-4 py-4 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50">
-                <Navigation size={28} className="text-indigo-600" />
-              </div>
-              <div>
-                <p className="font-semibold text-slate-800">Use your device GPS</p>
-                <p className="mt-1 text-sm text-slate-500">
-                  Allow location access to automatically detect where you are.
-                </p>
-              </div>
-              {gpsError && (
-                <p className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
-                  {gpsError}
-                </p>
-              )}
-              <button
-                onClick={handleGps}
-                disabled={gpsLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-              >
-                {gpsLoading ? <><Loader2 size={16} className="animate-spin" /> Detecting…</> : <><Navigation size={16} /> Detect My Location</>}
-              </button>
-            </div>
-          )}
-
-          {tab === "search" && (
-            <div className="flex flex-col gap-3">
-              <div className="flex gap-2">
-                <div className="flex flex-1 items-center rounded-xl border border-slate-200 bg-slate-50 px-3">
-                  <Search size={16} className="shrink-0 text-slate-400" />
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    placeholder="e.g. Kathmandu, Nepal"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-                    className="flex-1 bg-transparent py-3 pl-2 text-sm outline-none"
-                  />
-                </div>
-                <button
-                  onClick={handleSearch}
-                  disabled={searching || !query.trim()}
-                  className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {searching ? <Loader2 size={15} className="animate-spin" /> : "Search"}
-                </button>
-              </div>
-
-              {searchError && (
-                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
-                  {searchError}
-                </p>
-              )}
-
-              {results.length > 0 && (
-                <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white">
-                  {results.map((r) => (
-                    <button
-                      key={r.place_id}
-                      onClick={() => {
-                        onSelect({
-                          latitude: parseFloat(r.lat),
-                          longitude: parseFloat(r.lon),
-                          label: r.display_name,
-                        });
-                        onClose();
-                      }}
-                      className="flex w-full items-start gap-2.5 border-b border-slate-100 px-4 py-3 text-left last:border-0 hover:bg-indigo-50"
-                    >
-                      <MapPin size={14} className="mt-0.5 shrink-0 text-indigo-400" />
-                      <span className="text-sm text-slate-700 leading-snug">{r.display_name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/* ------------------------------------------------------------------ */
-/*  Page size                                                           */
-/* ------------------------------------------------------------------ */
-const PAGE_SIZE = 10;
-
-/* ------------------------------------------------------------------ */
-/*  VendorsPage                                                         */
-/* ------------------------------------------------------------------ */
 const VendorsPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { events, selected, selectedId, setSelectedId } = useEventSelection();
+  const [snapshot] = useState(loadSnapshot);
 
-  const snapshot = loadSnapshot();
+  const [category, setCategory] = useState(snapshot?.category ?? "catering");
+  const [near, setNear] = useState(snapshot?.near ?? "");
+  const [location, setLocation] = useState<Loc | null>(snapshot?.location ?? null);
+  const [vendors, setVendors] = useState<Vendor[]>(snapshot?.vendors ?? []);
+  const [active, setActive] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [booked, setBooked] = useState<EventVendor[]>([]);
 
-  const [selectedCategory, setSelectedCategory] = useState(snapshot?.selectedCategory ?? "");
-  const [searchText, setSearchText]             = useState(snapshot?.searchText ?? "");
-  const [location, setLocation]                 = useState<{ latitude: number; longitude: number; label?: string } | null>(snapshot?.location ?? null);
-  const [vendors, setVendors]                   = useState<Vendor[]>(snapshot?.vendors ?? []);
-  const [visibleCount, setVisibleCount]         = useState(snapshot?.visibleCount ?? PAGE_SIZE);
+  useEffect(() => {
+    if (!selectedId) return;
+    listEventVendors(selectedId).then(setBooked).catch(() => setBooked([]));
+  }, [selectedId]);
 
-  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
-  const [vendorLoading, setVendorLoading]            = useState(false);
-  const [error, setError]                            = useState("");
-
-  // Filtered + paginated slice
-  const filtered = vendors.filter((v) => {
-    if (!searchText.trim()) return true;
-    const q = searchText.toLowerCase();
-    return (
-      v.name.toLowerCase().includes(q) ||
-      (v.address ?? "").toLowerCase().includes(q)
-    );
-  });
-
-  const visible   = filtered.slice(0, visibleCount);
-  const hasMore   = visibleCount < filtered.length;
-
-  // Fetch nearby vendors from backend
-  const handleSearch = () => {
-    if (!selectedCategory) { setError("Please select a vendor category."); return; }
-    if (!location)          { setError("Please set your location first."); return; }
-    runSearch(selectedCategory, location);
-  };
-
-  const runSearch = async (type: string, loc: { latitude: number; longitude: number }) => {
-    clearSnapshot();
-    setVendorLoading(true);
+  const runSearch = async (type: string, loc: Loc) => {
+    setLoading(true);
     setError("");
-    setVisibleCount(PAGE_SIZE);
-
     try {
-      const response = await fetch(
-        `${API_BASE}/vendors/nearby?type=${encodeURIComponent(type)}&latitude=${loc.latitude}&longitude=${loc.longitude}`
-      );
-      if (!response.ok) throw new Error("Failed to fetch vendors");
-      const data = await response.json();
-      setVendors(data.items || []);
+      const resp = await fetch(`${API_BASE}/vendors/nearby?type=${encodeURIComponent(type)}&latitude=${loc.latitude}&longitude=${loc.longitude}`);
+      if (!resp.ok) throw new Error();
+      setVendors(((await resp.json()).items as Vendor[]) ?? []);
     } catch {
       setError("Unable to find vendors right now. Please try again.");
       setVendors([]);
     } finally {
-      setVendorLoading(false);
+      setLoading(false);
     }
   };
 
-  // The assistant opens /vendors?type=catering&near=<address>: geocode it and search here.
-  // The params are cleared right away so a reload or back navigation does not search again.
-  const linkedType = searchParams.get("type");
-  const linkedNear = searchParams.get("near");
-  const linkedRef = useRef(""); // StrictMode runs effects twice; search once
-  useEffect(() => {
-    if (!linkedType || !linkedNear || linkedRef.current === `${linkedType}|${linkedNear}`) return;
-    linkedRef.current = `${linkedType}|${linkedNear}`;
-    setSearchParams({}, { replace: true });
-    setSelectedCategory(linkedType);
-    setSearchText("");
-    setVendorLoading(true);
+  // Geocode the NEAR text, then search. Used by the form, the event's venue and assistant links.
+  const searchNear = async (type: string, text: string) => {
+    if (!text.trim()) return setError("Type a venue or address to search near.");
+    setLoading(true);
     setError("");
-    geocodeAddress(linkedNear)
-      .then((hits) => {
-        if (!hits.length) throw new Error(`No location found for "${linkedNear}".`);
-        const loc = { latitude: parseFloat(hits[0].lat), longitude: parseFloat(hits[0].lon), label: hits[0].display_name };
-        setLocation(loc);
-        return runSearch(linkedType, loc);
-      })
-      .catch((e: Error) => {
-        setError(e.message || "Could not find that location.");
-        setVendorLoading(false);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per linked search
-  }, [linkedType, linkedNear]);
+    try {
+      const loc = await geocode(text.trim());
+      setLocation(loc);
+      await runSearch(type, loc);
+    } catch (e) {
+      setError((e as Error).message);
+      setLoading(false);
+    }
+  };
 
-  // Navigate to detail page, persisting snapshot
-  const handleViewVendor = (vendor: Vendor) => {
-    saveSnapshot({ selectedCategory, searchText, location, vendors, visibleCount });
+  // First visit: search near the selected event's venue. The assistant links /vendors?type=…&near=…
+  const started = useRef(false); // StrictMode runs effects twice; search once
+  useEffect(() => {
+    if (started.current) return;
+    const linkedType = searchParams.get("type");
+    const linkedNear = searchParams.get("near");
+    if (linkedType && linkedNear) {
+      started.current = true;
+      setSearchParams({}, { replace: true }); // a reload shouldn't search again
+      setCategory(linkedType);
+      setNear(linkedNear);
+      searchNear(linkedType, linkedNear);
+    } else if (!snapshot && selected?.location) {
+      started.current = true;
+      setNear(selected.location);
+      searchNear(category, selected.location);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot on first data
+  }, [selected, searchParams]);
+
+  const useGps = () => {
+    if (!navigator.geolocation) return setError("Geolocation is not supported by this browser.");
+    setLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, label: "Your location" };
+        setNear("Your location");
+        setLocation(loc);
+        runSearch(category, loc);
+      },
+      () => {
+        setLoading(false);
+        setError("Could not get your location. Allow location access, or type an address.");
+      }
+    );
+  };
+
+  const pickCategory = (value: string) => {
+    setCategory(value);
+    if (location) runSearch(value, location);
+  };
+
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    searchNear(category, near);
+  };
+
+  const openVendor = (vendor: Vendor) => {
+    saveSnapshot({ category, near, location, vendors });
     navigate(`/vendors/${vendor.id}`, { state: { vendor, userLocation: location } });
   };
 
+  const committed = booked.filter((v) => v.stage === "Booked" || v.stage === "Paid").length;
+  const chip = (on: boolean) =>
+    `cursor-pointer rounded-full border px-[13px] py-2 text-[13px] ${on ? "border-ink bg-ink text-paper" : "border-line bg-surface text-ink-2 hover:border-ink"}`;
+
   return (
-    <div className="p-8 bg-[#FBFBF9] min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div>
+      <PageHeader eyebrow="Vendors" title="Find vendors" subtitle="Search suppliers near your venue, then track every booking against the event.">
+        <EventPicker events={events} selectedId={selectedId} onSelect={setSelectedId} />
+      </PageHeader>
 
-        {/* Location picker modal */}
-        {locationPickerOpen && (
-          <LocationPicker
-            onClose={() => setLocationPickerOpen(false)}
-            onSelect={(loc) => { setLocation(loc); setError(""); }}
+      <div className="mb-4 flex flex-wrap items-center gap-2.5 rounded-2xl bg-surface p-3">
+        <form onSubmit={onSubmit} className="flex h-10 min-w-60 flex-1 items-center gap-2 rounded-full bg-paper pr-1.5 pl-3.5">
+          <label htmlFor="vendor-near" className={`${mono} text-[#6E7C73]`}>NEAR</label>
+          <input
+            id="vendor-near"
+            value={near}
+            onChange={(e) => setNear(e.target.value)}
+            placeholder="Venue, address or city"
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none"
           />
-        )}
-
-        {/* ── Header ── */}
-        <div className="mb-3 inline-block rounded-full bg-emerald-100 px-4 py-1.5 text-xs font-bold tracking-wide text-emerald-700">
-          VENDOR MANAGEMENT
-        </div>
-        <h1 className="text-4xl font-black tracking-tight text-slate-950">Find Vendors</h1>
-        <p className="mt-2 text-slate-500">Discover vendors and services for your events.</p>
-
-        {/* ── Search bar ── */}
-        <div className="mt-8 flex gap-3 flex-wrap">
-
-          {/* Category + keyword input */}
-          <div className="flex flex-1 min-w-0 items-center rounded-xl border border-slate-200 bg-white shadow-sm focus-within:border-indigo-400 focus-within:ring-1 focus-within:ring-indigo-400">
-            {/* Category dropdown */}
-            <div className="relative flex items-center border-r border-slate-200 pl-4 pr-2 shrink-0">
-              <select
-                value={selectedCategory}
-                onChange={(e) => { setSelectedCategory(e.target.value); setError(""); }}
-                className="cursor-pointer appearance-none bg-transparent py-4 pr-8 text-center text-sm font-medium text-slate-700 outline-none [text-align-last:center]"
-              >
-                <option value="" className="text-center">All Categories</option>
-                {categories.map((c) => (
-                  <option key={c.value} value={c.value} className="text-center">{c.name}</option>
-                ))}
-              </select>
-              <ChevronDown size={16} className="pointer-events-none absolute right-3 text-slate-400" />
-            </div>
-
-            {/* Search input */}
-            <div className="flex flex-1 items-center px-4 min-w-0">
-              <Search size={18} className="shrink-0 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search vendors…"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="w-full bg-transparent py-4 pl-3 text-sm outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Set Location button */}
-          <button
-            onClick={() => setLocationPickerOpen(true)}
-            className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-          >
-            <MapPin size={16} className={location ? "text-emerald-500" : "text-slate-400"} />
-            {location ? "Change Location" : "Set Location"}
+          <button type="button" onClick={useGps} aria-label="Use my location" title="Use my location" className="cursor-pointer rounded-full p-1.5 text-ink-3 hover:bg-surface hover:text-ink">
+            <LocateFixed size={15} />
           </button>
-
-          {/* Find Vendors button */}
-          <button
-            onClick={handleSearch}
-            disabled={vendorLoading}
-            className="shrink-0 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {vendorLoading ? "Searching…" : "Find Vendors"}
-          </button>
-        </div>
-
-        {/* ── Location status ── */}
-        {location && (
-          <div className="mt-4 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-            <div className="flex items-center gap-2 text-sm text-emerald-700">
-              <MapPin size={15} className="shrink-0" />
-              <span className="font-semibold">
-                {location.label ?? `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`}
-              </span>
-            </div>
-            <button
-              onClick={() => setLocationPickerOpen(true)}
-              className="text-xs font-medium text-emerald-600 underline hover:text-emerald-800"
-            >
-              Change
+          <button type="submit" className="cursor-pointer rounded-full bg-ink px-3 py-1 text-[13px] text-paper hover:bg-ink-hover">Search</button>
+        </form>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Vendor type">
+          {categories.map((c) => (
+            <button key={c.value} type="button" aria-pressed={category === c.value} onClick={() => pickCategory(c.value)} className={chip(category === c.value)}>
+              {c.name}
             </button>
-          </div>
-        )}
+          ))}
+        </div>
+      </div>
 
-        {/* ── Error ── */}
-        {error && (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-            {error}
-          </div>
-        )}
+      {error && <p role="alert" className="mb-4 rounded-xl bg-danger-soft px-4 py-3 text-sm font-medium text-danger">{error}</p>}
 
-        {/* ── Vendors section ── */}
-        <div className="mt-10">
-          <div className="mb-5">
-            <h2 className="text-xl font-bold text-slate-950">
-              {vendors.length > 0 ? `Nearby Vendors (${filtered.length})` : "Find Nearby Vendors"}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {vendors.length > 0
-                ? `Showing ${visible.length} of ${filtered.length} vendors near your selected location.`
-                : "Select a category, set your location, and find vendors near you."}
-            </p>
-          </div>
-
-          {/* Loading */}
-          {vendorLoading && (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-12 gap-3">
-              <Loader2 size={32} className="animate-spin text-indigo-500" />
-              <p className="font-semibold text-slate-700">Finding nearby vendors…</p>
-              <p className="text-sm text-slate-500">Searching OpenStreetMap for vendors near you.</p>
-            </div>
+      <div className="mb-10 grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))]">
+        <div className="relative isolate h-[440px] overflow-hidden rounded-2xl bg-[repeating-linear-gradient(135deg,#E9EFE8_0_10px,#F2F5F1_10px_20px)]">
+          {location ? (
+            <MapContainer center={[location.latitude, location.longitude]} zoom={14} scrollWheelZoom={false} className="h-full w-full">
+              <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <FitTo points={[[location.latitude, location.longitude], ...vendors.map((v) => [v.latitude, v.longitude] as [number, number])]} />
+              <Marker position={[location.latitude, location.longitude]} icon={venuePin}>
+                <Tooltip direction="right" offset={[10, 0]} permanent>{near || "Search point"}</Tooltip>
+              </Marker>
+              {vendors.map((v) => (
+                <Marker key={v.id} position={[v.latitude, v.longitude]} icon={pin(v.id === active)} eventHandlers={{ click: () => setActive(v.id) }}>
+                  <Tooltip>{v.name}</Tooltip>
+                </Marker>
+              ))}
+            </MapContainer>
+          ) : (
+            <span className={`${mono} absolute top-3.5 left-4 text-[11px] text-[#6E7C73]`}>MAP · SEARCH A LOCATION</span>
           )}
+        </div>
 
-          {/* Empty state */}
-          {!vendorLoading && vendors.length === 0 && (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
-              <MapPin size={36} className="mx-auto text-slate-300" />
-              <h3 className="mt-3 font-bold text-slate-700">No vendors to show yet</h3>
-              <p className="mt-1 text-sm text-slate-500">
-                Choose a category, set your location, and click "Find Vendors".
-              </p>
-            </div>
-          )}
-
-          {/* Vendor grid */}
-          {!vendorLoading && visible.length > 0 && (
-            <>
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {visible.map((vendor) => {
-                  const category = categories.find((c) => c.value === vendor.type);
-                  const Icon = category?.icon || Camera;
-
-                  return (
-                    <div
-                      key={vendor.id}
-                      className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      <VendorImage src={vendor.image ?? null} name={vendor.name} Icon={Icon} />
-
-                      <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
-                        {category?.name || vendor.type}
-                      </p>
-
-                      <h3 className="mt-2 text-lg font-bold text-slate-950 leading-snug">
-                        {vendor.name}
-                      </h3>
-
-                      <div className="mt-3 flex items-start gap-2 text-sm text-slate-500">
-                        <MapPin size={15} className="mt-0.5 shrink-0" />
-                        <span className="leading-relaxed">{vendor.address || "Address not available"}</span>
-                      </div>
-
-                      <p className="mt-2 text-sm font-medium text-slate-500">
-                        {vendor.distance} km away
-                      </p>
-
-                      <button
-                        onClick={() => handleViewVendor(vendor)}
-                        className="mt-5 w-full rounded-lg border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                      >
-                        View Vendor
-                      </button>
-                    </div>
-                  );
-                })}
+        <div className={card}>
+          <div className="flex items-center justify-between border-b border-line-soft px-[18px] py-3.5">
+            <span className="text-[15px] font-medium">{loading ? "Searching…" : `${vendors.length} ${labelOf(category).toLowerCase()} nearby`}</span>
+            <span className={`${mono} text-accent`}>SORTED BY DISTANCE</span>
+          </div>
+          <div className="max-h-[384px] overflow-y-auto">
+            {loading ? (
+              <div className="flex items-center justify-center gap-2 py-16 text-sm text-ink-3">
+                <Loader2 size={16} className="animate-spin" /> Searching OpenStreetMap…
               </div>
+            ) : vendors.length === 0 ? (
+              <p className="px-6 py-16 text-center text-sm text-ink-3">
+                {location ? "No vendors of this type nearby. Try another type." : "Type a venue or address above and press Search."}
+              </p>
+            ) : (
+              vendors.map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => openVendor(v)}
+                  onMouseEnter={() => setActive(v.id)}
+                  onFocus={() => setActive(v.id)}
+                  className={`grid w-full cursor-pointer grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 border-b border-line-soft px-[18px] py-3 text-left last:border-0 hover:bg-soft ${v.id === active ? "bg-soft" : ""}`}
+                >
+                  {v.image ? (
+                    <img src={v.image} alt="" className="size-11 rounded-[10px] object-cover" onError={(e) => (e.currentTarget.style.visibility = "hidden")} />
+                  ) : (
+                    <span className="size-11 rounded-[10px] bg-[repeating-linear-gradient(135deg,#E6ECE5_0_5px,#F2F5F1_5px_10px)]" />
+                  )}
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-ink">{v.name}</span>
+                    <span className="mt-0.5 block truncate text-xs text-[#6E7C73]">
+                      {labelOf(v.type)} · {v.address || "Address not listed"}
+                    </span>
+                  </span>
+                  <span className="text-right">
+                    <span className="block font-mono text-xs text-ink">{v.distance} km</span>
+                    {v.phone && <span className="mt-0.5 block text-xs text-ink-3">has phone</span>}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
 
-              {/* Load More */}
-              {hasMore && (
-                <div className="mt-8 flex flex-col items-center gap-2">
-                  <p className="text-sm text-slate-400">
-                    Showing {visible.length} of {filtered.length} vendors
-                  </p>
-                  <button
-                    onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
-                    className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-8 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
-                  >
-                    Load {Math.min(PAGE_SIZE, filtered.length - visibleCount)} more vendors
-                    <ChevronDown size={16} />
-                  </button>
-                </div>
-              )}
-
-              {/* All loaded indicator */}
-              {!hasMore && filtered.length > PAGE_SIZE && (
-                <p className="mt-8 text-center text-sm text-slate-400">
-                  All {filtered.length} vendors shown.
-                </p>
-              )}
-            </>
+      <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-[22px] font-medium tracking-[-0.03em]">Booked vendors</h2>
+        <span className="flex items-baseline gap-4">
+          <span className={`${mono} text-[11px] text-[#6E7C73]`}>{committed} COMMITTED · {booked.length} TRACKED</span>
+          <Link to="/documents" className="text-[12.5px] text-ink-3 hover:text-ink">Manage in Documents →</Link>
+        </span>
+      </div>
+      <div className={`${card} overflow-x-auto`}>
+        <div className="min-w-[720px]">
+          <div className={`grid grid-cols-[1.6fr_1fr_1.8fr_.8fr_.9fr] gap-2 ${tableHead}`}>
+            <span>VENDOR</span>
+            <span>SERVICE</span>
+            <span>SCOPE</span>
+            <span>AMOUNT</span>
+            <span>STAGE</span>
+          </div>
+          {booked.map((v) => (
+            <div key={v._id} className="grid grid-cols-[1.6fr_1fr_1.8fr_.8fr_.9fr] items-center gap-2 border-b border-line-soft px-[18px] py-3 text-[13px] last:border-0">
+              <div className="min-w-0">
+                <div className="truncate">{v.name}</div>
+                <div className="truncate text-[11.5px] text-[#6E7C73]">{v.contactName || v.email || v.phone || "No contact yet"}</div>
+              </div>
+              <span className="text-ink-2">{v.type ? labelOf(v.type) : "—"}</span>
+              <span className="truncate text-[12.5px] text-ink-3">{v.scope || "—"}</span>
+              <span className="font-mono text-xs">{money(v)}</span>
+              <span><span className={pillOf(v.stage)}>{v.stage}</span></span>
+            </div>
+          ))}
+          {booked.length === 0 && (
+            <p className="py-10 text-center text-sm text-ink-3">
+              {selected ? `No vendors tracked on ${selected.title} yet. Open a vendor above and add it to the event.` : "Pick an event to see its vendors."}
+            </p>
           )}
         </div>
       </div>

@@ -13,9 +13,9 @@ const field =
 /** Shell shared by signup, onboarding and contact sales: wordmark, one centered column, auto dark mode. */
 export function FlowShell({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
   return (
-    <div className="eh-auto flex min-h-[100dvh] flex-col bg-paper font-sans text-ink">
+    <div className="flex min-h-[100dvh] flex-col bg-paper font-sans text-ink">
       <header className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between px-4 md:px-6">
-        <Link to="/" aria-label="EventHQ home"><Wordmark /></Link>
+        <Link to="/" aria-label="EventOps home"><Wordmark /></Link>
         {aside}
       </header>
       <main id="main" className="flex flex-1 items-start justify-center px-4 pb-16 pt-8 md:pt-16">{children}</main>
@@ -36,7 +36,7 @@ export default function SignupPage() {
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    document.title = "Start free · EventHQ";
+    document.title = "Start free · EventOps";
     if (step === 2) nameRef.current?.focus();
   }, [step]);
 

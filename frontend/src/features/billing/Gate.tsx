@@ -65,12 +65,12 @@ function LockedModule({ id }: { id: string }) {
             ))}
           </ul>
           <p className="mt-8 border-t border-line pt-4 text-sm text-ink-2">
-            Included as one of your picks on Starter and Growth, and with every Enterprise plan.{" "}
-            {w.plan !== "free" && (slots > 0 ? `You have ${slots} free slot${slots === 1 ? "" : "s"}.` : "All your slots are in use.")}
+            Included as one of your picks on every plan, and always on Enterprise.{" "}
+            {slots > 0 ? `You have ${slots} free slot${slots === 1 ? "" : "s"}.` : "All your slots are in use."}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button type="button" onClick={add} className={buttonCls.primary}>
-              {w.plan === "free" ? "Try it free for 14 days" : "Add to my plan"}
+              Add to my plan
             </button>
             <Link to="/events" className={buttonCls.secondary}>Back to events</Link>
           </div>

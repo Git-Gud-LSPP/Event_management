@@ -2,48 +2,35 @@
 @import "@fontsource-variable/geist/wght.css";
 @import "@fontsource-variable/geist-mono/wght.css";
 
-/* EventHQ design tokens. Docs: docs/design/04-design-system.md
+/* EventOps design tokens (v2, from claude.ai/design "EventOps App v2"). Docs: docs/design/04-design-system.md
    Raw values live on --eh-*; Tailwind utilities point at them (bg-paper, text-ink, border-line, ...).
-   Light everywhere by default. `.eh-auto` opts a subtree into system dark mode
-   (public pages today; add it to MainLayout once the app redesign lands). */
+   Light only: the v2 design has no dark theme. */
 :root {
-  --eh-bg: #f6f7f5;
-  --eh-surface: #fdfdfc;
-  --eh-sunken: #eef0ed;
-  --eh-ink: #111614;
-  --eh-ink-2: #4a524e;
-  --eh-ink-3: #626b66;
-  --eh-line: #dce0dd;
-  --eh-line-strong: #7f8883;
-  --eh-accent: #b83a0b;
-  --eh-accent-ink: #fdfdfc;
-  --eh-accent-soft: #f8e7df;
-  --eh-grid: rgb(17 22 20 / 0.045);
-  --eh-danger: #b42318;
-  --eh-danger-soft: #fdecea;
-  --eh-shadow: 0 16px 40px -16px rgb(17 22 20 / 0.22);
+  --eh-bg: #f2f5f1;
+  --eh-surface: #ffffff;
+  --eh-sunken: #e6ece5;
+  --eh-soft: #f6f9f5; /* table heads, board columns */
+  --eh-ink: #16231c;
+  --eh-ink-hover: #2c3d33;
+  --eh-ink-2: #44524a;
+  --eh-ink-3: #5c6a62;
+  --eh-line: #e1e8e0;
+  --eh-line-soft: #edf2ec;
+  --eh-line-strong: #8a978f; /* form controls: keeps 3:1 against white (WCAG 1.4.11) */
+  --eh-accent: #2f7552; /* green that passes as text */
+  --eh-accent-ink: #f2f5f1;
+  --eh-accent-soft: #e3f1e7;
+  --eh-live: #3f8a64; /* dots, bars */
+  --eh-ai: #c9bdf2; /* AI labels on ink */
+  --eh-ai-soft: #e6def6;
+  --eh-ai-ink: #4b3a86;
+  --eh-grid: rgb(22 35 28 / 0.05);
+  --eh-danger: #8a2e52;
+  --eh-danger-soft: #f4dce6;
+  --eh-warn: #6b5112;
+  --eh-warn-soft: #f3e7c8;
+  --eh-shadow: 0 24px 48px -32px rgb(20 45 30 / 0.35);
   color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  .eh-auto {
-    --eh-bg: #0e1211;
-    --eh-surface: #151a18;
-    --eh-sunken: #0a0d0c;
-    --eh-ink: #eceeed;
-    --eh-ink-2: #a7b0ab;
-    --eh-ink-3: #8a938e;
-    --eh-line: #232a27;
-    --eh-line-strong: #5a645f;
-    --eh-accent: #ff7a45;
-    --eh-accent-ink: #0e1211;
-    --eh-accent-soft: #2a1a12;
-    --eh-grid: rgb(236 238 237 / 0.04);
-    --eh-danger: #ff8a7a;
-    --eh-danger-soft: #3a1612;
-    --eh-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.6);
-    color-scheme: dark;
-  }
 }
 
 @theme inline {
@@ -58,6 +45,15 @@
   --color-accent: var(--eh-accent);
   --color-accent-ink: var(--eh-accent-ink);
   --color-accent-soft: var(--eh-accent-soft);
+  --color-soft: var(--eh-soft);
+  --color-ink-hover: var(--eh-ink-hover);
+  --color-line-soft: var(--eh-line-soft);
+  --color-live: var(--eh-live);
+  --color-ai: var(--eh-ai);
+  --color-ai-soft: var(--eh-ai-soft);
+  --color-ai-ink: var(--eh-ai-ink);
+  --color-warn: var(--eh-warn);
+  --color-warn-soft: var(--eh-warn-soft);
   --color-danger: var(--eh-danger);
   --color-danger-soft: var(--eh-danger-soft);
   --shadow-overlay: var(--eh-shadow);
@@ -66,15 +62,15 @@
 @theme {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, monospace;
-  --radius-control: 6px;
-  --radius-card: 10px;
+  --radius-control: 999px;
+  --radius-card: 16px;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-quint: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 /* Focus: one visible ring everywhere, 2px accent with offset (WCAG 2.4.7 / 2.4.11). */
 :focus-visible {
-  outline: 2px solid var(--eh-accent);
+  outline: 2px solid var(--eh-live);
   outline-offset: 2px;
 }
 
@@ -91,69 +87,7 @@
   background-size: 48px 48px;
 }
 
-/* Motion. Everything below collapses to the final state under reduced motion. */
-.eh-reveal {
-  opacity: 0;
-  transform: translateY(16px);
-  transition:
-    opacity 560ms var(--ease-out-expo),
-    transform 560ms var(--ease-out-expo);
-  transition-delay: calc(var(--i, 0) * 60ms);
-}
-.eh-reveal.is-in {
-  opacity: 1;
-  transform: none;
-}
-
-/* Self-drawing strokes: give the path pathLength="1". */
-.eh-draw {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  transition: stroke-dashoffset 1400ms var(--ease-in-out-quint);
-  transition-delay: calc(var(--i, 0) * 90ms);
-}
-.is-in .eh-draw {
-  stroke-dashoffset: 0;
-}
-
-/* Module grid assembling: cells scale up in a diagonal cascade. */
-.eh-cell {
-  opacity: 0;
-  transform: scale(0.92);
-  transition:
-    opacity 400ms var(--ease-out-expo),
-    transform 400ms var(--ease-out-expo),
-    background-color 180ms,
-    border-color 180ms,
-    color 180ms;
-  transition-delay: calc(var(--i, 0) * 8ms);
-}
-.is-in .eh-cell {
-  opacity: 1;
-  transform: none;
-}
-
-/* Diagram cells switch on once their connecting line has drawn in. */
-.eh-light {
-  transition: fill 300ms, stroke 300ms;
-  transition-delay: calc(var(--i, 0) * 90ms + 1100ms);
-}
-.is-in .eh-light {
-  fill: var(--eh-accent-soft);
-  stroke: var(--eh-accent);
-}
-
-/* Value swaps (pricing toggle): remount with key= and this plays. */
-@keyframes eh-swap {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-}
-.eh-swap {
-  animation: eh-swap 240ms var(--ease-out-expo);
-}
-
+/* Pressable feedback. */
 .eh-press {
   transition: transform 150ms var(--ease-out-expo), background-color 180ms, border-color 180ms, color 180ms;
 }
@@ -162,20 +96,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .eh-reveal,
-  .eh-cell {
-    opacity: 1;
+  .eh-press:active {
     transform: none;
-    transition: none;
-  }
-  .eh-draw {
-    stroke-dashoffset: 0;
-    transition: none;
-  }
-  .eh-light,
-  .eh-swap {
-    transition: none;
-    animation: none;
   }
   html {
     scroll-behavior: auto !important;
@@ -184,4 +106,43 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+body {
+  background: var(--eh-bg);
+  color: var(--eh-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Lenis smooth scroll (landing only). */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* SVAR Gantt (schedule timeline) themed to the v2 run-of-show. */
+.eh-gantt .wx-willow-theme {
+  --wx-font-family: inherit;
+  --wx-font-size: 13px;
+  --wx-color-font: var(--eh-ink);
+  --wx-background: var(--eh-surface);
+  --wx-background-alt: var(--eh-soft);
+  --wx-gantt-border: 1px solid var(--eh-line-soft);
+  --wx-gantt-border-color: var(--eh-line-soft);
+  --wx-gantt-select-color: #f4f9f3;
+  --wx-gantt-bar-border-radius: 6px;
+  --wx-gantt-bar-shadow: none;
+  --wx-gantt-link-color: #c4cec6;
+  --wx-gantt-link-color-hovered: var(--eh-ink-3);
+  --wx-grid-header-font: 400 10.5px var(--font-mono);
+  --wx-grid-header-font-color: var(--eh-ink-3);
+  --wx-grid-header-text-transform: uppercase;
+  --wx-timescale-font: 400 10.5px var(--font-mono);
+  --wx-timescale-font-color: #6e7c73;
 }

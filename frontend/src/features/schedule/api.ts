@@ -57,6 +57,7 @@ export const toTask = (item: ScheduleItem): Task => {
     ownerId: item.owner?._id,
     initials: item.owner ? initialsOf(item.owner.name) : "—",
     start: start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+    startsAt: item.startsAt,
     duration: `${durationMinutes}m`,
     status: item.status,
     dependsOn: item.dependsOn?.name,

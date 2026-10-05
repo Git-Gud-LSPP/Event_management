@@ -1,575 +1,227 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  List,
-  LayoutGrid,
-  CheckCircle2,
-  Circle,
-  AlertCircle,
-  Clock3,
-  Loader2,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 
-import type { Task, TaskStatus } from "../schedule/data";
+import { priorityOf, type Task, type TaskStatus } from "../schedule/data";
 import { listSchedule, toTask, updateTask } from "../schedule/api";
+import { PageHeader, Segmented } from "../../components/DashboardHeader";
 import EventPicker, { useEventSelection } from "../../components/EventPicker";
+import { PRIORITY_TEXT, card, mono, pillOf } from "../../components/ui";
 import { getStoredUser } from "../../services/authApi";
 
-type ViewMode = "list" | "board";
+const DAY = 86_400_000;
+const endOfToday = () => new Date().setHours(23, 59, 59, 999);
 
-type Priority = "High" | "Medium" | "Low";
-
-// The schedule backend has no priority field, so derive one for display:
-// blocked or delayed tasks need attention first.
-const getPriority = (task: Task): Priority => {
-  if (task.status === "Blocked" || task.delayed) return "High";
-  if (task.status === "In Progress") return "Medium";
-  if (task.status === "Pending") return "Medium";
-  return "Low";
-};
-
-const getStatusClasses = (status: Task["status"]) => {
-  switch (status) {
-    case "Done":
-      return "bg-emerald-50 text-emerald-600";
-
-    case "In Progress":
-      return "bg-indigo-50 text-indigo-600";
-
-    case "Blocked":
-      return "bg-red-50 text-red-500";
-
-    case "Pending":
-      return "bg-gray-100 text-gray-600";
-
-    default:
-      return "bg-gray-100 text-gray-600";
-  }
-};
-
-const getPriorityClasses = (priority: Priority) => {
-  switch (priority) {
-    case "High":
-      return "text-red-500";
-
-    case "Medium":
-      return "text-amber-500";
-
-    case "Low":
-      return "text-slate-500";
-
-    default:
-      return "text-slate-500";
-  }
-};
-
-const Avatar = ({ initials }: { initials: string }) => {
-  return (
-    <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-semibold shrink-0">
-      {initials}
-    </div>
-  );
-};
-
-const TaskCard = ({
-  task,
-  eventTitle,
-  board = false,
-  completed,
-  onToggle,
-}: {
-  task: Task;
-  eventTitle: string;
-  board?: boolean;
-  completed: boolean;
-  onToggle: () => void;
-}) => {
-  const priority = getPriority(task);
-
-  const isDone = completed;
-  const isBlocked = task.status === "Blocked" && !completed;
-
-  return (
-    <div
-      draggable={board}
-      onDragStart={
-        board
-          ? (e) => {
-              e.dataTransfer.setData("text/plain", task.id);
-              e.dataTransfer.effectAllowed = "move";
-            }
-          : undefined
-      }
-      className={`
-        bg-white rounded-xl border shadow-sm
-        transition-all hover:shadow-md
-        ${isBlocked ? "border-red-200" : "border-gray-200"}
-        ${board ? "p-4 cursor-grab active:cursor-grabbing" : "px-4 py-5"}
-      `}
-    >
-      {/* TOP / TASK NAME */}
-      {!board && (
-        <button
-          type="button"
-          onClick={onToggle}
-          className="pt-1 shrink-0 cursor-pointer"
-          aria-label={
-            isDone
-              ? `Mark ${task.name} as incomplete`
-              : `Mark ${task.name} as complete`
-          }
-        >
-          {isDone ? (
-            <CheckCircle2
-              className="w-5 h-5 text-emerald-500"
-              fill="currentColor"
-            />
-          ) : (
-            <Circle className="w-5 h-5 text-gray-300 hover:text-emerald-500 transition-colors" />
-          )}
-        </button>
-      )}
-      <div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start gap-2 flex-wrap">
-            <h3
-              className={`
-                text-sm font-medium
-                ${isDone ? "text-gray-400 line-through" : "text-slate-900"}
-              `}
-            >
-              {task.name}
-            </h3>
-
-            {isBlocked && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-500 text-[10px] font-medium">
-                <AlertCircle className="w-3 h-3" />
-                Blocked
-              </span>
-            )}
-          </div>
-
-          {!board && <p className="mt-1 text-xs text-slate-400">{eventTitle}</p>}
-
-          {board && isBlocked && task.dependsOn && (
-            <p className="mt-2 text-xs text-red-500 leading-4">
-              <span className="font-medium">⊘</span> {task.dependsOn}
-            </p>
-          )}
-        </div>
-
-        {board && (
-          <span className={`text-xs font-medium ${getPriorityClasses(priority)}`}>
-            {priority === "High" ? "H" : priority === "Medium" ? "M" : "L"}
-          </span>
-        )}
-      </div>
-
-      {/* LIST VIEW DETAILS */}
-      {!board && (
-        <div className="mt-2 flex items-center justify-end gap-5">
-          <div className="flex items-center gap-2">
-            <Avatar initials={task.initials} />
-
-            <span className="text-xs text-slate-500">{task.owner}</span>
-          </div>
-
-          <span className={`text-xs font-medium ${getPriorityClasses(priority)}`}>
-            {priority}
-          </span>
-
-          <div className="flex items-center gap-1 text-xs text-slate-500 min-w-[55px]">
-            <Clock3 className="w-3.5 h-3.5" />
-            {task.start}
-          </div>
-
-          <span
-            className={`
-              px-3 py-1.5 rounded-full text-xs font-medium
-              ${getStatusClasses(task.status)}
-            `}
-          >
-            {task.status}
-          </span>
-        </div>
-      )}
-
-      {/* BOARD VIEW DETAILS */}
-      {board && (
-        <div className="mt-3 flex items-center gap-2">
-          <Avatar initials={task.initials} />
-
-          <span className="text-xs text-slate-500">{task.start}</span>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const SectionHeader = ({ title, count }: { title: string; count: number }) => {
-  return (
-    <div className="flex items-center gap-3 mb-3">
-      <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-
-      <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-semibold flex items-center justify-center">
-        {count}
-      </span>
-
-      <div className="h-px flex-1 bg-gray-200" />
-    </div>
-  );
-};
-
-const BoardColumn = ({
-  title,
-  status,
-  tasks,
-  eventTitle,
-  background,
-  completedTaskIds,
-  toggleTask,
-  onDropTask,
-}: {
-  title: string;
-  status: TaskStatus;
-  tasks: Task[];
-  eventTitle: string;
-  background: string;
-  completedTaskIds: string[];
-  toggleTask: (taskId: string) => void;
-  onDropTask: (taskId: string, status: TaskStatus) => void;
-}) => {
-  const [over, setOver] = useState(false);
-  return (
-    <div
-      onDragOver={(e) => {
-        e.preventDefault(); // allow drop
-        e.dataTransfer.dropEffect = "move";
-        if (!over) setOver(true);
-      }}
-      onDragLeave={(e) => {
-        // Only when the pointer leaves the column, not when it crosses a child card.
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false);
-      }}
-      onDrop={(e) => {
-        e.preventDefault();
-        setOver(false);
-        const taskId = e.dataTransfer.getData("text/plain");
-        if (taskId) onDropTask(taskId, status);
-      }}
-      className={`rounded-xl p-3 min-h-[430px] transition-shadow ${background} ${
-        over ? "ring-2 ring-emerald-400 ring-offset-2" : ""
-      }`}
-    >
-      <div className="flex items-center justify-between px-1 mb-4">
-        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-
-        <span className="w-6 h-6 rounded-full bg-white text-slate-500 text-xs font-medium flex items-center justify-center shadow-sm">
-          {tasks.length}
-        </span>
-      </div>
-
-      <div className="space-y-3">
-        {tasks.length === 0 ? (
-          <div className="flex items-center justify-center h-48 rounded-lg border-2 border-dashed border-slate-300/60 text-sm text-slate-400">
-            Drop tasks here
-          </div>
-        ) : (
-          tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              eventTitle={eventTitle}
-              board
-              completed={completedTaskIds.includes(task.id)}
-              onToggle={() => toggleTask(task.id)}
-            />
-          ))
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Board columns are statuses, so dragging a card between them changes its status.
-const BOARD_COLUMNS: { title: string; status: TaskStatus; background: string }[] = [
-  { title: "To Do", status: "Pending", background: "bg-[#F8F8F8]" },
-  { title: "In Progress", status: "In Progress", background: "bg-[#DFF5F7]" },
-  { title: "Blocked", status: "Blocked", background: "bg-[#F5F8D9]" },
-  { title: "Done", status: "Done", background: "bg-[#E1E1FA]" },
+// List view: the design's day buckets, computed from each task's start time.
+const GROUPS: { title: string; hint: string; test: (t: Task) => boolean }[] = [
+  { title: "Do today", hint: "Starts today or earlier", test: (t) => t.status !== "Done" && Date.parse(t.startsAt) <= endOfToday() },
+  { title: "Do next", hint: "Next 7 days", test: (t) => t.status !== "Done" && Date.parse(t.startsAt) > endOfToday() && Date.parse(t.startsAt) <= endOfToday() + 7 * DAY },
+  { title: "Do later", hint: "After this week", test: (t) => t.status !== "Done" && Date.parse(t.startsAt) > endOfToday() + 7 * DAY },
+  { title: "Done", hint: "Completed", test: (t) => t.status === "Done" },
 ];
 
-export default function MyTasksPage() {
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const {
-    events,
-    selected,
-    selectedId,
-    setSelectedId,
-    loading: eventsLoading,
-    error: eventsError,
-  } = useEventSelection();
+// Board view: columns are statuses, so dragging a card between them changes its status.
+const COLUMNS: { title: string; status: TaskStatus }[] = [
+  { title: "To do", status: "Pending" },
+  { title: "In progress", status: "In Progress" },
+  { title: "Blocked", status: "Blocked" },
+  { title: "Done", status: "Done" },
+];
 
+const when = (iso: string) => {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return d.toDateString() === new Date().toDateString() ? time : `${d.toLocaleDateString([], { month: "short", day: "numeric" })}, ${time}`;
+};
+
+function Checkbox({ task, onToggle }: { task: Task; onToggle: () => void }) {
+  const done = task.status === "Done";
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={done ? `Mark ${task.name} as not done` : `Mark ${task.name} as done`}
+      aria-pressed={done}
+      className={`grid size-[18px] flex-none cursor-pointer place-items-center rounded-[5px] border text-[11px] text-paper ${done ? "border-ink bg-ink" : "border-[#C4CEC6] bg-surface hover:border-ink"}`}
+    >
+      {done && "✓"}
+    </button>
+  );
+}
+
+export default function MyTasksPage() {
+  const [view, setView] = useState<"List" | "Board">("List");
+  const { events, selected, selectedId, setSelectedId, loading: eventsLoading, error: eventsError } = useEventSelection();
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [completedTaskIds, setCompletedTaskIds] = useState<string[]>([]);
+  const [overCol, setOverCol] = useState<TaskStatus | null>(null);
 
   const user = getStoredUser();
   const eventTitle = selected?.title ?? "Event";
 
   useEffect(() => {
-    if (!selectedId) {
-      setAllTasks([]);
-      setCompletedTaskIds([]);
-      return;
-    }
+    if (!selectedId) return setAllTasks([]);
     let cancelled = false;
     setLoading(true);
     setError(null);
     listSchedule(selectedId)
-      .then((r) => {
-        if (cancelled) return;
-        const tasks = r.items.map(toTask);
-        setAllTasks(tasks);
-        // Seed local checkmarks from Done status (toggle is local-only for the demo).
-        setCompletedTaskIds(
-          tasks.filter((t) => t.status === "Done").map((t) => t.id)
-        );
-      })
-      .catch((e: Error) => {
-        if (!cancelled) setError(e.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      .then((r) => !cancelled && setAllTasks(r.items.map(toTask).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))))
+      .catch((e: Error) => !cancelled && setError(e.message))
+      .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
   }, [selectedId]);
 
-  // Staff see only their own assignments; organizers see everything so the
-  // demo never renders an empty page for the event owner.
-  const myTasks = useMemo(() => {
-    if (!user) return allTasks;
-    if (user.role === "organizer") return allTasks;
-    return allTasks.filter((t) => t.ownerId === user.id);
-  }, [allTasks, user]);
+  // Staff see only their own assignments; organizers see the whole event.
+  const myTasks = useMemo(
+    () => (!user || user.role === "organizer" ? allTasks : allTasks.filter((t) => t.ownerId === user.id)),
+    [allTasks, user]
+  );
 
-  // Kanban move: optimistic status change, rolled back if the server refuses.
+  // Optimistic status change, rolled back if the server refuses.
   const moveTask = async (taskId: string, status: TaskStatus) => {
     const task = allTasks.find((t) => t.id === taskId);
     if (!task || task.status === status || !selectedId) return;
-    const prevStatus = task.status;
-    const setStatus = (s: TaskStatus) => {
-      setAllTasks((cur) => cur.map((t) => (t.id === taskId ? { ...t, status: s } : t)));
-      setCompletedTaskIds((cur) =>
-        s === "Done" ? [...new Set([...cur, taskId])] : cur.filter((id) => id !== taskId)
-      );
-    };
+    const setStatus = (s: TaskStatus) => setAllTasks((cur) => cur.map((t) => (t.id === taskId ? { ...t, status: s } : t)));
     setStatus(status);
     setError(null);
     try {
       await updateTask(selectedId, taskId, { status });
     } catch (e) {
-      setStatus(prevStatus);
-      setError(`Could not move "${task.name}": ${(e as Error).message}`);
+      setStatus(task.status);
+      setError(`Could not update "${task.name}": ${(e as Error).message}`);
     }
   };
+  const toggle = (t: Task) => moveTask(t.id, t.status === "Done" ? "Pending" : "Done");
 
-  const toggleTask = (taskId: string) => {
-    setCompletedTaskIds((current) =>
-      current.includes(taskId)
-        ? current.filter((id) => id !== taskId)
-        : [...current, taskId]
-    );
-  };
-
-  // Partition by status so the four existing sections stay disjoint and cover
-  // every task without hardcoded mock ids.
-  const recentlyAssigned = myTasks.filter((t) => t.status === "Pending");
-  const doToday = myTasks.filter((t) => t.status === "In Progress");
-  const doNext = myTasks.filter((t) => t.status === "Blocked");
-  const doLater = myTasks.filter((t) => t.status === "Done");
-
-  const blockedCount = myTasks.filter((t) => t.status === "Blocked").length;
-  const busy = eventsLoading || loading;
+  const open = myTasks.filter((t) => t.status !== "Done").length;
+  const blocked = myTasks.filter((t) => t.status === "Blocked").length;
 
   return (
-    <div className="min-h-full bg-[#FBFBF9]">
-      <div className="mb-6">
-        <EventPicker
-          events={events}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-        />
-      </div>
-
-      {/* PAGE HEADER */}
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
-            My Tasks
-          </h1>
-
-          <p className="mt-1 text-sm text-slate-500">
-            {myTasks.length} tasks · {blockedCount} blocked
-          </p>
-        </div>
-
-        {/* VIEW TOGGLE */}
-        <div className="flex items-center bg-white border border-gray-200 rounded-full p-1 shadow-sm">
-          <button
-            onClick={() => setViewMode("list")}
-            className={`
-              flex items-center gap-2 px-4 py-2 rounded-full
-              text-sm font-medium transition-all
-              ${
-                viewMode === "list"
-                  ? "bg-[#002F2B] text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-900"
-              }
-            `}
-          >
-            <List className="w-4 h-4" />
-            List
-          </button>
-
-          <button
-            onClick={() => setViewMode("board")}
-            className={`
-              flex items-center gap-2 px-4 py-2 rounded-full
-              text-sm font-medium transition-all
-              ${
-                viewMode === "board"
-                  ? "bg-[#002F2B] text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-900"
-              }
-            `}
-          >
-            <LayoutGrid className="w-4 h-4" />
-            Board
-          </button>
-        </div>
-      </div>
+    <div>
+      <PageHeader
+        eyebrow="My tasks"
+        title={`${greeting()}, ${(user?.name ?? "there").split(" ")[0]}.`}
+        subtitle={`${open} open task${open === 1 ? "" : "s"} on ${eventTitle}${blocked ? ` · ${blocked} blocked` : ""}`}
+      >
+        <EventPicker events={events} selectedId={selectedId} onSelect={setSelectedId} />
+        <Segmented options={["List", "Board"] as const} value={view} onChange={setView} />
+      </PageHeader>
 
       {(error || eventsError) && (
-        <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-          {error || eventsError}
-        </p>
+        <p role="alert" className="mb-4 rounded-xl bg-danger-soft px-4 py-3 text-sm font-medium text-danger">{error || eventsError}</p>
       )}
 
-      {busy ? (
-        <div className="flex items-center gap-2 py-16 text-sm text-gray-400">
+      {eventsLoading || loading ? (
+        <div className="flex items-center gap-2 py-16 text-sm text-ink-3">
           <Loader2 size={16} className="animate-spin" /> Loading tasks…
         </div>
       ) : !selectedId ? (
-        <p className="py-16 text-center text-sm text-gray-400">
-          No events yet — create one on the Events page first.
-        </p>
+        <p className="py-16 text-center text-sm text-ink-3">No events yet. Create one on the Events page first.</p>
       ) : myTasks.length === 0 ? (
-        <p className="py-16 text-center text-sm text-gray-400">
-          No tasks assigned to you in this event yet.
-        </p>
+        <p className="py-16 text-center text-sm text-ink-3">No tasks assigned to you on this event yet.</p>
+      ) : view === "List" ? (
+        <div className="flex flex-col gap-5">
+          {GROUPS.map((g) => {
+            const items = myTasks.filter(g.test);
+            if (items.length === 0) return null;
+            return (
+              <section key={g.title} className={card}>
+                <div className="flex items-center justify-between border-b border-line-soft bg-soft px-[18px] py-3.5">
+                  <h2 className="flex items-baseline gap-2.5 text-[15px] font-medium">
+                    {g.title}
+                    <span className={`${mono} font-normal text-[#6E7C73]`}>{items.length}</span>
+                  </h2>
+                  <span className="text-xs text-[#6E7C73]">{g.hint}</span>
+                </div>
+                {items.map((t) => {
+                  const done = t.status === "Done";
+                  const p = priorityOf(t);
+                  return (
+                    <div key={t.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3.5 border-b border-line-soft px-[18px] py-[13px] text-[13.5px] last:border-0">
+                      <Checkbox task={t} onToggle={() => toggle(t)} />
+                      <div className="min-w-0">
+                        <div className={`truncate ${done ? "text-[#6E7C73] line-through" : "text-ink"}`}>{t.name}</div>
+                        <div className="mt-0.5 truncate text-xs text-[#6E7C73]">
+                          {t.owner} · starts {when(t.startsAt)}
+                          {t.dependsOn && !done && ` · after ${t.dependsOn}`}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {!done && <span className={`${mono} hidden sm:inline ${PRIORITY_TEXT[p]}`}>{p.toUpperCase()}</span>}
+                        <span className={pillOf(t.status)}>{t.status}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </section>
+            );
+          })}
+        </div>
       ) : (
-        <>
-          {/* ================= LIST VIEW ================= */}
-          {viewMode === "list" && (
-            <div className="space-y-8">
-              {/* RECENTLY ASSIGNED */}
-              <section>
-                <SectionHeader
-                  title="Recently Assigned"
-                  count={recentlyAssigned.length}
-                />
-
-                <div className="space-y-2">
-                  {recentlyAssigned.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      eventTitle={eventTitle}
-                      completed={completedTaskIds.includes(task.id)}
-                      onToggle={() => toggleTask(task.id)}
-                    />
-                  ))}
+        <div className="grid items-start gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))]">
+          {COLUMNS.map((col) => {
+            const items = myTasks.filter((t) => t.status === col.status);
+            return (
+              <div
+                key={col.status}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setOverCol(col.status);
+                }}
+                onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && setOverCol(null)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setOverCol(null);
+                  const id = e.dataTransfer.getData("text/plain");
+                  if (id) moveTask(id, col.status);
+                }}
+                className={`flex min-h-[200px] flex-col gap-2 rounded-2xl bg-soft p-3 ${overCol === col.status ? "ring-2 ring-live" : ""}`}
+              >
+                <div className="flex justify-between px-1 pt-1 pb-2 text-sm font-medium">
+                  {col.title}
+                  <span className={`${mono} font-normal text-[#6E7C73]`}>{items.length}</span>
                 </div>
-              </section>
-
-              {/* DO TODAY */}
-              <section>
-                <SectionHeader title="Do Today" count={doToday.length} />
-
-                <div className="space-y-2">
-                  {doToday.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      eventTitle={eventTitle}
-                      completed={completedTaskIds.includes(task.id)}
-                      onToggle={() => toggleTask(task.id)}
-                    />
-                  ))}
-                </div>
-              </section>
-
-              {/* DO NEXT */}
-              <section>
-                <SectionHeader title="Do Next" count={doNext.length} />
-
-                <div className="space-y-2">
-                  {doNext.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      eventTitle={eventTitle}
-                      completed={completedTaskIds.includes(task.id)}
-                      onToggle={() => toggleTask(task.id)}
-                    />
-                  ))}
-                </div>
-              </section>
-
-              {/* DO LATER */}
-              <section>
-                <SectionHeader title="Do Later" count={doLater.length} />
-
-                {doLater.length > 0 && (
-                  <div className="space-y-2">
-                    {doLater.map((task) => (
-                      <TaskCard
-                        key={task.id}
-                        task={task}
-                        eventTitle={eventTitle}
-                        completed={completedTaskIds.includes(task.id)}
-                        onToggle={() => toggleTask(task.id)}
-                      />
-                    ))}
-                  </div>
+                {items.map((t) => {
+                  const p = priorityOf(t);
+                  return (
+                    <div
+                      key={t.id}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("text/plain", t.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      className={`flex cursor-grab flex-col gap-2.5 rounded-xl border bg-surface p-3 active:cursor-grabbing ${t.status === "Blocked" ? "border-[#F0C9BC]" : "border-line"}`}
+                    >
+                      <div className="flex justify-between gap-2">
+                        <span className={`${mono} ${PRIORITY_TEXT[p]}`}>{t.status === "Done" ? "DONE" : p.toUpperCase()}</span>
+                        <span className="truncate text-xs text-[#6E7C73]">{t.owner}</span>
+                      </div>
+                      <div className={`text-sm leading-[1.35] ${t.status === "Done" ? "text-[#6E7C73] line-through" : "text-ink"}`}>{t.name}</div>
+                      {t.status === "Blocked" && t.dependsOn && <div className="text-xs text-danger">Waiting on {t.dependsOn}</div>}
+                      <div className="flex items-center justify-between text-xs text-[#6E7C73]">
+                        <span>starts {when(t.startsAt)}</span>
+                        <Checkbox task={t} onToggle={() => toggle(t)} />
+                      </div>
+                    </div>
+                  );
+                })}
+                {items.length === 0 && (
+                  <div className="grid flex-1 place-items-center rounded-xl border border-dashed border-[#CBD6CC] py-10 text-xs text-[#6E7C73]">Drop tasks here</div>
                 )}
-              </section>
-            </div>
-          )}
-
-          {/* ================= BOARD VIEW ================= */}
-          {viewMode === "board" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-              {BOARD_COLUMNS.map((col) => (
-                <BoardColumn
-                  key={col.status}
-                  title={col.title}
-                  status={col.status}
-                  tasks={myTasks.filter((t) => t.status === col.status)}
-                  eventTitle={eventTitle}
-                  background={col.background}
-                  completedTaskIds={completedTaskIds}
-                  toggleTask={toggleTask}
-                  onDropTask={moveTask}
-                />
-              ))}
-            </div>
-          )}
-        </>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
 }
+
+const greeting = () => {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+};

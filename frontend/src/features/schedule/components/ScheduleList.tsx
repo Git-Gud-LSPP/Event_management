@@ -1,6 +1,7 @@
 import { Pencil, Trash2 } from "lucide-react";
-import type { Task, TaskStatus } from "../data";
+import { priorityOf, type Task } from "../data";
 import type { StaffRef } from "../../events/api";
+import { PRIORITY_TEXT, card, pillOf, tableHead } from "../../../components/ui";
 
 interface ScheduleListProps {
   tasks: Task[];
@@ -10,174 +11,75 @@ interface ScheduleListProps {
   onDelete?: (taskId: string) => void;
 }
 
-const getStatusStyle = (status: TaskStatus) => {
-  switch (status) {
-    case "Done":
-      return "bg-green-100 text-green-700";
-
-    case "In Progress":
-      return "bg-indigo-100 text-indigo-600";
-
-    case "Blocked":
-      return "bg-red-100 text-red-600";
-
-    case "Pending":
-      return "bg-gray-100 text-gray-600";
-
-    default:
-      return "bg-gray-100 text-gray-600";
-  }
-};
-
-export default function ScheduleList({
-  tasks,
-  staff,
-  onAssign,
-  onEdit,
-  onDelete,
-}: ScheduleListProps) {
-  const canManage = Boolean(onAssign || onEdit || onDelete);
-  const cols = canManage
-    ? "grid-cols-[2fr_1.4fr_0.7fr_0.8fr_1fr_1.2fr_auto]"
-    : "grid-cols-[2.2fr_1.2fr_0.8fr_0.9fr_1fr_1.5fr]";
+export default function ScheduleList({ tasks, staff, onAssign, onEdit, onDelete }: ScheduleListProps) {
+  const canManage = Boolean(onEdit || onDelete);
+  const cols = `grid gap-2 ${canManage ? "grid-cols-[2fr_1.3fr_.7fr_.7fr_1fr_1.3fr_64px]" : "grid-cols-[2fr_1.2fr_.8fr_.8fr_1fr_1.4fr]"}`;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className={`${card} overflow-x-auto`}>
+      <div className="min-w-[760px]">
+        <div className={`${cols} ${tableHead}`}>
+          <span>TASK</span>
+          <span>OWNER</span>
+          <span>START</span>
+          <span>PRIORITY</span>
+          <span>STATUS</span>
+          <span>DEPENDS ON</span>
+          {canManage && <span className="sr-only">Actions</span>}
+        </div>
 
-      {/* Table Header */}
-      <div className={`grid ${cols} border-b border-gray-200 bg-[#FAFAF8] px-5 py-4 text-xs font-medium uppercase tracking-wide text-gray-500`}>
-        <div>Task</div>
-        <div>Owner</div>
-        <div>Start</div>
-        <div>Duration</div>
-        <div>Status</div>
-        <div>Depends On</div>
-        {canManage && <div className="text-right">Actions</div>}
-      </div>
-
-      {/* Rows */}
-      {tasks.map((task) => (
-        <div
-          key={task.id}
-          className={`grid ${cols} items-center border-b border-gray-100 px-5 py-4 last:border-b-0 ${
-            task.status === "Blocked"
-              ? "bg-red-50/60"
-              : "bg-white"
-          }`}
-        >
-          {/* Task */}
-          <div className="flex items-center gap-3">
-            {task.delayed && (
-              <span className="h-2 w-2 flex-shrink-0 rounded-full bg-red-500" />
-            )}
-
-            <span className="text-sm font-medium text-gray-900">
-              {task.name}
-            </span>
-          </div>
-
-          {/* Owner — a dropdown when the viewer can reassign */}
-          {onAssign ? (
-            <select
-              value={task.ownerId ?? ""}
-              onChange={(e) => e.target.value && onAssign(task.id, e.target.value)}
-              className="mr-2 rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 outline-none focus:border-emerald-500"
-            >
-              <option value="">Unassigned</option>
-              {(staff ?? []).map((s) => (
-                <option key={s._id} value={s._id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-[10px] font-semibold text-green-800">
-                {task.initials}
-              </div>
-
-              <span className="text-sm text-gray-500">
-                {task.owner}
+        {tasks.map((task) => {
+          const p = priorityOf(task);
+          return (
+            <div key={task.id} className={`${cols} items-center border-b border-line-soft px-[18px] py-3 text-[13px] last:border-0`}>
+              <span className="flex min-w-0 items-center gap-2">
+                {task.delayed && <span className="size-1.5 flex-none rounded-full bg-danger" title="Delayed" />}
+                <span className="truncate">{task.name}</span>
               </span>
-            </div>
-          )}
 
-          {/* Start */}
-          <div className="text-sm text-gray-500">
-            {task.start}
-          </div>
-
-          {/* Duration */}
-          <div className="text-sm text-gray-500">
-            {task.duration}
-          </div>
-
-          {/* Status */}
-          <div>
-            <span
-              className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusStyle(
-                task.status
-              )}`}
-            >
-              {task.status}
-            </span>
-          </div>
-
-          {/* Dependency */}
-          <div className="truncate pr-2 text-sm text-gray-400">
-            {task.dependsOn || "—"}
-          </div>
-
-          {/* Actions */}
-          {canManage && (
-            <div className="flex items-center justify-end gap-1">
-              {onEdit && (
-                <button
-                  onClick={() => onEdit(task.id)}
-                  title="Edit task"
-                  className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              {onAssign ? (
+                <select
+                  aria-label={`Owner of ${task.name}`}
+                  value={task.ownerId ?? ""}
+                  onChange={(e) => e.target.value && onAssign(task.id, e.target.value)}
+                  className="h-8 min-w-0 rounded-full border border-line bg-surface px-2.5 text-[13px] text-ink outline-none hover:border-ink focus:border-ink"
                 >
-                  <Pencil size={15} />
-                </button>
+                  <option value="">Unassigned</option>
+                  {(staff ?? []).map((s) => (
+                    <option key={s._id} value={s._id}>{s.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="grid size-6 flex-none place-items-center rounded-full bg-[#E4EEE6] text-[9.5px]">{task.initials}</span>
+                  <span className="truncate">{task.owner}</span>
+                </span>
               )}
-              {onDelete && (
-                <button
-                  onClick={() => onDelete(task.id)}
-                  title="Delete task"
-                  className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                >
-                  <Trash2 size={15} />
-                </button>
+
+              <span className="font-mono text-xs">{task.start}</span>
+              <span className={`font-mono text-[11px] ${PRIORITY_TEXT[p]}`}>{task.status === "Done" ? "—" : p.toUpperCase()}</span>
+              <span><span className={pillOf(task.status)}>{task.status}</span></span>
+              <span className="truncate text-xs text-ink-3">{task.dependsOn || "—"}</span>
+
+              {canManage && (
+                <span className="flex justify-end gap-0.5">
+                  {onEdit && (
+                    <button type="button" onClick={() => onEdit(task.id)} aria-label={`Edit ${task.name}`} className="cursor-pointer rounded-full p-1.5 text-ink-3 hover:bg-sunken hover:text-ink">
+                      <Pencil size={14} />
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button type="button" onClick={() => onDelete(task.id)} aria-label={`Delete ${task.name}`} className="cursor-pointer rounded-full p-1.5 text-ink-3 hover:bg-danger-soft hover:text-danger">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </span>
               )}
             </div>
-          )}
-        </div>
-      ))}
+          );
+        })}
 
-      {/* No results */}
-      {tasks.length === 0 && (
-        <div className="py-12 text-center text-sm text-gray-400">
-          No tasks found.
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="flex flex-col gap-3 px-6 py-4 text-xs text-gray-400 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-4 rounded-full bg-red-300" />
-            Delay overflow
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-red-500" />
-            Delayed task
-          </div>
-        </div>
-
-        <span>
-          Delays cascade to dependent tasks — see Dependency Alerts
-        </span>
+        {tasks.length === 0 && <div className="py-12 text-center text-sm text-ink-3">No tasks found.</div>}
       </div>
     </div>
   );
