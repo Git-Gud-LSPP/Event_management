@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1600, height=1000">
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/ui.css">
+    <style>
+      .view { position: absolute; left: 48px; right: 48px; top: 40px; bottom: 40px; }
+      .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 40px; }
+      .ec { padding: 28px; height: 250px; display: flex; flex-direction: column; }
+      .ec .n { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+      .ec .d { font-size: 20px; color: var(--ink-3); margin-top: 8px; }
+      .ec .f { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
+      .ec .meta { font-size: 19px; color: var(--ink-2); }
+      #c-new { border-color: var(--accent); }
+      .drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 640px; background: var(--surface); border-left: 2px solid var(--line); box-shadow: -30px 0 60px -40px rgb(17 22 20 / 0.35); padding: 34px 36px; }
+      .drawer .t { font-size: 32px; font-weight: 600; letter-spacing: -0.02em; }
+      .meter { margin-top: 26px; }
+      .meter .row { display: flex; justify-content: space-between; font-size: 21px; color: var(--ink-2); }
+      .meter .track { position: relative; height: 2px; background: var(--line); margin-top: 14px; }
+      .meter .fill { position: absolute; left: 0; top: -2px; height: 6px; width: 100%; background: var(--accent); border-radius: 999px; transform-origin: left; }
+      .num { position: relative; display: inline-block; width: 18px; height: 26px; vertical-align: bottom; }
+      .num span { position: absolute; left: 0; top: 0; }
+      .mods { margin-top: 30px; border: 2px solid var(--line); border-radius: 18px; }
+      .mod { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 22px 24px; border-bottom: 2px solid var(--line); }
+      .mod:last-child { border-bottom: 0; }
+      .mod .n { font-size: 24px; font-weight: 500; }
+      .mod .b { font-size: 19px; color: var(--ink-3); margin-top: 4px; }
+      .tog { position: relative; width: 120px; height: 50px; }
+      .tog > * { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 21px; font-weight: 500; }
+      .tog .add { border: 2px solid var(--line-strong); }
+      .tog .on { background: var(--accent); color: var(--surface); }
+      .ax { display: grid; grid-template-columns: 260px 1fr; height: 64px; border-bottom: 2px solid var(--line); font-size: 20px; color: var(--ink-3); }
+      .ax > div { position: relative; }
+      .ax b { position: absolute; bottom: 14px; font-weight: 400; transform: translateX(-50%); }
+      .upn { margin-top: 28px; }
+      .upn .h { padding: 22px 28px; border-bottom: 2px solid var(--line); font-size: 24px; font-weight: 600; }
+      .ut { display: grid; grid-template-columns: 1fr 170px 230px; align-items: center; padding: 0 28px; height: 74px; border-bottom: 2px solid var(--line); font-size: 22px; }
+      .ut:last-child { border-bottom: 0; }
+      .ut .pill { justify-self: start; }
+      .gb { z-index: 2; }
+      #nowl { z-index: 1; }
+      .ut .w { display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 20px; }
+      .ut .avatar { width: 36px; height: 36px; font-size: 14px; }
+      .gl { display: grid; grid-template-columns: 260px 1fr; height: 96px; align-items: center; border-bottom: 2px solid var(--line); font-size: 22px; color: var(--ink-2); }
+      .gl:last-child { border-bottom: 0; }
+      .gl > span { padding-left: 26px; }
+      .lane { position: relative; height: 100%; }
+      .gb { position: absolute; top: 22px; height: 52px; display: flex; align-items: center; padding: 0 14px; font-size: 19px; font-weight: 500; color: var(--bg); white-space: nowrap; overflow: hidden; border-radius: 10px; background: var(--sunken); border: 2px solid var(--line-strong); transform-origin: left; }
+      .gb.k { background: var(--ink); border-color: var(--ink); }
+      .gb.a { background: var(--accent-soft); border-color: var(--accent); }
+      #nowl { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); }
+      .tst { position: relative; height: 38px; width: 360px; }
+      #n-fp, #n-inc, #c-new, #v-gantt, #on-fp, #on-inc, #m1, #m2, #toast, #t2, #t3, #nowl { opacity: 0; }
+      #n-events { background: rgba(238,240,237,1); }
+      #n-ros { background: rgba(238,240,237,0); }
+      .tst > span { position: absolute; left: 0; top: 0; white-space: nowrap; display: flex; align-items: center; gap: 12px; }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-brnr" id="root" data-composition-id="hero" data-start="0" data-duration="16" data-width="1600" data-height="1000">
+      <div data-hf-id="hf-fh3a" class="shell">
+        <aside data-hf-id="hf-ntsi" class="side">
+          <div data-hf-id="hf-pf82" class="brand">
+            <svg data-hf-id="hf-ulu9" viewBox="0 0 24 24"><rect data-hf-id="hf-sbzh" x="2.5" y="2.5" width="8.5" height="8.5" rx="1.5" fill="none" stroke="#111614" stroke-width="1.5" /><rect data-hf-id="hf-hdyn" x="13" y="2.5" width="8.5" height="8.5" rx="1.5" fill="#b83a0b" /><rect data-hf-id="hf-1tug" x="2.5" y="13" width="8.5" height="8.5" rx="1.5" fill="none" stroke="#111614" stroke-width="1.5" /><rect data-hf-id="hf-6l89" x="13" y="13" width="8.5" height="8.5" rx="1.5" fill="none" stroke="#111614" stroke-width="1.5" /></svg>
+            EventHQ
+          </div>
+          <div data-hf-id="hf-a700" class="nav" id="n-events"><i data-hf-id="hf-wt6k"></i>Events</div>
+          <div data-hf-id="hf-atbr" class="nav"><i data-hf-id="hf-zeb8"></i>My Tasks</div>
+          <div data-hf-id="hf-rqn3" class="nav" id="n-ros"><i data-hf-id="hf-y7e5"></i>Run-of-show</div>
+          <div data-hf-id="hf-0oq3" class="nav"><i data-hf-id="hf-ylp6"></i>Staff</div>
+          <div data-hf-id="hf-nmcr" class="nav"><i data-hf-id="hf-0l8b"></i>Documents</div>
+          <div data-hf-id="hf-iuw9" class="nav" id="n-fp"><i data-hf-id="hf-0zjc"></i>Floor Plan<span data-hf-id="hf-01pb" class="tag">New</span></div>
+          <div data-hf-id="hf-bzlp" class="nav" id="n-inc"><i data-hf-id="hf-zsm9"></i>Incidents<span data-hf-id="hf-l44f" class="tag">New</span></div>
+        </aside>
+        <main data-hf-id="hf-g3rz" class="main">
+          <!-- View 1: events -->
+          <section data-hf-id="hf-9ej5" class="view" id="v-events">
+            <div data-hf-id="hf-mndw" class="topbar">
+              <div data-hf-id="hf-yeow"><div data-hf-id="hf-2gpk" class="h1">Events</div><div data-hf-id="hf-5ymu" class="sub">Northbound Live workspace</div></div>
+              <div data-hf-id="hf-7fvw" class="btn primary" data-layout-allow-occlusion="" id="create">Create event</div>
+            </div>
+            <div data-hf-id="hf-5cwd" class="cards">
+              <div data-hf-id="hf-a6pi" class="card ec"><div data-hf-id="hf-7ze4" class="n" data-layout-allow-occlusion="">Northfield Leadership Offsite</div><div data-hf-id="hf-kzqi" class="d" data-layout-allow-occlusion="">Jun 3 to 5, Lake Arrowhead CA</div><div data-hf-id="hf-42iu" class="f"><span data-hf-id="hf-0vav" class="meta" data-layout-allow-occlusion="">12 staff</span><span data-hf-id="hf-6tme" class="pill neutral" data-layout-allow-occlusion="">Draft</span></div></div>
+              <div data-hf-id="hf-f5cq" class="card ec"><div data-hf-id="hf-l2mj" class="n" data-layout-allow-overlap="" data-layout-allow-occlusion="">Kestrel Design Summit</div><div data-hf-id="hf-c7a4" class="d" data-layout-allow-occlusion="">Sep 21, Portland OR</div><div data-hf-id="hf-0hca" class="f"><span data-hf-id="hf-ut32" class="meta" data-layout-allow-occlusion="">28 staff</span><span data-hf-id="hf-7sco" class="pill ok" data-layout-allow-occlusion="">Upcoming</span></div></div>
+              <div data-hf-id="hf-9ldm" class="card ec" id="c-new"><div data-hf-id="hf-nol9" class="n" data-layout-allow-overlap="" data-layout-allow-occlusion="">Hollow Pines Festival 2027</div><div data-hf-id="hf-gczb" class="d" data-layout-allow-overlap="" data-layout-allow-occlusion="">Aug 13 to 15, Hollow Pines OR</div><div data-hf-id="hf-0vnb" class="f"><span data-hf-id="hf-oavy" class="meta" data-layout-allow-occlusion="">140 crew</span><span data-hf-id="hf-zlyc" class="pill accent" data-layout-allow-occlusion="">Upcoming</span></div></div>
+            </div>
+            <div data-hf-id="hf-lsuh" class="card upn">
+              <div data-hf-id="hf-cncu" class="h" data-layout-allow-occlusion="" data-layout-allow-overlap="">Up next across events</div>
+              <div data-hf-id="hf-nkkz" class="ut"><span data-hf-id="hf-dwtb" data-layout-allow-occlusion="" data-layout-allow-overlap="">Confirm stage plot with Lowtide</span><span data-hf-id="hf-5qg9" class="pill warn" data-layout-allow-occlusion="" data-layout-allow-overlap="">Due today</span><span data-hf-id="hf-1333" class="w" data-layout-allow-occlusion="" data-layout-allow-overlap=""><span data-hf-id="hf-9pbn" class="avatar" data-layout-allow-occlusion="" data-layout-allow-overlap="">DM</span>Dev Malhotra</span></div>
+              <div data-hf-id="hf-q05v" class="ut"><span data-hf-id="hf-2i5o" data-layout-allow-occlusion="" data-layout-allow-overlap="">Send shuttle schedule to drivers</span><span data-hf-id="hf-mk3e" class="pill neutral" data-layout-allow-occlusion="" data-layout-allow-overlap="">Thu</span><span data-hf-id="hf-subu" class="w" data-layout-allow-occlusion="" data-layout-allow-overlap=""><span data-hf-id="hf-6q9m" class="avatar" data-layout-allow-occlusion="" data-layout-allow-overlap="">SW</span>Sam Whitaker</span></div>
+              <div data-hf-id="hf-pluu" class="ut"><span data-hf-id="hf-gdms" data-layout-allow-occlusion="" data-layout-allow-overlap="">Approve bar staffing rota</span><span data-hf-id="hf-olna" class="pill neutral" data-layout-allow-occlusion="" data-layout-allow-overlap="">Fri</span><span data-hf-id="hf-1mgf" class="w" data-layout-allow-occlusion="" data-layout-allow-overlap=""><span data-hf-id="hf-76dd" class="avatar" data-layout-allow-occlusion="" data-layout-allow-overlap="">IP</span>Ines Park</span></div>
+            </div>
+          </section>
+          <!-- View 2: run-of-show -->
+          <section data-hf-id="hf-80yw" class="view" id="v-gantt">
+            <div data-hf-id="hf-vm12" class="h1">Run-of-show</div>
+            <div data-hf-id="hf-ezse" class="sub">Hollow Pines Festival 2027, Sat 14</div>
+            <div data-hf-id="hf-cq89" class="card" style="margin-top: 36px; position: relative">
+              <div data-hf-id="hf-4177" class="ax"><span data-hf-id="hf-uckh"></span><div data-hf-id="hf-y7yw"><b data-hf-id="hf-4cvi" class="mono" style="left: 24px">12:00</b><b data-hf-id="hf-uxxv" class="mono" style="left: 157px">14:00</b><b data-hf-id="hf-np75" class="mono" style="left: 315px">16:00</b><b data-hf-id="hf-oc39" class="mono" style="left: 472px">18:00</b><b data-hf-id="hf-cq2a" class="mono" style="left: 629px">20:00</b><b data-hf-id="hf-o8cj" class="mono" style="left: 787px">22:00</b></div></div>
+              <div data-hf-id="hf-mtfl" class="gl"><span data-hf-id="hf-q9sm">Site build</span><div data-hf-id="hf-s2ku" class="lane"><div data-hf-id="hf-xjzz" class="gb" style="left: 0; width: 220px"></div></div></div>
+              <div data-hf-id="hf-l1g5" class="gl"><span data-hf-id="hf-3hov">Load-in</span><div data-hf-id="hf-ifwy" class="lane"><div data-hf-id="hf-au67" class="gb" style="left: 150px; width: 200px"></div></div></div>
+              <div data-hf-id="hf-m8d8" class="gl"><span data-hf-id="hf-pjn4">Sound check</span><div data-hf-id="hf-iu7z" class="lane"><div data-hf-id="hf-ck4u" class="gb" style="left: 330px; width: 120px"></div></div></div>
+              <div data-hf-id="hf-lu27" class="gl"><span data-hf-id="hf-low1">Gates open</span><div data-hf-id="hf-j8j0" class="lane"><div data-hf-id="hf-6on9" class="gb a" style="left: 450px; width: 60px"></div></div></div>
+              <div data-hf-id="hf-n0za" class="gl"><span data-hf-id="hf-wd4d">Headliner</span><div data-hf-id="hf-jmu1" class="lane"><div data-hf-id="hf-rwkd" class="gb k" style="left: 560px; width: 180px">Marlow Fields</div></div></div>
+              <div data-hf-id="hf-mmo9" class="gl"><span data-hf-id="hf-tfw4">Load-out</span><div data-hf-id="hf-k152" class="lane"><div data-hf-id="hf-xt96" class="gb" style="left: 740px; width: 190px"></div></div></div>
+              <div data-hf-id="hf-bfz3" id="nowl" style="left: 1020px; top: 64px"></div>
+            </div>
+          </section>
+        </main>
+      </div>
+
+      <aside data-hf-id="hf-cg75" class="drawer" id="drawer">
+        <div data-hf-id="hf-h1ca" class="t">Add modules</div>
+        <div data-hf-id="hf-rq4r" class="meter">
+          <div data-hf-id="hf-thy4" class="row">
+            <span data-hf-id="hf-8ayk">Starter trial</span>
+            <span data-hf-id="hf-intv" class="mono"><span data-hf-id="hf-rjcf" class="num"><span data-hf-id="hf-rgjz" id="m0">0</span><span data-hf-id="hf-0w9j" id="m1">1</span><span data-hf-id="hf-h23z" id="m2">2</span></span> of 5 slots</span>
+          </div>
+          <div data-hf-id="hf-64lp" class="track"><div data-hf-id="hf-thd6" class="fill" id="fill"></div></div>
+        </div>
+        <div data-hf-id="hf-77jz" class="mods">
+          <div data-hf-id="hf-ygck" class="mod"><div data-hf-id="hf-x11t"><div data-hf-id="hf-jteb" class="n">Floor Plan</div><div data-hf-id="hf-8z1a" class="b">Draw the venue, place stages and stations.</div></div><div data-hf-id="hf-0zgu" class="tog"><span data-hf-id="hf-y82z" class="add" id="add-fp">Add</span><span data-hf-id="hf-93dn" class="on" id="on-fp">On</span></div></div>
+          <div data-hf-id="hf-wlmk" class="mod"><div data-hf-id="hf-xfcu"><div data-hf-id="hf-kvxd" class="n">Incidents</div><div data-hf-id="hf-p5ci" class="b">Log and resolve issues from the floor.</div></div><div data-hf-id="hf-zxjm" class="tog"><span data-hf-id="hf-s989" class="add" id="add-inc">Add</span><span data-hf-id="hf-prod" class="on" id="on-inc">On</span></div></div>
+          <div data-hf-id="hf-veph" class="mod"><div data-hf-id="hf-w8fr"><div data-hf-id="hf-i14t" class="n">Vendors</div><div data-hf-id="hf-ngo9" class="b">Suppliers, quotes and deliveries.</div></div><div data-hf-id="hf-0bun" class="tog"><span data-hf-id="hf-vxxx" class="add">Add</span></div></div>
+          <div data-hf-id="hf-vt0i" class="mod"><div data-hf-id="hf-wmqs"><div data-hf-id="hf-wm46" class="n">Ticketing</div><div data-hf-id="hf-zwhb" class="b">Ticket types, tiers and capacity.</div></div><span data-hf-id="hf-ezev" class="pill neutral">In development</span></div>
+        </div>
+      </aside>
+
+      <div data-hf-id="hf-z1bq" class="toast" id="toast" style="right: 48px; bottom: 48px">
+        <span data-hf-id="hf-kaot" class="pill accent" style="background: #ff7a45; color: #111614">High</span>
+        <span data-hf-id="hf-ou3m" class="tst">
+          <span data-hf-id="hf-9sy8" id="t1">Spill near Gate B</span>
+          <span data-hf-id="hf-2ew3" id="t2">Assigned to Rui Okafor</span>
+          <span data-hf-id="hf-flg2" id="t3">Resolved in 6 min</span>
+        </span>
+      </div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const on = "rgba(238,240,237,1)";
+      const off = "rgba(238,240,237,0)";
+      // Frame-0 state lives in CSS; transforms get their baseline from fromTo (applied at authoring time).
+      tl.fromTo("#drawer", { x: 700 }, { x: 700, duration: 0.01 }, 0)
+        .fromTo("#fill", { scaleX: 0 }, { scaleX: 0, duration: 0.01 }, 0)
+        .fromTo(".gb", { scaleX: 0 }, { scaleX: 0, duration: 0.01 }, 0)
+
+        // 1. Create the event.
+        .to("#create", { scale: 0.95, duration: 0.12, ease: "power2.out" }, 0.5)
+        .to("#create", { scale: 1, duration: 0.25, ease: "back.out(2)" }, 0.62)
+        .fromTo("#c-new", { y: 24, scale: 0.96 }, { y: 0, scale: 1, opacity: 1, duration: 0.6, ease: "expo.out" }, 0.8)
+
+        // 2. Add modules from the catalog; slots fill and the sidebar grows.
+        .to("#drawer", { x: 0, duration: 0.6, ease: "expo.out" }, 2.4)
+        .to("#add-fp", { opacity: 0, duration: 0.15 }, 3.3)
+        .to("#on-fp", { opacity: 1, duration: 0.2 }, 3.3)
+        .to("#m0", { opacity: 0, duration: 0.15 }, 3.3)
+        .to("#m1", { opacity: 1, duration: 0.15 }, 3.35)
+        .to("#fill", { scaleX: 0.2, duration: 0.4, ease: "expo.out" }, 3.3)
+        .fromTo("#n-fp", { x: -14 }, { x: 0, opacity: 1, duration: 0.4, ease: "expo.out" }, 3.4)
+        .to("#add-inc", { opacity: 0, duration: 0.15 }, 4.2)
+        .to("#on-inc", { opacity: 1, duration: 0.2 }, 4.2)
+        .to("#m1", { opacity: 0, duration: 0.15 }, 4.2)
+        .to("#m2", { opacity: 1, duration: 0.15 }, 4.25)
+        .to("#fill", { scaleX: 0.4, duration: 0.4, ease: "expo.out" }, 4.2)
+        .fromTo("#n-inc", { x: -14 }, { x: 0, opacity: 1, duration: 0.4, ease: "expo.out" }, 4.3)
+        .to("#drawer", { x: 700, duration: 0.5, ease: "power3.in" }, 5.3)
+
+        // 3. Run-of-show fills in.
+        .to("#v-events", { opacity: 0, duration: 0.3 }, 5.7)
+        .to("#n-events", { backgroundColor: off, duration: 0.3 }, 5.7)
+        .to("#n-ros", { backgroundColor: on, duration: 0.3 }, 5.7)
+        .to("#v-gantt", { opacity: 1, duration: 0.35 }, 5.9)
+        .to(".gb", { scaleX: 1, duration: 0.7, ease: "expo.out", stagger: 0.22 }, 6.2)
+        .to("#nowl", { opacity: 1, duration: 0.3 }, 8.0)
+
+        // 4. Show day: an incident is reported, assigned and resolved.
+        .fromTo("#toast", { y: 30 }, { y: 0, opacity: 1, duration: 0.45, ease: "expo.out" }, 9.9)
+        .to("#t1", { opacity: 0, duration: 0.2 }, 11.2)
+        .to("#t2", { opacity: 1, duration: 0.25 }, 11.25)
+        .to("#t2", { opacity: 0, duration: 0.2 }, 12.4)
+        .to("#t3", { opacity: 1, duration: 0.25 }, 12.45)
+        .to("#toast", { opacity: 0, y: 20, duration: 0.35, ease: "power2.in" }, 13.8)
+
+        // 5. Return to frame 0 for a seamless loop (events view resets while hidden, then crossfades in).
+        .set(["#c-new", "#on-fp", "#on-inc", "#m1", "#m2", "#t2", "#t3"], { opacity: 0 }, 14.4)
+        .set(["#m0", "#t1", "#add-fp", "#add-inc"], { opacity: 1 }, 14.4)
+        .set("#fill", { scaleX: 0 }, 14.4)
+        .to("#v-gantt", { opacity: 0, duration: 0.35 }, 14.5)
+        .to(["#n-fp", "#n-inc"], { opacity: 0, duration: 0.35 }, 14.5)
+        .to("#n-ros", { backgroundColor: off, duration: 0.3 }, 14.5)
+        .to("#n-events", { backgroundColor: on, duration: 0.3 }, 14.5)
+        .to("#v-events", { opacity: 1, duration: 0.35 }, 14.55)
+        .set(".gb", { scaleX: 0 }, 14.95)
+        .set("#nowl", { opacity: 0 }, 14.95);
+      window.__timelines["hero"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,64 @@
+/* EventHQ app UI at 2x for 1600x1000 product clips. Tokens mirror design.md. */
+@font-face {
+  font-family: "Geist";
+  src: url("geist.woff2") format("woff2");
+  font-weight: 100 900;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("geist-mono.woff2") format("woff2");
+  font-weight: 100 900;
+}
+:root {
+  --bg: #f6f7f5;
+  --surface: #fdfdfc;
+  --sunken: #eef0ed;
+  --ink: #111614;
+  --ink-2: #4a524e;
+  --ink-3: #626b66;
+  --line: #dce0dd;
+  --line-strong: #7f8883;
+  --accent: #b83a0b;
+  --accent-soft: #f8e7df;
+  --ok: #1f6b45;
+  --ok-soft: #e3f1e8;
+  --warn: #8a5a00;
+  --warn-soft: #fbf0d6;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1600px; height: 1000px; overflow: hidden; background: var(--bg); }
+body { font-family: "Geist", sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+.mono { font-family: "Geist Mono", monospace; }
+#root { width: 100%; height: 100%; position: relative; overflow: hidden; }
+
+/* Shell */
+.shell { position: absolute; inset: 0; display: grid; grid-template-columns: 300px 1fr; }
+.side { background: var(--surface); border-right: 2px solid var(--line); padding: 28px 20px; display: flex; flex-direction: column; gap: 6px; }
+.brand { display: flex; align-items: center; gap: 14px; font-size: 30px; font-weight: 600; letter-spacing: -0.02em; margin: 0 8px 28px; }
+.brand svg { width: 38px; height: 38px; }
+.nav { display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 16px; border-radius: 12px; font-size: 24px; color: var(--ink-2); }
+.nav i { width: 22px; height: 22px; border: 2px solid currentColor; border-radius: 6px; display: block; flex: none; }
+.nav.on { background: var(--sunken); color: var(--ink); font-weight: 500; }
+.nav .tag { margin-left: auto; font-size: 18px; color: var(--accent); font-weight: 500; }
+.main { position: relative; padding: 40px 48px; overflow: hidden; }
+.h1 { font-size: 44px; font-weight: 600; letter-spacing: -0.03em; }
+.sub { font-size: 24px; color: var(--ink-2); margin-top: 6px; }
+.topbar { display: flex; align-items: flex-start; justify-content: space-between; }
+.btn { display: inline-flex; align-items: center; gap: 10px; height: 60px; padding: 0 26px; border-radius: 12px; font-size: 24px; font-weight: 500; }
+.btn.primary { background: var(--accent); color: var(--surface); }
+.btn.secondary { border: 2px solid var(--line-strong); color: var(--ink); }
+
+/* Surfaces */
+.card { background: var(--surface); border: 2px solid var(--line); border-radius: 20px; }
+.pill { display: inline-flex; align-items: center; height: 38px; padding: 0 16px; border-radius: 999px; font-size: 20px; font-weight: 500; }
+.pill.accent { background: var(--accent-soft); color: var(--accent); }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.neutral { background: var(--sunken); color: var(--ink-2); }
+.label { font-size: 20px; color: var(--ink-3); }
+.avatar { width: 44px; height: 44px; border-radius: 999px; background: var(--sunken); border: 2px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 600; color: var(--ink-2); flex: none; }
+.grid-bg {
+  background-image: linear-gradient(rgb(17 22 20 / 0.06) 2px, transparent 2px), linear-gradient(90deg, rgb(17 22 20 / 0.06) 2px, transparent 2px);
+  background-size: 64px 64px;
+}
+.toast { position: absolute; display: flex; align-items: center; gap: 18px; background: var(--ink); color: var(--bg); border-radius: 16px; padding: 22px 28px; font-size: 24px; box-shadow: 0 24px 60px -24px rgb(17 22 20 / 0.5); }

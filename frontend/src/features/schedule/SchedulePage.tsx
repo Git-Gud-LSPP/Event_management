@@ -1,22 +1,75 @@
-import { useState } from "react";
-import {
-  List,
-  Grid2X2,
-  Search,
-  ChevronDown,
-  Bell,
-  Check,
-} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Loader2, Plus } from "lucide-react";
+import { PageHeader, Segmented } from "../../components/DashboardHeader";
+import SearchBar from "../../components/SearchBar";
 
-import { tasks } from "./data";
 import ScheduleList from "./components/ScheduleList";
 import Gantt from "./components/GanttView";
+import TaskFormModal from "./TaskFormModal";
+import EventPicker, { useEventSelection } from "../../components/EventPicker";
+import { assignTask, deleteTask, listSchedule, toTask, updateTask, type ScheduleItem } from "./api";
+import { getStoredUser } from "../../services/authApi";
 
 export default function SchedulePage() {
   const [view, setView] = useState<"list" | "gantt">("list");
   const [search, setSearch] = useState("");
-  const [eventOpen, setEventOpen] = useState(false);
+  const { events, selected, selectedId, setSelectedId, loading: eventsLoading, error: eventsError } =
+    useEventSelection();
 
+  const [items, setItems] = useState<ScheduleItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<ScheduleItem | null>(null);
+  const [showForm, setShowForm] = useState(false);
+
+  const user = getStoredUser();
+  const isOrganizer = user?.role === "organizer";
+
+  const load = useCallback(() => {
+    if (!selectedId) {
+      setItems([]);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    listSchedule(selectedId)
+      .then((r) => setItems(r.items))
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [selectedId]);
+
+  useEffect(load, [load]);
+
+  const handleAssign = async (taskId: string, staffId: string) => {
+    try {
+      const updated = await assignTask(selectedId, taskId, staffId);
+      setItems((prev) => prev.map((i) => (i._id === taskId ? updated : i)));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const handleDelete = async (taskId: string) => {
+    try {
+      await deleteTask(selectedId, taskId);
+      setItems((prev) => prev.filter((i) => i._id !== taskId));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  // Gantt drag/resize. On failure reload, so the bar snaps back to the saved time.
+  const handleReschedule = async (taskId: string, change: { startsAt?: string; endsAt?: string }) => {
+    try {
+      const updated = await updateTask(selectedId, taskId, change);
+      setItems((prev) => prev.map((i) => (i._id === taskId ? updated : i)));
+    } catch (e) {
+      setError((e as Error).message);
+      load();
+    }
+  };
+
+  const tasks = items.map(toTask);
   const filteredTasks = tasks.filter(
     (task) =>
       task.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -24,257 +77,90 @@ export default function SchedulePage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#FBFBF9]">
+    <div className="">
 
-      {/* =====================================================
-          TOP BAR
-      ===================================================== */}
-      <header className="mb-8 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3 -mx-6 -mt-6">
-
-        {/* LEFT */}
-        <div className="flex items-center gap-4">
-
-          {/* Event selector */}
-          <div className="relative">
-            <button
-              onClick={() => setEventOpen(!eventOpen)}
-              className="flex items-center gap-2 rounded-full bg-[#F5F5F2] px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-100"
-            >
-              <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
-
-              <span>TechSummit 2026</span>
-
-              <ChevronDown
-                size={15}
-                className={`transition-transform ${
-                  eventOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {/* Event dropdown */}
-            {eventOpen && (
-              <div className="absolute left-0 top-12 z-50 w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
-
-                {/* Live */}
-                <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Live
-                </div>
-
-                <button
-                  onClick={() => setEventOpen(false)}
-                  className="flex w-full items-center justify-between bg-green-50 px-4 py-4 text-left hover:bg-green-100"
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="mt-1.5 h-2.5 w-2.5 rounded-full bg-green-500" />
-
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        TechSummit 2026
-                      </p>
-
-                      <p className="mt-1 text-xs text-gray-400">
-                        Aug 9, 2026 · 9:00 AM
-                      </p>
-                    </div>
-                  </div>
-
-                  <Check size={16} className="text-gray-800" />
-                </button>
-
-                {/* At Risk */}
-                <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  At Risk
-                </div>
-
-                <button
-                  onClick={() => setEventOpen(false)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
-                >
-                  <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      GreenFest Music Festival
-                    </p>
-
-                    <p className="mt-1 text-xs text-gray-400">
-                      Aug 15, 2026 · 2:00 PM
-                    </p>
-                  </div>
-                </button>
-
-                {/* Upcoming */}
-                <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Upcoming
-                </div>
-
-                <button
-                  onClick={() => setEventOpen(false)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
-                >
-                  <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
-
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      Meridian Corporate Gala
-                    </p>
-
-                    <p className="mt-1 text-xs text-gray-400">
-                      Aug 22, 2026 · 6:00 PM
-                    </p>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => setEventOpen(false)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
-                >
-                  <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
-
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      Design Week Opening
-                    </p>
-
-                    <p className="mt-1 text-xs text-gray-400">
-                      Sep 5, 2026 · 11:00 AM
-                    </p>
-                  </div>
-                </button>
-
-                {/* Completed */}
-                <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Completed
-                </div>
-
-                <button
-                  onClick={() => setEventOpen(false)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
-                >
-                  <span className="h-2.5 w-2.5 rounded-full bg-gray-400" />
-
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      Founders Forum Q2
-                    </p>
-
-                    <p className="mt-1 text-xs text-gray-400">
-                      Jul 12, 2026 · 8:00 AM
-                    </p>
-                  </div>
-                </button>
-              </div>
-            )}
-          </div>
-
-          <span className="text-sm text-gray-500">
-            Schedule
-          </span>
-        </div>
-
-        {/* RIGHT */}
-        <div className="flex items-center gap-5">
-
-          {/* Search */}
-          <div className="relative">
-            <Search
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-
-            <input
-              type="text"
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-52 rounded-full border border-gray-200 bg-[#F7F7F5] py-2 pl-9 pr-4 text-sm outline-none focus:border-gray-400"
-            />
-          </div>
-
-          {/* Notification */}
-          <div className="relative">
-            <Bell size={19} className="text-gray-700" />
-
-            <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
-              4
-            </span>
-          </div>
-
-          {/* User */}
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-100 text-xs font-semibold text-green-800">
-              PK
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold text-gray-900">
-                Priya K.
-              </p>
-
-              <p className="text-xs text-gray-500">
-                Organizer
-              </p>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* =====================================================
-          PAGE HEADER
-      ===================================================== */}
-      <div className="mb-8 flex items-start justify-between">
-
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
-            Schedule
-          </h1>
-
-          <p className="mt-2 text-sm text-gray-500">
-            {tasks.length} tasks ·{" "}
-            {tasks.filter((task) => task.delayed).length} delayed
-          </p>
-        </div>
-
-        {/* LIST / GANTT */}
-        <div className="flex rounded-full border border-gray-200 bg-white p-1 shadow-sm">
-
+      <PageHeader
+        eyebrow={`Schedule${selected ? ` · ${selected.title} · ${new Date(selected.startsAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}`}
+        title="Run-of-show"
+        subtitle={`${tasks.length} tasks · ${tasks.filter((task) => task.delayed).length} delayed`}
+      >
+        <EventPicker events={events} selectedId={selectedId} onSelect={setSelectedId} />
+        <Segmented options={["Timeline", "List"] as const} value={view === "gantt" ? "Timeline" : "List"} onChange={(v) => setView(v === "Timeline" ? "gantt" : "list")} />
+        {isOrganizer && selectedId && (
           <button
-            onClick={() => setView("list")}
-            className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition ${
-              view === "list"
-                ? "bg-[#002F2B] text-white"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
+            type="button"
+            onClick={() => {
+              setEditing(null);
+              setShowForm(true);
+            }}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-ink px-4 py-2.5 text-sm text-paper hover:bg-ink-hover"
           >
-            <List size={15} />
-            List
+            <Plus size={15} aria-hidden="true" /> Add task
           </button>
-
-          <button
-            onClick={() => setView("gantt")}
-            className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition ${
-              view === "gantt"
-                ? "bg-[#002F2B] text-white"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            <Grid2X2 size={14} />
-            Gantt
-          </button>
-        </div>
+        )}
+      </PageHeader>
+      <div className="mb-4 flex justify-end">
+        <SearchBar placeholder="Search tasks or owners…" value={search} onChange={setSearch} />
       </div>
 
       {/* =====================================================
           CONTENT
       ===================================================== */}
 
-      {view === "list" && (
-        <ScheduleList tasks={filteredTasks} />
+      {(error || eventsError) && (
+        <p className="mb-4 rounded-xl bg-danger-soft px-4 py-3 text-sm font-medium text-danger">
+          {error || eventsError}
+        </p>
       )}
 
-      {view === "gantt" && (
-        <Gantt tasks={filteredTasks} />
+      {eventsLoading || loading ? (
+        <div className="flex items-center gap-2 py-16 text-sm text-ink-3">
+          <Loader2 size={16} className="animate-spin" /> Loading schedule…
+        </div>
+      ) : !selectedId ? (
+        <p className="py-16 text-center text-sm text-ink-3">
+          No events yet — create one on the Events page to build a schedule.
+        </p>
+      ) : view === "list" ? (
+        <ScheduleList
+          tasks={filteredTasks}
+          staff={selected?.staff ?? []}
+          onAssign={isOrganizer ? handleAssign : undefined}
+          onEdit={
+            isOrganizer
+              ? (id) => {
+                  setEditing(items.find((i) => i._id === id) ?? null);
+                  setShowForm(true);
+                }
+              : undefined
+          }
+          onDelete={isOrganizer ? handleDelete : undefined}
+        />
+      ) : (
+        <Gantt
+          items={items.filter((i) => filteredTasks.some((t) => t.id === i._id))}
+          onReschedule={isOrganizer ? handleReschedule : undefined}
+        />
+      )}
+
+      {showForm && selectedId && (
+        <TaskFormModal
+          eventId={selectedId}
+          task={editing ?? undefined}
+          staff={selected?.staff ?? []}
+          siblings={items}
+          onClose={() => {
+            setShowForm(false);
+            setEditing(null);
+          }}
+          onSaved={(saved) =>
+            setItems((prev) =>
+              prev.some((i) => i._id === saved._id)
+                ? prev.map((i) => (i._id === saved._id ? saved : i))
+                : [...prev, saved]
+            )
+          }
+        />
       )}
     </div>
   );

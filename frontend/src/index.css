@@ -1,2 +1,148 @@
 @import "tailwindcss";
-@import "leaflet/dist/leaflet.css";
+@import "@fontsource-variable/geist/wght.css";
+@import "@fontsource-variable/geist-mono/wght.css";
+
+/* EventOps design tokens (v2, from claude.ai/design "EventOps App v2"). Docs: docs/design/04-design-system.md
+   Raw values live on --eh-*; Tailwind utilities point at them (bg-paper, text-ink, border-line, ...).
+   Light only: the v2 design has no dark theme. */
+:root {
+  --eh-bg: #f2f5f1;
+  --eh-surface: #ffffff;
+  --eh-sunken: #e6ece5;
+  --eh-soft: #f6f9f5; /* table heads, board columns */
+  --eh-ink: #16231c;
+  --eh-ink-hover: #2c3d33;
+  --eh-ink-2: #44524a;
+  --eh-ink-3: #5c6a62;
+  --eh-line: #e1e8e0;
+  --eh-line-soft: #edf2ec;
+  --eh-line-strong: #8a978f; /* form controls: keeps 3:1 against white (WCAG 1.4.11) */
+  --eh-accent: #2f7552; /* green that passes as text */
+  --eh-accent-ink: #f2f5f1;
+  --eh-accent-soft: #e3f1e7;
+  --eh-live: #3f8a64; /* dots, bars */
+  --eh-ai: #c9bdf2; /* AI labels on ink */
+  --eh-ai-soft: #e6def6;
+  --eh-ai-ink: #4b3a86;
+  --eh-grid: rgb(22 35 28 / 0.05);
+  --eh-danger: #8a2e52;
+  --eh-danger-soft: #f4dce6;
+  --eh-warn: #6b5112;
+  --eh-warn-soft: #f3e7c8;
+  --eh-shadow: 0 24px 48px -32px rgb(20 45 30 / 0.35);
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-paper: var(--eh-bg);
+  --color-surface: var(--eh-surface);
+  --color-sunken: var(--eh-sunken);
+  --color-ink: var(--eh-ink);
+  --color-ink-2: var(--eh-ink-2);
+  --color-ink-3: var(--eh-ink-3);
+  --color-line: var(--eh-line);
+  --color-line-strong: var(--eh-line-strong);
+  --color-accent: var(--eh-accent);
+  --color-accent-ink: var(--eh-accent-ink);
+  --color-accent-soft: var(--eh-accent-soft);
+  --color-soft: var(--eh-soft);
+  --color-ink-hover: var(--eh-ink-hover);
+  --color-line-soft: var(--eh-line-soft);
+  --color-live: var(--eh-live);
+  --color-ai: var(--eh-ai);
+  --color-ai-soft: var(--eh-ai-soft);
+  --color-ai-ink: var(--eh-ai-ink);
+  --color-warn: var(--eh-warn);
+  --color-warn-soft: var(--eh-warn-soft);
+  --color-danger: var(--eh-danger);
+  --color-danger-soft: var(--eh-danger-soft);
+  --shadow-overlay: var(--eh-shadow);
+}
+
+@theme {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  --radius-control: 999px;
+  --radius-card: 16px;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quint: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Focus: one visible ring everywhere, 2px accent with offset (WCAG 2.4.7 / 2.4.11). */
+:focus-visible {
+  outline: 2px solid var(--eh-live);
+  outline-offset: 2px;
+}
+
+/* Headings focused programmatically (step changes) shouldn't show a ring. */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* Hairline grid background. Used only where it organises content (hero, diagrams). */
+.eh-grid-bg {
+  background-image:
+    linear-gradient(var(--eh-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--eh-grid) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Pressable feedback. */
+.eh-press {
+  transition: transform 150ms var(--ease-out-expo), background-color 180ms, border-color 180ms, color 180ms;
+}
+.eh-press:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eh-press:active {
+    transform: none;
+  }
+  html {
+    scroll-behavior: auto !important;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--eh-bg);
+  color: var(--eh-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Lenis smooth scroll (landing only). */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* SVAR Gantt (schedule timeline) themed to the v2 run-of-show. */
+.eh-gantt .wx-willow-theme {
+  --wx-font-family: inherit;
+  --wx-font-size: 13px;
+  --wx-color-font: var(--eh-ink);
+  --wx-background: var(--eh-surface);
+  --wx-background-alt: var(--eh-soft);
+  --wx-gantt-border: 1px solid var(--eh-line-soft);
+  --wx-gantt-border-color: var(--eh-line-soft);
+  --wx-gantt-select-color: #f4f9f3;
+  --wx-gantt-bar-border-radius: 6px;
+  --wx-gantt-bar-shadow: none;
+  --wx-gantt-link-color: #c4cec6;
+  --wx-gantt-link-color-hovered: var(--eh-ink-3);
+  --wx-grid-header-font: 400 10.5px var(--font-mono);
+  --wx-grid-header-font-color: var(--eh-ink-3);
+  --wx-grid-header-text-transform: uppercase;
+  --wx-timescale-font: 400 10.5px var(--font-mono);
+  --wx-timescale-font-color: #6e7c73;
+}

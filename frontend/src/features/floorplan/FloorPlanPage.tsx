@@ -1,0 +1,227 @@
+import { useCallback, useEffect, useState } from "react";
+import { Square, UserPlus, Plus, Save } from "lucide-react";
+import FloorCanvas from "./FloorCanvas";
+import { roomAt } from "./geometry";
+import DetailsPanel from "./DetailsPanel";
+import { getFloorPlan, listEvents, saveFloorPlan } from "./api";
+import { getSelectedEventId, setSelectedEventId } from "../../services/selectedEvent";
+import type { EventSummary, Floor, Placement, Room, RosterMember } from "./types";
+
+const ROOM_TINTS = ["#e4f7f9", "#E3F1E7", "#F4DCE6", "#F3E7C8", "#f3e8fd", "#e8eefd"];
+
+const newFloor = (n: number): Floor => ({ name: `Floor ${n}`, rooms: [], placements: [] });
+
+export default function FloorPlanPage() {
+  const [events, setEvents] = useState<EventSummary[]>([]);
+  const [eventId, setEventId] = useState("");
+  const [floors, setFloors] = useState<Floor[]>([newFloor(1)]);
+  const [roster, setRoster] = useState<RosterMember[]>([]);
+  const [active, setActive] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    listEvents()
+      .then((items) => {
+        setEvents(items);
+        const stored = getSelectedEventId();
+        if (items.length) setEventId(items.some((e) => e._id === stored) ? stored : items[0]._id);
+      })
+      .catch((e) => setStatus(e.message));
+  }, []);
+
+  useEffect(() => {
+    if (!eventId) return;
+    setSelectedEventId(eventId);
+    getFloorPlan(eventId)
+      .then(({ floors, roster }) => {
+        setFloors(floors);
+        setRoster(roster);
+        setActive(0);
+        setSelectedId(null);
+        setDirty(false);
+        setStatus(null);
+      })
+      .catch((e) => setStatus(e.message));
+  }, [eventId]);
+
+  const floor = floors[active];
+
+  const patchFloor = useCallback(
+    (patch: Partial<Floor>) => {
+      setFloors((prev) => prev.map((f, i) => (i === active ? { ...f, ...patch } : f)));
+      setDirty(true);
+    },
+    [active]
+  );
+
+  const patchRoom = (id: string, patch: Partial<Room>) =>
+    patchFloor({ rooms: floor.rooms.map((r) => (r.id === id ? { ...r, ...patch } : r)) });
+
+  const deleteRoom = (id: string) => {
+    patchFloor({
+      rooms: floor.rooms.filter((r) => r.id !== id),
+      // People stay where they are, just no longer counted against the room.
+      placements: floor.placements.map((p) => (p.roomId === id ? { ...p, roomId: null } : p)),
+    });
+    setSelectedId(null);
+  };
+
+  const unplace = (userId: string) =>
+    patchFloor({ placements: floor.placements.filter((p) => p.user !== userId) });
+
+  const handleDrop = (
+    payload: { kind: "room" } | { kind: "staff"; userId: string },
+    x: number,
+    y: number
+  ) => {
+    if (payload.kind === "room") {
+      const room: Room = {
+        id: crypto.randomUUID(),
+        name: `Room ${floor.rooms.length + 1}`,
+        x: Math.round(x),
+        y: Math.round(y),
+        width: 240,
+        height: 160,
+        capacity: 8,
+        color: ROOM_TINTS[floor.rooms.length % ROOM_TINTS.length],
+      };
+      patchFloor({ rooms: [...floor.rooms, room] });
+      setSelectedId(room.id);
+      return;
+    }
+
+    // A person sits on exactly one floor at a time: drop clears them elsewhere.
+    const placement: Placement = {
+      user: payload.userId,
+      roomId: roomAt(floor.rooms, x, y),
+      x: Math.round(x),
+      y: Math.round(y),
+    };
+    setFloors((prev) =>
+      prev.map((f, i) => ({
+        ...f,
+        placements:
+          i === active
+            ? [...f.placements.filter((p) => p.user !== payload.userId), placement]
+            : f.placements.filter((p) => p.user !== payload.userId),
+      }))
+    );
+    setDirty(true);
+  };
+
+  const save = async () => {
+    setStatus("Saving...");
+    try {
+      await saveFloorPlan(eventId, floors);
+      setDirty(false);
+      setStatus("Saved");
+    } catch (e) {
+      setStatus((e as Error).message);
+    }
+  };
+
+  return (
+    <div className="flex h-[calc(100vh-3rem)] flex-col gap-4">
+      {/* Top bar */}
+      <header className="flex flex-wrap items-center gap-3">
+        <h1 className="text-xl font-semibold text-ink">Floor Plan</h1>
+
+        <select
+          value={eventId}
+          onChange={(e) => setEventId(e.target.value)}
+          className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm focus:border-ink focus:outline-none"
+        >
+          {events.length === 0 && <option value="">No events</option>}
+          {events.map((ev) => (
+            <option key={ev._id} value={ev._id}>
+              {ev.title}
+            </option>
+          ))}
+        </select>
+
+        <div className="flex items-center gap-1">
+          {floors.map((f, i) => (
+            <button
+              key={f.name + i}
+              onClick={() => {
+                setActive(i);
+                setSelectedId(null);
+              }}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                i === active
+                  ? "border border-line bg-accent-soft text-accent"
+                  : "text-ink-3 hover:bg-sunken"
+              }`}
+            >
+              {f.name}
+            </button>
+          ))}
+          <button
+            onClick={() => {
+              setFloors((prev) => [...prev, newFloor(prev.length + 1)]);
+              setActive(floors.length);
+              setDirty(true);
+            }}
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-ink-3 hover:bg-sunken"
+          >
+            <Plus className="h-4 w-4" /> Add Floor
+          </button>
+        </div>
+
+        <div className="ml-auto flex items-center gap-3">
+          {status && <span className="text-xs text-ink-3">{status}</span>}
+          <button
+            onClick={save}
+            disabled={!eventId}
+            className="flex items-center gap-2 rounded-lg bg-ink px-4 py-1.5 text-sm font-medium text-white hover:bg-ink-hover disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" /> Save
+            {dirty && <span className="h-1.5 w-1.5 rounded-full bg-warn" />}
+          </button>
+        </div>
+      </header>
+
+      <div className="flex min-h-0 flex-1 gap-4">
+        {/* Palette */}
+        <div className="flex w-24 shrink-0 flex-col gap-2 rounded-xl border border-line bg-surface p-2">
+          <div
+            draggable
+            onDragStart={(e) => e.dataTransfer.setData("text/plain", "room")}
+            className="flex cursor-grab flex-col items-center gap-1 rounded-lg border border-line px-2 py-3 text-xs text-ink-2 hover:bg-soft active:cursor-grabbing"
+          >
+            <Square className="h-5 w-5" />
+            Room
+          </div>
+          <div className="flex flex-col items-center gap-1 rounded-lg border border-dashed border-line px-2 py-3 text-center text-[11px] text-ink-3">
+            <UserPlus className="h-5 w-5" />
+            Drag staff from the list on the right
+          </div>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <FloorCanvas
+            floor={floor}
+            roster={roster}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onRoomsChange={(rooms) => patchFloor({ rooms })}
+            onPlacementsChange={(placements) => patchFloor({ placements })}
+            onDrop={handleDrop}
+          />
+        </div>
+
+        <DetailsPanel
+          floor={floor}
+          floorName={floor.name}
+          roster={roster}
+          selectedRoom={floor.rooms.find((r) => r.id === selectedId)}
+          onPatchRoom={patchRoom}
+          onDeleteRoom={deleteRoom}
+          onUnplace={unplace}
+        />
+      </div>
+    </div>
+  );
+}

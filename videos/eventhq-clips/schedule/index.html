@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1600, height=1000" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/ui.css" />
+    <style>
+      .gantt { position: relative; margin-top: 32px; padding: 0 0 12px; }
+      .axis { display: grid; grid-template-columns: 280px 1fr; border-bottom: 2px solid var(--line); height: 64px; align-items: end; }
+      .ticks { position: relative; height: 100%; }
+      .tick { position: absolute; bottom: 14px; font-size: 20px; color: var(--ink-3); transform: translateX(-50%); }
+      .row { display: grid; grid-template-columns: 280px 1fr; height: 84px; align-items: center; border-bottom: 2px solid var(--line); }
+      .row:last-child { border-bottom: 0; }
+      .rl { padding-left: 28px; font-size: 23px; color: var(--ink-2); white-space: nowrap; }
+      .lane { position: relative; height: 100%; }
+      .bar { position: absolute; top: 18px; height: 48px; border-radius: 10px; background: var(--sunken); border: 2px solid var(--line-strong); display: flex; align-items: center; padding: 0 12px; font-size: 19px; color: var(--ink); white-space: nowrap; overflow: hidden; }
+      .bar.dep { background: var(--surface); }
+      .bar.head { background: var(--ink); border-color: var(--ink); color: var(--bg); font-weight: 500; }
+      .tip { position: absolute; top: -46px; left: 0; font-size: 19px; color: var(--accent); background: var(--accent-soft); padding: 4px 12px; border-radius: 8px; white-space: nowrap; }
+      .bar { z-index: 2; }
+      .now { z-index: 1; position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); }
+      .now span { position: absolute; top: 8px; left: 10px; font-size: 18px; color: var(--accent); font-weight: 500; white-space: nowrap; }
+      .days { display: flex; gap: 0; border: 2px solid var(--line-strong); border-radius: 12px; padding: 4px; }
+      .days div { font-size: 22px; padding: 10px 20px; border-radius: 8px; color: var(--ink-2); }
+      .days .on { background: var(--ink); color: var(--bg); }
+      #deps { position: absolute; left: 282px; top: 66px; width: 920px; height: 588px; overflow: visible; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="schedule" data-start="0" data-duration="8" data-width="1600" data-height="1000">
+      <div class="shell">
+        <aside class="side">
+          <div class="brand">
+            <svg viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="8.5" height="8.5" rx="1.5" fill="none" stroke="#111614" stroke-width="1.5"/><rect x="13" y="2.5" width="8.5" height="8.5" rx="1.5" fill="#b83a0b"/><rect x="2.5" y="13" width="8.5" height="8.5" rx="1.5" fill="none" stroke="#111614" stroke-width="1.5"/><rect x="13" y="13" width="8.5" height="8.5" rx="1.5" fill="none" stroke="#111614" stroke-width="1.5"/></svg>
+            EventHQ
+          </div>
+          <div class="nav"><i></i>Events</div>
+          <div class="nav"><i></i>My Tasks</div>
+          <div class="nav on"><i></i>Run-of-show</div>
+          <div class="nav"><i></i>Staff</div>
+          <div class="nav"><i></i>Documents</div>
+          <div class="nav"><i></i>Floor Plan</div>
+          <div class="nav"><i></i>Incidents</div>
+        </aside>
+        <main class="main">
+          <div class="topbar">
+            <div>
+              <div class="h1">Run-of-show</div>
+              <div class="sub">Hollow Pines Festival 2027, Main stage</div>
+            </div>
+            <div class="days"><div>Fri 13</div><div class="on">Sat 14</div><div>Sun 15</div></div>
+          </div>
+          <div class="card gantt">
+            <div class="axis">
+              <div class="rl label">Item</div>
+              <div class="ticks mono">
+                <span class="tick" style="left: 0px">16:00</span>
+                <span class="tick" style="left: 120px">17:00</span>
+                <span class="tick" style="left: 240px">18:00</span>
+                <span class="tick" style="left: 360px">19:00</span>
+                <span class="tick" style="left: 480px">20:00</span>
+                <span class="tick" style="left: 600px">21:00</span>
+                <span class="tick" style="left: 720px">22:00</span>
+                <span class="tick" style="left: 840px">23:00</span>
+              </div>
+            </div>
+            <div class="row"><div class="rl">Food court opens</div><div class="lane"><div class="bar" style="left: 0px; width: 60px"></div></div></div>
+            <div class="row"><div class="rl">Support: Lowtide</div><div class="lane"><div class="bar" style="left: 120px; width: 120px">Lowtide</div></div></div>
+            <div class="row"><div class="rl">Changeover</div><div class="lane"><div class="bar" style="left: 240px; width: 90px">Reset</div></div></div>
+            <div class="row"><div class="rl">Crew call: lighting</div><div class="lane"><div id="b-crew" class="bar dep" style="left: 300px; width: 60px"></div></div></div>
+            <div class="row">
+              <div class="rl" style="color: var(--ink); font-weight: 500">Headliner: Marlow Fields</div>
+              <div class="lane"><div id="b-head" class="bar head" style="left: 360px; width: 180px">Marlow Fields</div><div id="tip" class="tip mono" style="left: 552px; top: 24px">19:30 to 21:00</div></div>
+            </div>
+            <div class="row"><div class="rl">Shuttle run</div><div class="lane"><div id="b-shuttle" class="bar dep" style="left: 540px; width: 120px">Shuttles</div></div></div>
+            <div class="row"><div class="rl">Fireworks</div><div class="lane"><div id="b-fire" class="bar dep" style="left: 660px; width: 30px"></div></div></div>
+            <svg id="deps" viewBox="0 0 920 588">
+              <!-- headliner (after +44px drag) to each dependent's shifted start; pathLength=1 so the draw is a 1 -> 0 offset -->
+              <path class="dep-line" pathLength="1" d="M420 354 L420 318" fill="none" stroke="#b83a0b" stroke-width="3" stroke-dasharray="1" stroke-dashoffset="1"/>
+              <path class="dep-line" pathLength="1" d="M600 402 L600 438" fill="none" stroke="#b83a0b" stroke-width="3" stroke-dasharray="1" stroke-dashoffset="1"/>
+              <path class="dep-line" pathLength="1" d="M720 486 L720 522" fill="none" stroke="#b83a0b" stroke-width="3" stroke-dasharray="1" stroke-dashoffset="1"/>
+            </svg>
+            <div class="now" style="left: 552px; top: 64px; bottom: 0"><span class="mono" data-layout-allow-overflow>Now 18:15</span></div>
+          </div>
+        </main>
+      </div>
+      <div id="toast" class="toast" style="right: 48px; bottom: 48px">
+        <span style="color: #ff7a45">●</span>
+        <span>3 items moved with the headliner. 14 crew notified.</span>
+      </div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const half = 60; // 30 minutes at 120px per hour
+      // Grab the headliner and drag it 30 minutes later.
+      tl.fromTo("#b-head", { scale: 1, boxShadow: "0 0 0 0 rgba(184,58,11,0)" }, { scale: 1.04, boxShadow: "0 0 0 4px rgba(184,58,11,0.35)", duration: 0.3, ease: "power2.out" }, 0.9)
+        .fromTo("#tip", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.3, ease: "expo.out" }, 1.0)
+        .to(["#b-head", "#tip"], { x: half, duration: 1.0, ease: "power3.inOut" }, 1.3)
+        .to("#b-head", { scale: 1, boxShadow: "0 0 0 0 rgba(184,58,11,0)", duration: 0.3, ease: "power2.out" }, 2.35)
+        // Dependents follow, staggered, as the platform reflows the plan.
+        .to(["#b-crew", "#b-shuttle", "#b-fire"], { x: half, duration: 0.7, ease: "expo.out", stagger: 0.14 }, 2.5)
+        .fromTo(["#b-crew", "#b-shuttle", "#b-fire"], { borderColor: "#7f8883" }, { borderColor: "#b83a0b", duration: 0.3, stagger: 0.14 }, 2.5)
+        .to(".dep-line", { strokeDashoffset: 0, duration: 0.8, ease: "power2.inOut", stagger: 0.12 }, 3.0)
+        .fromTo("#toast", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "expo.out" }, 3.9)
+        // Loop reset: return to the frame-0 state.
+        .to("#toast", { opacity: 0, y: 20, duration: 0.4, ease: "power2.in" }, 6.9)
+        .to(".dep-line", { strokeDashoffset: 1, duration: 0.5, ease: "power2.in" }, 6.9)
+        .to("#tip", { opacity: 0, duration: 0.3 }, 6.9)
+        .to(["#b-head", "#tip", "#b-crew", "#b-shuttle", "#b-fire"], { x: 0, duration: 0.7, ease: "power3.inOut" }, 7.1)
+        .to(["#b-crew", "#b-shuttle", "#b-fire"], { borderColor: "#7f8883", duration: 0.4 }, 7.3);
+      window.__timelines["schedule"] = tl;
+    </script>
+  </body>
+</html>

@@ -17,7 +17,9 @@ exports.create = async (req, res, next) => {
   try {
     const data = pick(req.body);
     data.event = req.params.eventId;
-    res.status(201).json(await repo.create(data));
+    const created = await repo.create(data);
+    // Re-read so owner/dependsOn come back populated, like every other response.
+    res.status(201).json(await repo.findById(created._id));
   } catch (err) {
     next(err);
   }
@@ -49,7 +51,15 @@ exports.getOne = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    const item = await repo.update(req.params.id, pick(req.body));
+    const data = pick(req.body);
+    // Staff may only move their own task across the board (status), nothing else.
+    if (!req.isOrganizer) {
+      const ownsTask = req.scheduleItem.owner?.toString() === req.user.userId;
+      if (!ownsTask || Object.keys(data).some((f) => f !== 'status')) {
+        return res.status(403).json({ message: 'Staff can only change the status of their own tasks' });
+      }
+    }
+    const item = await repo.update(req.params.id, data);
     if (!item) return res.status(404).json({ message: 'Schedule item not found' });
     res.json(item);
   } catch (err) {
@@ -80,6 +90,66 @@ exports.assign = async (req, res, next) => {
     if (!item) return res.status(404).json({ message: 'Schedule item not found' });
 
     res.json(await repo.update(item._id, { owner: assigneeId }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Dependency alert chains, derived from dependsOn + status/delay; nothing is stored.
+// A trigger is a Blocked or delayed task whose own upstream is fine; its chain is
+// every task downstream of it, in dependency order.
+const buildChains = (tasks) => {
+  const key = (t) => String(t._id);
+  const children = new Map();
+  for (const t of tasks) {
+    if (!t.dependsOn) continue;
+    const parent = String(t.dependsOn._id || t.dependsOn);
+    if (!children.has(parent)) children.set(parent, []);
+    children.get(parent).push(t);
+  }
+  const byId = new Map(tasks.map((t) => [key(t), t]));
+  const troubled = (t) => t && (t.status === 'Blocked' || (t.delayMinutes || 0) > 0);
+
+  return tasks
+    .filter((t) => troubled(t) && t.status !== 'Done' && !troubled(byId.get(String(t.dependsOn?._id || t.dependsOn || ''))))
+    .map((root) => {
+      const delay = root.delayMinutes || 0;
+      const chain = [];
+      const seen = new Set([key(root)]);
+      const queue = [...(children.get(key(root)) || [])];
+      while (queue.length) {
+        const t = queue.shift();
+        if (seen.has(key(t))) continue; // guards against dependency cycles
+        seen.add(key(t));
+        if (t.status !== 'Done') {
+          chain.push({
+            id: key(t),
+            label: t.name,
+            impact: delay ? `Start pushed ~${delay} min` : `Waiting on "${root.name}"`,
+            severity: chain.length === 0 ? 'high' : 'critical',
+          });
+        }
+        queue.push(...(children.get(key(t)) || []));
+      }
+      return {
+        id: key(root),
+        trigger: {
+          taskId: key(root),
+          label: delay ? `${root.name} delayed ${delay} min` : `${root.name} blocked`,
+          type: root.status === 'Blocked' ? 'blocked' : 'delay',
+          time: root.startsAt,
+        },
+        chain,
+      };
+    })
+    .filter((c) => c.chain.length > 0);
+};
+exports.buildChains = buildChains;
+
+exports.chains = async (req, res, next) => {
+  try {
+    const tasks = await Schedule.find({ event: req.event._id }).lean();
+    res.json({ items: buildChains(tasks) });
   } catch (err) {
     next(err);
   }

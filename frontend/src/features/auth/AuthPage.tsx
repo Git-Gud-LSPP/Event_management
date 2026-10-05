@@ -1,357 +1,121 @@
-import React, { useState } from 'react';
-import { 
-  Flower2, 
-  HelpCircle, 
-  Mail, 
-  Lock, 
-  Sparkles, 
-  User, 
-  Smartphone, 
-  Ticket,
-  AlertCircle,
-  Loader2
-} from 'lucide-react';
-import { useOrganizerAuth } from '../../hooks/useOrganizerAuth';
+import React from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { useOrganizerAuth } from "../../hooks/useOrganizerAuth";
+import { Wordmark } from "../../marketing/ui";
 
-type TabType = 'organizer' | 'staff';
+// Example of the overnight summary the AI panel shows. Illustrative copy, not account data.
+const AWAY = [
+  ["16 tasks drafted from the TechSummit brief", "AI · PLAN"],
+  ["Catering vendor flagged: delivery window overlaps load-in", "AI · VENDORS"],
+  ["Run-of-show re-planned around the AV check", "AI · SCHEDULE"],
+];
+
+const input =
+  "h-11 rounded-[10px] border border-line-strong/60 bg-surface px-3.5 text-[15px] text-ink outline-none placeholder:text-ink-3 focus:border-ink disabled:opacity-50";
+const label = "flex flex-col gap-1.5 text-[13px] text-ink-2";
 
 export default function EventOpsAuth(): React.JSX.Element {
-  const [activeTab, setActiveTab] = useState<TabType>('organizer');
+  const navigate = useNavigate();
+  const from = (useLocation().state as { from?: string } | null)?.from;
+  const auth = useOrganizerAuth(() => navigate(from ?? "/events", { replace: true }));
+  const isRegister = auth.mode === "register";
 
-  // Staff Form State
-  const [staffName, setStaffName] = useState('');
-  const [staffPhone, setStaffPhone] = useState('');
-  const [eventCode, setEventCode] = useState('');
-  const [isStaffLoading, setIsStaffLoading] = useState(false);
-
-  // Decoupled Organizer Auth Logic via Custom Hook
-  const organizerAuth = useOrganizerAuth((token) => {
-    console.log('Successfully logged in! Token:', token);
-  });
-
-  const handleTabSwitch = (tab: TabType) => {
-    setActiveTab(tab);
-    organizerAuth.clearError();
-  };
-
-  const handleStaffSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsStaffLoading(true);
-    try {
-      console.log('Staff Login:', { name: staffName, phone: staffPhone, eventCode });
-      // Simulate staff authentication submission
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    } finally {
-      setIsStaffLoading(false);
-    }
-  };
+  const tab = (on: boolean) => `cursor-pointer rounded-full px-4 py-[7px] ${on ? "bg-surface shadow-[0_1px_2px_rgba(0,0,0,.08)]" : "text-ink-2"}`;
+  const roleCls = (on: boolean) => `cursor-pointer rounded-[10px] border bg-surface px-3.5 py-3 text-left ${on ? "border-ink" : "border-line"}`;
 
   return (
-    <div className="min-h-screen flex flex-col font-sans text-[#121d1e] bg-[#f7f6f2]">
-      {/* 1. Header */}
-      <header className="w-full bg-[#f7f6f2]">
-        <div className="max-w-300 mx-auto flex justify-between items-center px-9 py-3">
-          <div className="flex items-center gap-3">
-            <Flower2 className="w-6 h-6 text-[#001f1f] fill-[#001f1f]" />
-            <span className="text-[22px] font-medium text-[#001f1f] tracking-tight">EventOps</span>
-          </div>
-          <button 
-            type="button" 
-            className="text-[#414848] hover:text-[#001f1f] transition-colors text-sm flex items-center gap-2 cursor-pointer"
-          >
-            <span>Help</span>
-            <HelpCircle className="w-4.5 h-4.5" />
-          </button>
-        </div>
-      </header>
+    <div className="grid min-h-screen bg-paper text-ink [grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr))]">
+      <div className="flex flex-col px-[clamp(20px,5vw,64px)] py-7">
+        <Link to="/" aria-label="EventOps home" className="self-start"><Wordmark /></Link>
+        <div className="my-auto w-full max-w-[400px] py-12">
+          <div className="font-mono text-xs tracking-[.04em] text-ink-3">{isRegister ? "CREATE ACCOUNT" : "WELCOME BACK"}</div>
+          <h1 className="mt-3 mb-2.5 text-[clamp(34px,4vw,48px)] leading-[1.02] font-medium tracking-[-0.045em]">
+            {isRegister ? "Start running events." : "Sign in to EventOps."}
+          </h1>
+          <p className="mb-7 text-[15px] leading-[1.55] text-ink-3">
+            {isRegister ? "Organizers create and run events. Staff get their tasks and shifts." : "Pick up where your team left off."}
+          </p>
 
-      {/* 2. Main Canvas */}
-      <main className="grow flex items-center justify-center p-5">
-        <div className="w-full max-w-md bg-white rounded-[14px] shadow-[0_4px_12px_rgba(0,31,31,0.06),0_1px_2px_rgba(0,31,31,0.04),0_0_0_1px_rgba(0,31,31,0.05)] p-12">
-          
-          {/* Tab Navigation */}
-          <div className="flex border-b border-[#d9e5e5] mb-8">
+          <div className="mb-[22px] flex w-max rounded-full bg-sunken p-[3px] text-[13px]" role="group" aria-label="Sign in or create account">
+            <button type="button" aria-pressed={!isRegister} onClick={() => auth.switchMode("login")} className={tab(!isRegister)}>Sign in</button>
+            <button type="button" aria-pressed={isRegister} onClick={() => auth.switchMode("register")} className={tab(isRegister)}>Create account</button>
+          </div>
+
+          {auth.errorMessage && (
+            <div role="alert" className="mb-5 flex items-center gap-2 rounded-xl bg-danger-soft p-3 text-[13px] text-danger">
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{auth.errorMessage}</span>
+            </div>
+          )}
+
+          <form onSubmit={auth.handleLogin} className="flex flex-col gap-3.5">
+            {isRegister && (
+              <>
+                <label className={label}>
+                  Full name
+                  <input type="text" required autoComplete="name" disabled={auth.isLoading} value={auth.name} onChange={(e) => auth.setName(e.target.value)} placeholder="Alex Morgan" className={input} />
+                </label>
+                <fieldset className={label}>
+                  <legend className="mb-1.5">I'm joining as</legend>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([["organizer", "Organizer", "Create and run events"], ["staff", "Staff", "Get tasks and shifts"]] as const).map(([r, t, d]) => (
+                      <button key={r} type="button" aria-pressed={auth.role === r} onClick={() => (auth.setRole(r), auth.clearError())} className={roleCls(auth.role === r)}>
+                        <div className="text-sm font-medium text-ink">{t}</div>
+                        <div className="mt-0.5 text-xs text-ink-3">{d}</div>
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              </>
+            )}
+            <label className={label}>
+              Work email
+              <input type="email" required autoComplete="email" disabled={auth.isLoading} value={auth.email} onChange={(e) => auth.setEmail(e.target.value)} placeholder="jane@agency.com" className={input} />
+            </label>
+            <label className={label}>
+              Password
+              <input type="password" required minLength={6} autoComplete={isRegister ? "new-password" : "current-password"} disabled={auth.isLoading} value={auth.password} onChange={(e) => auth.setPassword(e.target.value)} placeholder="••••••••" className={input} />
+            </label>
             <button
-              type="button"
-              onClick={() => handleTabSwitch('organizer')}
-              className={`flex-1 py-3 text-sm text-center transition-all cursor-pointer ${
-                activeTab === 'organizer'
-                  ? 'text-[#001f1f] border-b-2 border-[#001f1f] font-medium'
-                  : 'text-[#414848] border-b-2 border-transparent hover:text-[#001f1f]'
-              }`}
+              type="submit"
+              disabled={auth.isLoading}
+              className="mt-1.5 flex h-[46px] cursor-pointer items-center justify-center gap-2 rounded-full bg-ink text-[15px] text-paper hover:bg-ink-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Organizer
+              {auth.isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  {isRegister ? "Creating account…" : "Signing in…"}
+                </>
+              ) : (
+                <>{isRegister ? "Create account" : "Sign in"} →</>
+              )}
             </button>
-            <button
-              type="button"
-              onClick={() => handleTabSwitch('staff')}
-              className={`flex-1 py-3 text-sm text-center transition-all cursor-pointer ${
-                activeTab === 'staff'
-                  ? 'text-[#001f1f] border-b-2 border-[#001f1f] font-medium'
-                  : 'text-[#414848] border-b-2 border-transparent hover:text-[#001f1f]'
-              }`}
-            >
-              Event Staff
-            </button>
-          </div>
-
-          {/* Dynamic Error Banner */}
-          {organizerAuth.errorMessage && activeTab === 'organizer' && (
-            <div className="mb-6 p-3 bg-[#ffdad6] border border-[#ba1a1a]/20 rounded-xl flex items-center gap-2 text-[#93000a] text-xs font-medium">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{organizerAuth.errorMessage}</span>
-            </div>
-          )}
-
-          {/* TAB 1: ORGANIZER TAB */}
-          {activeTab === 'organizer' && (
-            <div className="animate-fadeIn">
-              <div className="mb-8">
-                <h2 className="text-[22px] font-medium text-[#001f1f] mb-2 leading-tight">
-                  Organizer Sign-in
-                </h2>
-                <p className="text-sm text-[#414848]">
-                  Manage your events and production teams.
-                </p>
-              </div>
-
-              <form onSubmit={organizerAuth.handleLogin} className="space-y-5">
-                <div className="space-y-3">
-                  {/* Email Field */}
-                  <div>
-                    <label 
-                      htmlFor="organizer-email" 
-                      className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase"
-                    >
-                      Email Address
-                    </label>
-                    <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
-                      <Mail className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
-                      <input
-                        id="organizer-email"
-                        type="email"
-                        required
-                        disabled={organizerAuth.isLoading}
-                        value={organizerAuth.email}
-                        onChange={(e) => organizerAuth.setEmail(e.target.value)}
-                        placeholder="jane@eventops.com"
-                        className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0 disabled:opacity-50"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Password Field */}
-                  <div>
-                    <div className="flex justify-between items-baseline mb-2">
-                      <label 
-                        htmlFor="organizer-password" 
-                        className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] uppercase"
-                      >
-                        Password
-                      </label>
-                      <a href="#forgot" className="text-[11px] font-medium text-[#001f1f] hover:underline">
-                        Forgot?
-                      </a>
-                    </div>
-                    <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
-                      <Lock className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
-                      <input
-                        id="organizer-password"
-                        type="password"
-                        required
-                        disabled={organizerAuth.isLoading}
-                        value={organizerAuth.password}
-                        onChange={(e) => organizerAuth.setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0 disabled:opacity-50"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={organizerAuth.isLoading}
-                  className="w-full h-12 bg-[#001f1f] text-white rounded-[29px] text-sm font-medium hover:bg-opacity-90 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {organizerAuth.isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Signing in...</span>
-                    </>
-                  ) : (
-                    <span>Sign in to Dashboard</span>
-                  )}
-                </button>
-
-                {/* Divider */}
-                <div className="relative flex py-2 items-center">
-                  <div className="grow border-t border-[#d9e5e5]"></div>
-                  <span className="shrink-0 mx-3 text-[11px] font-medium text-[#c1c8c7] uppercase tracking-wider">
-                    Or
-                  </span>
-                  <div className="grow border-t border-[#d9e5e5]"></div>
-                </div>
-
-                {/* Secondary Actions */}
-                <div className="space-y-3">
-                  <button
-                    type="button"
-                    className="w-full h-12 border-[1.5px] border-[#001f1f] text-[#001f1f] rounded-[29px] text-sm font-medium hover:bg-[#001f1f]/5 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <Sparkles className="w-5 h-5" />
-                    <span>Send magic link</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="w-full h-12 border-[1.5px] border-[#001f1f] text-[#001f1f] rounded-[29px] text-sm font-medium hover:bg-[#001f1f]/5 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.62z" />
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                    </svg>
-                    <span>Sign in with Google</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* TAB 2: EVENT STAFF TAB */}
-          {activeTab === 'staff' && (
-            <div className="animate-fadeIn">
-              <div className="mb-8">
-                <h2 className="text-[22px] font-medium text-[#001f1f] mb-2 leading-tight">
-                  Staff Onboarding
-                </h2>
-                <p className="text-sm text-[#414848]">
-                  Enter your event code to join the floor crew.
-                </p>
-              </div>
-
-              <form onSubmit={handleStaffSubmit} className="space-y-5">
-                <div className="space-y-3">
-                  {/* Full Name */}
-                  <div>
-                    <label 
-                      htmlFor="staff-name" 
-                      className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase"
-                    >
-                      Full Name
-                    </label>
-                    <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
-                      <User className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
-                      <input
-                        id="staff-name"
-                        type="text"
-                        required
-                        disabled={isStaffLoading}
-                        value={staffName}
-                        onChange={(e) => setStaffName(e.target.value)}
-                        placeholder="Alex Morgan"
-                        className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0 disabled:opacity-50"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Phone Number */}
-                  <div>
-                    <label 
-                      htmlFor="staff-phone" 
-                      className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase"
-                    >
-                      Phone Number
-                    </label>
-                    <div className="rounded-xl bg-white flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
-                      <Smartphone className="w-5 h-5 text-[#717878] mr-3 shrink-0" />
-                      <input
-                        id="staff-phone"
-                        type="tel"
-                        required
-                        disabled={isStaffLoading}
-                        value={staffPhone}
-                        onChange={(e) => setStaffPhone(e.target.value)}
-                        placeholder="(555) 000-0000"
-                        className="w-full bg-transparent border-none p-0 text-sm text-[#001f1f] placeholder-[#c1c8c7] focus:outline-none focus:ring-0 disabled:opacity-50"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 6-Digit Event Code */}
-                  <div>
-                    <label 
-                      htmlFor="event-code" 
-                      className="block text-[11px] font-medium tracking-[0.08em] text-[#001f1f] mb-2 uppercase"
-                    >
-                      6-Digit Event Code
-                    </label>
-                    <div className="rounded-xl bg-[#e4f7f9] flex items-center px-3 h-12 shadow-[0_0_0_0.5px_rgba(0,31,31,0.2)] focus-within:shadow-[0_0_0_1.5px_rgba(0,31,31,0.8)] transition-shadow">
-                      <Ticket className="w-5 h-5 text-[#001f1f] mr-3 shrink-0" />
-                      <input
-                        id="event-code"
-                        type="text"
-                        maxLength={6}
-                        required
-                        disabled={isStaffLoading}
-                        value={eventCode}
-                        onChange={(e) => setEventCode(e.target.value.toUpperCase())}
-                        placeholder="------"
-                        className="w-full bg-transparent border-none p-0 text-[22px] font-medium text-[#001f1f] placeholder-[#c1c8c7] tracking-widest uppercase text-center focus:outline-none focus:ring-0 disabled:opacity-50"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={isStaffLoading}
-                  className="w-full h-12 bg-[#001f1f] text-white rounded-[29px] text-sm font-medium hover:bg-opacity-90 active:scale-[0.98] transition-all cursor-pointer mt-8 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {isStaffLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Joining Event Crew...</span>
-                    </>
-                  ) : (
-                    <span>Join Event Crew</span>
-                  )}
-                </button>
-
-                <div className="text-center mt-5">
-                  <p className="text-[11px] text-[#889494] uppercase tracking-widest font-medium">
-                    Session expires 24h after event ends.
-                  </p>
-                </div>
-              </form>
-            </div>
-          )}
+          </form>
         </div>
-      </main>
+        <div className="text-[12.5px] text-[#6E7C73]">© 2026 EventOps, Inc.</div>
+      </div>
 
-      {/* 3. Footer */}
-      <footer className="w-full bg-[#f7f6f2] mt-auto">
-        <div className="max-w-300 mx-auto flex flex-col md:flex-row justify-between items-center px-9 py-8">
-          <div className="text-sm text-[#414848] mb-4 md:mb-0">
-            © {new Date().getFullYear()} EventOps. All rights reserved.
+      <div aria-hidden="true" className="relative m-3 flex min-h-[520px] items-end overflow-hidden rounded-[22px] bg-[#CFE5D5] p-[clamp(20px,4vw,48px)]">
+        <div className="absolute -inset-1/4 blur-[24px] [background:radial-gradient(38%_46%_at_22%_30%,#F1F7EA_0%,rgba(241,247,234,0)_70%),radial-gradient(34%_44%_at_80%_22%,#9CCBAE_0%,rgba(156,203,174,0)_72%),radial-gradient(44%_50%_at_62%_86%,#BFE0CF_0%,rgba(191,224,207,0)_70%),radial-gradient(30%_40%_at_8%_92%,#88BC9E_0%,rgba(136,188,158,0)_70%)]" />
+        <div className="relative w-full max-w-[460px] rounded-2xl bg-ink p-[22px] text-paper shadow-[0_40px_90px_-30px_rgba(25,70,45,.35)]">
+          <div className="flex items-center gap-2 font-mono text-[11px] tracking-[.04em] text-ai">
+            <span className="size-1.5 rounded-full bg-live" />WHILE YOU WERE AWAY
           </div>
-          <div className="flex gap-8">
-            <a href="#privacy" className="text-sm text-[#414848] hover:text-[#001f1f] transition-colors duration-200">
-              Privacy Policy
-            </a>
-            <a href="#terms" className="text-sm text-[#414848] hover:text-[#001f1f] transition-colors duration-200">
-              Terms of Service
-            </a>
-            <a href="#support" className="text-sm text-[#414848] hover:text-[#001f1f] transition-colors duration-200">
-              Contact Support
-            </a>
+          <p className="mt-3 mb-[18px] text-[19px] leading-[1.35] tracking-[-0.02em]">
+            EventOps AI drafted 16 tasks for TechSummit, flagged a catering risk and re-planned tomorrow's run-of-show.
+          </p>
+          <div className="flex flex-col border-t border-[#2E3E35]">
+            {AWAY.map(([a, b]) => (
+              <div key={a} className="flex justify-between gap-3 border-b border-[#2E3E35] py-2.5 text-[13px]">
+                <span className="text-[#DCE6DE]">{a}</span>
+                <span className="font-mono text-[10.5px] whitespace-nowrap text-[#95A39A]">{b}</span>
+              </div>
+            ))}
           </div>
+          <div className="mt-3.5 text-xs text-[#95A39A]">Example of an overnight summary.</div>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

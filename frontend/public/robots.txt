@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /billing
+Disallow: /welcome
