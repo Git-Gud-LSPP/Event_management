@@ -1,4 +1,4 @@
-# EventHQ — Event Management
+# EventOps — Event Management
 
 A full-stack (MERN + TypeScript) workspace for planning and running events. Organizers create events and plan them end to end — schedules, floor plans, vendors, staff and tasks — from one place. Built under the LSP program.
 
@@ -76,8 +76,8 @@ Environment variables:
 | `MONGO_URI` | Atlas connection string |
 | `JWT_SECRET` | long random string (the Blueprint generates one) |
 | `JWT_EXPIRES_IN` | `1h` |
-| `CORS_ORIGIN` | your Vercel URL, e.g. `https://eventhq.vercel.app` (comma-separate several, no trailing slash) |
-| `CORS_VERCEL_PREVIEW_PREFIX` | *(optional)* e.g. `eventhq` to also allow `https://eventhq-*.vercel.app` preview deploys |
+| `CORS_ORIGIN` | your Vercel URL, e.g. `https://EventOps.vercel.app` (comma-separate several, no trailing slash) |
+| `CORS_VERCEL_PREVIEW_PREFIX` | *(optional)* e.g. `EventOps` to also allow `https://EventOps-*.vercel.app` preview deploys |
 | `AGENT_MODEL` + provider key | e.g. `ANTHROPIC_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` for the AI assistant |
 
 Render sets `PORT` itself. Check `https://<your-service>.onrender.com/api/health` once it's deployed.
