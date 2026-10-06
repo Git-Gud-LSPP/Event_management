@@ -1,12 +1,14 @@
 /**
- * Demo seed for EventHQ — "Operations Manager" workspace.
+ * Demo seed for EventHQ — Islington College clubs workspace (Kathmandu, Nepal).
  *
  *   node seed/seed.js            re-seed (removes only data created by a previous seed run)
  *   node seed/seed.js --fresh    wipe EVERY collection first (clean demo database)
  *
  * Place at backend/seed/seed.js. Uses the app's own Mongoose models, so validation
- * (enums, endsAt >= startsAt, floor-plan staff rules) applies exactly as in the app.
+ * (enums, endsAt >= startsAt, etc.) applies exactly as in the app.
  * All dates are relative to "now", so the workspace always looks current.
+ *
+ * Vendor businesses and their contacts are fictional placeholders (phones/emails are fake).
  */
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
@@ -25,10 +27,11 @@ const { AgentConversation, AgentAction } = require('../agent/agent.model');
 
 // ---------------------------------------------------------------- config
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/event_management';
-const DOMAIN = 'meridian-ops.example';
+const DOMAIN = 'clubs.example'; // all seeded users get name@clubs.example
 const PASSWORD = process.env.SEED_PASSWORD || 'Demo@1234';
-const CURRENCY = 'USD';
-const CITY = { lat: 1.2834, lng: 103.8607 }; // vendor map pins cluster around this point
+const CURRENCY = 'NPR';
+const CITY = { lat: 27.7172, lng: 85.324 }; // Kathmandu — vendor map pins cluster here
+const ORGANIZER = 'sworna'; // the demo login (the only organizer); change the key to switch
 
 // ---------------------------------------------------------------- time helpers
 const MIN = 60_000;
@@ -46,405 +49,475 @@ const dayAt = (offsetDays, hh, mm = 0) => {
 const plus = (date, min) => new Date(date.getTime() + min * MIN);
 
 // ---------------------------------------------------------------- people
-// key: [name, role, job title (comment only — the User model has no title field)]
+// key: [full name, role]; the comment is the person's role in the club (User has no title field).
 const PEOPLE = {
-  alex: ['Alex Morgan', 'organizer'], // Operations Manager — the demo login
-  sofia: ['Sofia Alvarez', 'staff'], // Facilities
-  marcus: ['Marcus Chen', 'staff'], // AV & IT
-  priya: ['Priya Nair', 'staff'], // Procurement
-  daniel: ['Daniel Okafor', 'staff'], // Security & safety
-  hannah: ['Hannah Weber', 'staff'], // People & Culture
-  tom: ['Tom Brennan', 'staff'], // Catering liaison
-  yuki: ['Yuki Tanaka', 'staff'], // Internal comms
-  leila: ['Leila Haddad', 'staff'], // Finance
-  carlos: ['Carlos Mendes', 'staff'], // Logistics
-  nina: ['Nina Petrova', 'staff'], // Executive office
-  omar: ['Omar Farouk', 'staff'], // Compliance
-  grace: ['Grace Liu', 'staff'], // Front desk & registration
+  sworna: ['Sworna Tuladhar', 'organizer'], // club lead / organizer
+  aashutosh: ['Aashutosh Dhungana', 'staff'], // tech & hackathon lead
+  nozomi: ['Nozomi Giri', 'staff'], // design & branding
+  priyanka: ['Priyanka Khatri', 'staff'], // sponsorship & outreach
+  ayusha: ['Ayusha Shrestha', 'staff'], // logistics & operations
+  drishya: ['Drishya Karki', 'staff'], // volunteer coordinator
+  bibek: ['Bibek Thapa', 'staff'], // AV & tech support
+  sabina: ['Sabina Rai', 'staff'], // registration & front desk
+  anish: ['Anish Gurung', 'staff'], // treasurer
+  kritika: ['Kritika Basnet', 'staff'], // social media & content
+  rohan: ['Rohan Maharjan', 'staff'], // speaker liaison
+  suman: ['Suman Lama', 'staff'], // venue & college admin liaison
+  samikshya: ['Samikshya Poudel', 'staff'], // food & refreshments
+  pratik: ['Pratik Adhikari', 'staff'], // photography & media
+  rojina: ['Rojina Bhandari', 'staff'], // mentors & judges liaison
+  niraj: ['Niraj Subedi', 'staff'], // safety & crowd management
 };
 const emailOf = (name) => `${name.toLowerCase().replace(/[^a-z ]/g, '').replace(/ /g, '.')}@${DOMAIN}`;
 
-// ---------------------------------------------------------------- DSL helpers
-// Schedule task. `start` = minutes relative to the event's startsAt.
+// ---------------------------------------------------------------- DSL helper
+// Schedule task. `start` = minutes relative to the event's startsAt. `dep` = key of an earlier task.
 const T = (key, name, owner, start, dur, status = 'Pending', dep = null, delay = 0) => ({
   key, name, owner, start, dur, status, dep, delay,
 });
 
 // ---------------------------------------------------------------- events
-const summitStart = ago(180); // "live" event: started 3h ago, runs 6h more
-const SUMMIT_STAFF = ['sofia', 'marcus', 'daniel', 'tom', 'yuki', 'grace', 'carlos', 'nina', 'priya'];
-
 const EVENTS = [
-  // ============================ 1. LIVE EVENT ============================
+  // ====================== 1. LIVE NOW — GDG on Campus ======================
   {
-    title: 'Meridian Customer Summit 2026',
+    title: 'GDG on Campus Islington — Build with AI Study Jam',
     description:
-      'Flagship two-track customer conference: keynote, breakout sessions, sponsor expo and VIP reception. 450 on-site attendees plus live stream to regional offices.',
-    location: 'Harbourfront Convention Centre, Hall B',
-    startsAt: summitStart,
-    endsAt: ahead(360),
-    capacity: 450,
+      'Hands-on study jam with Google Developer Group on Campus: build a small AI-powered app in teams, with mentor help and a mini demo round. 120 students from BIT and BSc Computing batches.',
+    location: 'Islington College, Kamalpokhari — Lab Block & Seminar Hall',
+    startsAt: ago(120),
+    endsAt: ahead(240),
+    capacity: 120,
     status: 'published',
-    createdAt: dayAt(-75, 10),
-    staff: SUMMIT_STAFF,
+    createdAt: dayAt(-28, 11),
+    staff: ['aashutosh', 'rojina', 'bibek', 'sabina', 'samikshya', 'drishya', 'pratik', 'niraj', 'kritika', 'suman'],
     schedule: [
-      T('walk', 'Venue walkthrough & capacity sign-off', 'sofia', -D(14) + 600, 120, 'Done'),
-      T('avspec', 'Finalise AV & staging specification', 'marcus', -D(10), 90, 'Done'),
-      T('menu', 'Lock catering menu & dietary counts', 'tom', -D(7), 60, 'Done'),
-      T('badges', 'Print attendee badges & lanyards', 'grace', -D(2), 180, 'Done'),
-      T('approve', 'Approve final run-of-show v7', 'alex', -D(1) + 540, 45, 'Done'),
-      T('loadin', 'Load-in & stage build', 'carlos', -480, 300, 'Done'),
-      T('soundchk', 'Sound, lighting & screen check', 'marcus', -170, 60, 'Done', 'loadin'),
-      T('secsweep', 'Security sweep & access-control check', 'daniel', -120, 60, 'Done'),
-      T('regopen', 'Registration & badge pickup', 'grace', -60, 180, 'Done'),
-      T('keynote', 'Opening keynote — CEO', 'nina', 0, 60, 'Done', 'soundchk'),
-      T('breakouts', 'Breakout sessions (Tracks A & B)', 'yuki', 90, 120, 'In Progress', 'keynote'),
-      T('lunch', 'Lunch service — Catering Lounge', 'tom', 150, 90, 'In Progress', null, 15),
-      T('livestream', 'Livestream relay to regional offices', 'marcus', 60, 420, 'Blocked', 'soundchk'),
-      T('plenary', 'Afternoon plenary: 2027 roadmap', 'nina', 270, 75, 'Pending', 'lunch'),
-      T('panel', 'Executive Q&A panel', 'nina', 345, 60, 'Pending', 'plenary'),
-      T('reception', 'VIP networking reception', 'nina', 420, 120, 'Pending', 'panel'),
-      T('recording', 'Upload session recordings to intranet', 'marcus', 500, 90, 'Pending', 'livestream'),
-      T('teardown', 'Teardown & load-out', 'carlos', 540, 180, 'Pending', 'reception'),
-      T('settle', 'Vendor settlement & invoice approvals', 'alex', D(1) + 540, 120, 'Pending', 'teardown'),
-      T('survey', 'Post-event feedback survey', 'yuki', D(1) + 600, 60, 'Pending'),
+      T('permit', 'Get permission letter signed by the Program Leader', 'suman', -D(14), 60, 'Done'),
+      T('lab', 'Book Lab 2 & Lab 3 with IT department', 'suman', -D(12), 45, 'Done'),
+      T('reg', 'Open Google Form registration & cap at 120', 'sabina', -D(10), 60, 'Done'),
+      T('mentors', 'Confirm 8 mentors from the GDG core team', 'rojina', -D(7), 90, 'Done'),
+      T('swag', 'Collect stickers & swag from GDG kit', 'drishya', -D(3), 60, 'Done'),
+      T('wifi', 'Check lab Wi-Fi bandwidth with IT department', 'bibek', -D(1), 45, 'Done'),
+      T('setup', 'Set up labs, projector & extension boards', 'drishya', -90, 60, 'Done'),
+      T('checkin', 'Registration & check-in desk', 'sabina', -60, 90, 'Done'),
+      T('welcome', 'Welcome & intro to Gemini API', 'aashutosh', 0, 45, 'Done', 'setup'),
+      T('build', 'Team build sprint', 'rojina', 45, 150, 'In Progress', 'welcome'),
+      T('snacks', 'Snack & chiya break', 'samikshya', 120, 30, 'In Progress', null, 20),
+      T('stream', 'Livestream mini demos to the GDG Discord', 'bibek', 195, 60, 'Blocked', 'build'),
+      T('demos', 'Mini demo round (3 min per team)', 'aashutosh', 195, 75, 'Pending', 'build'),
+      T('feedback', 'Feedback form & certificate list', 'sabina', 270, 30, 'Pending', 'demos'),
+      T('cleanup', 'Lab cleanup & equipment return', 'drishya', 300, 60, 'Pending', 'demos'),
+      T('recap', 'Post recap & photos on Instagram / LinkedIn', 'kritika', D(1) + 600, 60, 'Pending'),
     ],
     floors: [
       {
-        name: 'Level 1 — Convention Floor',
+        name: 'Lab Block',
         rooms: [
-          ['main', 'Main Stage Hall', 40, 40, 480, 336, 450, '#e4f7f9'],
-          ['reg', 'Registration & Badge Pickup', 560, 40, 216, 144, 40, '#fff4cc'],
-          ['expo', 'Sponsor Expo', 560, 216, 216, 160, 80, '#e8f0e0'],
-          ['cater', 'Catering Lounge', 40, 416, 264, 144, 120, '#fdebd0'],
-          ['avctl', 'AV Control Booth', 344, 416, 144, 144, 6, '#ece6f5'],
-          ['sec', 'Security Desk', 528, 416, 120, 72, 4, '#fbe3e8'],
+          ['lab2', 'Lab 2 — Build Zone', 40, 40, 336, 240, 60, '#e4f7f9'],
+          ['lab3', 'Lab 3 — Build Zone', 416, 40, 336, 240, 60, '#e8f0e0'],
+          ['mentor', 'Mentor Corner', 40, 320, 216, 144, 10, '#ece6f5'],
+          ['reg', 'Registration Desk', 296, 320, 192, 120, 20, '#fff4cc'],
         ],
-        people: [
-          ['marcus', 'avctl'], ['daniel', 'sec'], ['grace', 'reg'],
-          ['tom', 'cater'], ['yuki', 'expo'], ['carlos', 'main'],
-          ['sofia', null, 700, 440],
-        ],
+        people: [['rojina', 'mentor'], ['bibek', 'lab2'], ['aashutosh', 'lab3'], ['sabina', 'reg'], ['drishya', 'lab2']],
       },
       {
-        name: 'Level 2 — Breakout Rooms',
+        name: 'Seminar Hall',
         rooms: [
-          ['bka', 'Breakout A — Product', 40, 40, 240, 168, 80, '#e4f7f9'],
-          ['bkb', 'Breakout B — Customer Success', 320, 40, 240, 168, 80, '#e8f0e0'],
-          ['exec', 'Executive Lounge', 40, 248, 240, 168, 30, '#fff4cc'],
-          ['green', 'Speaker Green Room', 320, 248, 240, 168, 20, '#ece6f5'],
+          ['hall', 'Seminar Hall', 40, 40, 456, 264, 150, '#e4f7f9'],
+          ['cafe', 'Chiya & Snacks Table', 536, 40, 216, 120, 40, '#fdebd0'],
         ],
-        people: [['nina', 'exec'], ['priya', 'green']],
+        people: [['samikshya', 'cafe'], ['pratik', 'hall'], ['niraj', null, 520, 220], ['kritika', 'hall']],
       },
     ],
     incidents: [
-      { title: 'Livestream relay dropping frames to regional offices', description: 'Remote offices report buffering roughly every 90 seconds. Suspected uplink saturation from sponsor demo traffic; dedicated line RFQ already out.', location: 'AV Control Booth', priority: 'Critical', status: 'In Progress', by: 'grace', to: 'marcus', at: 125 },
-      { title: 'Fire exit B partially blocked by sponsor crates', description: 'Sponsor shipping crates stacked within 1m of the Exit B door. Needs clearing before the afternoon plenary.', location: 'Sponsor Expo', priority: 'Critical', status: 'Open', by: 'daniel', to: 'sofia', at: 160 },
-      { title: 'Lunch queue exceeding 20 minutes', description: 'Single service line at the Catering Lounge. Request to open the second buffet station.', location: 'Catering Lounge', priority: 'Medium', status: 'Open', by: 'yuki', to: 'tom', at: 155 },
-      { title: 'Breakout B projector flickering', description: 'Intermittent flicker on the main projector during the first session. Swapped HDMI cable and fixed.', location: 'Breakout B', priority: 'Medium', status: 'Resolved', by: 'yuki', to: 'marcus', at: 95, res: 140 },
-      { title: 'Badge printer jam at Registration', description: 'Thermal printer jammed mid-queue. Backup printer brought online.', location: 'Registration & Badge Pickup', priority: 'Low', status: 'Resolved', by: 'grace', to: 'grace', at: -20, res: 25 },
-      { title: 'Wet floor near Sponsor Expo entrance', description: 'Spill from a coffee station. Area coned off and cleaned.', location: 'Sponsor Expo', priority: 'Low', status: 'Resolved', by: 'daniel', to: 'sofia', at: 70, res: 85 },
+      { title: 'Lab Wi-Fi crawling — 100+ laptops on one access point', description: 'API calls timing out during the build sprint. Asked IT to prioritise the lab VLAN and shared a phone hotspot as backup.', location: 'Lab 2 — Build Zone', priority: 'Critical', status: 'In Progress', by: 'rojina', to: 'bibek', at: 70 },
+      { title: 'Extension boards overloaded in Lab 3', description: 'Breaker tripped on the back row twice. Redistribute laptops across two boards and add another one.', location: 'Lab 3 — Build Zone', priority: 'Critical', status: 'Open', by: 'niraj', to: 'drishya', at: 95 },
+      { title: 'Chiya ran out before the second batch of students', description: 'Flask refill requested from the canteen.', location: 'Chiya & Snacks Table', priority: 'Medium', status: 'Open', by: 'samikshya', to: 'samikshya', at: 112 },
+      { title: 'Projector HDMI not detected', description: 'Swapped to the backup cable and rebooted. Fixed.', location: 'Seminar Hall', priority: 'Medium', status: 'Resolved', by: 'aashutosh', to: 'bibek', at: 5, res: 20 },
+      { title: 'Registration list missing 6 walk-ins', description: 'Added manually and flagged for the certificate list.', location: 'Registration Desk', priority: 'Low', status: 'Resolved', by: 'sabina', to: 'sabina', at: -30, res: -10 },
     ],
     inventory: [
-      ['Wireless lavalier mics', 'AV', 18, 24, 'AV Control Booth', 'Available'],
-      ['Handheld wireless mics', 'AV', 12, 12, 'Main Stage Hall', 'Checked Out'],
-      ['Spare HDMI & USB-C cables', 'AV', 3, 20, 'AV Control Booth', 'Low Stock'],
-      ['Confirmation monitors (55")', 'AV', 14, 16, 'Main Stage Hall', 'Available'],
-      ['LED stage panel (spare)', 'AV', 1, 2, 'Storage Room 2', 'Damaged'],
-      ['Two-way radios', 'Security', 20, 20, 'Security Desk', 'Checked Out'],
-      ['Badge lanyards', 'Registration', 120, 500, 'Registration Desk', 'Low Stock'],
-      ['Badge holders', 'Registration', 180, 500, 'Registration Desk', 'Available'],
-      ['Folding chairs', 'Furniture', 520, 600, 'Hall B Storage', 'Available'],
-      ['Cocktail tables', 'Furniture', 32, 40, 'Catering Lounge', 'Available'],
-      ['Bottled water (cases)', 'Catering', 40, 200, 'Catering Lounge', 'Low Stock'],
-      ['Branded tote bags', 'Merchandise', 450, 500, 'Sponsor Expo', 'Available'],
-      ['Welcome signage frames', 'Signage', 0, 10, 'In transit — PrintWorks', 'Ordered'],
-      ['Power strips', 'Electrical', 8, 30, 'Hall B Storage', 'Low Stock'],
-      ['First-aid kits', 'Safety', 6, 6, 'First Aid Post', 'Available'],
+      ['Extension boards', 'Electrical', 8, 20, 'Lab 3 storage', 'Low Stock'],
+      ['Mobile hotspot devices', 'Network', 2, 3, 'Lab 2 Mentor Corner', 'Checked Out'],
+      ['Projector HDMI & USB-C cables', 'AV', 4, 8, 'Seminar Hall', 'Available'],
+      ['GDG stickers', 'Swag', 85, 150, 'Registration Desk', 'Available'],
+      ['Participant name tags', 'Registration', 130, 150, 'Registration Desk', 'Available'],
+      ['Chiya flasks (5 L)', 'Refreshments', 1, 4, 'Chiya & Snacks Table', 'Low Stock'],
+      ['Water jars', 'Refreshments', 6, 10, 'Seminar Hall', 'Available'],
+      ['Printed certificates', 'Stationery', 0, 130, 'Thamel Print House', 'Ordered'],
+      ['Wireless mic', 'AV', 1, 2, 'Seminar Hall', 'Damaged'],
     ],
     vendors: [
-      { k: 'harbour', name: 'Harbourfront Convention Centre', type: 'Venue', contactName: 'Elaine Tan', phone: '+65 6555 0142', email: 'events@harbourfront-cc.example', website: 'https://harbourfront-cc.example', address: '1 Harbour Walk, Singapore', stage: 'Paid', scope: 'Hall B — 3-day hire incl. load-in and breakout rooms', quoteAmount: 38500 },
-      { k: 'apex', name: 'Apex AV & Staging', type: 'AV & Staging', contactName: 'Ravi Menon', phone: '+65 6555 0188', email: 'bookings@apex-av.example', website: 'https://apex-av.example', address: '24 Kallang Way, Singapore', stage: 'Booked', scope: 'Main stage, LED wall, PA system, 2-person camera crew', quoteAmount: 22400 },
-      { k: 'saffron', name: 'Saffron & Salt Catering', type: 'Catering', contactName: 'Mei Lin Koh', phone: '+65 6555 0107', email: 'corporate@saffronsalt.example', website: 'https://saffronsalt.example', address: '88 Telok Ayer St, Singapore', stage: 'Booked', scope: 'Lunch and reception for 450 guests', quoteAmount: 31200 },
-      { k: 'brightline', name: 'Brightline Security Services', type: 'Security', contactName: 'Hassan Idris', phone: '+65 6555 0166', email: 'ops@brightline-sec.example', website: 'https://brightline-sec.example', address: '5 Ubi Road 1, Singapore', stage: 'Paid', scope: '12 guards plus access-control desk, 3 days', quoteAmount: 6800 },
-      { k: 'printworks', name: 'PrintWorks Signage', type: 'Printing & Signage', contactName: 'Olivia Grant', phone: '+65 6555 0133', email: 'orders@printworks.example', website: 'https://printworks.example', address: '17 Jalan Besar, Singapore', stage: 'Quoted', scope: 'Signage frames, banners and badge stock', quoteAmount: 4950 },
-      { k: 'skystream', name: 'SkyStream Connectivity', type: 'Network & Internet', contactName: 'Jun Wei Ong', phone: '+65 6555 0155', email: 'enterprise@skystream.example', website: 'https://skystream.example', address: '9 Changi Business Park, Singapore', stage: 'RFQ Sent', scope: 'Dedicated 1 Gbps uplink for livestream', notes: 'Needed to unblock the livestream relay to regional offices.' },
-      { k: 'lumen', name: 'Lumen Staging Co.', type: 'AV & Staging', contactName: 'Dana Foo', phone: '+65 6555 0121', email: 'hello@lumenstaging.example', website: 'https://lumenstaging.example', address: '3 Tuas Avenue, Singapore', stage: 'Rejected', scope: 'Alternative stage package', quoteAmount: 29800, notes: 'Over budget compared with Apex.' },
+      { k: 'cloud', name: 'Cloud Kitchen Kathmandu', type: 'Catering', contactName: 'Sanjay Pradhan', phone: '+977 9801000123', email: 'orders@cloudkitchen-ktm.example', website: 'https://cloudkitchen-ktm.example', address: 'Kamalpokhari, Kathmandu', stage: 'Booked', scope: 'Veg & non-veg snack boxes and chiya for 130 people', quoteAmount: 28000 },
+      { k: 'himal', name: 'Himalayan Sound & Lights', type: 'AV', contactName: 'Pasang Sherpa', phone: '+977 9801000145', email: 'book@himalayansound.example', website: 'https://himalayansound.example', address: 'Putalisadak, Kathmandu', stage: 'Booked', scope: 'PA, 2 mics and 1 projector for seminar hall', quoteAmount: 12000 },
+      { k: 'thamel', name: 'Thamel Print House', type: 'Printing', contactName: 'Rajesh Joshi', phone: '+977 9801000167', email: 'hello@thamelprint.example', website: 'https://thamelprint.example', address: 'Thamel, Kathmandu', stage: 'Quoted', scope: 'Certificates, name tags and posters', quoteAmount: 6500 },
+      { k: 'isp', name: 'FiberLink Nepal (backup uplink)', type: 'Internet', contactName: 'Sunita Karn', phone: '+977 9801000189', email: 'sales@fiberlink.example', website: 'https://fiberlink.example', address: 'Baneshwor, Kathmandu', stage: 'RFQ Sent', scope: 'Temporary dedicated 200 Mbps line for the lab block', notes: 'Chasing a same-day install; the livestream is blocked on this.' },
     ],
     documents: [
-      { t: 'Apex AV & Staging — Services Agreement', c: 'Contract', s: 'Signed', v: 'apex', a: 22400, due: -21, body: '## Services Agreement\n\n- Main stage, LED wall and PA\n- 2-person camera crew\n- Load-in from 07:00 on event day\n- Payment: 50% deposit, 50% on completion' },
-      { t: 'Saffron & Salt — Catering Quote (450 guests)', c: 'Quote', s: 'Approved', v: 'saffron', a: 31200, due: -30, body: 'Lunch buffet, afternoon refreshments and evening canapés. Includes vegetarian, halal and gluten-free options.' },
-      { t: 'PO-2026-0417 — Signage & Badges', c: 'Purchase Order', s: 'Sent', v: 'printworks', a: 4950, due: -3, body: 'Signage frames x10, welcome banners x4, badge stock x500.' },
-      { t: 'Brightline Security — Final Invoice', c: 'Invoice', s: 'Paid', v: 'brightline', a: 6800, due: -2 },
-      { t: 'Harbourfront — Balance Invoice', c: 'Invoice', s: 'Received', v: 'harbour', a: 19250, due: 5, body: 'Balance of venue hire. Awaiting approval from Operations.' },
-      { t: 'RFQ — Dedicated Livestream Uplink', c: 'RFQ', s: 'Sent', v: 'skystream', due: 1, body: 'Request for a dedicated 1 Gbps symmetrical uplink, installed today, for livestream to regional offices.' },
-      { t: 'Fire Safety Occupancy Permit — Hall B', c: 'Permit', s: 'Approved', due: 7, body: 'Maximum occupancy 480. Exits A, B and C to remain unobstructed.' },
-      { t: 'Event Liability Insurance Certificate', c: 'Insurance', s: 'Received', a: 1850, due: 60 },
-      { t: 'Run-of-Show v7', c: 'Plan', s: 'Approved', body: '## Run-of-Show\n\n| Time | Item |\n|---|---|\n| 09:00 | Opening keynote |\n| 10:30 | Breakouts |\n| 12:30 | Lunch |\n| 14:00 | Afternoon plenary |\n| 15:30 | Executive Q&A |\n| 16:30 | VIP reception |' },
+      { t: 'Permission Letter — GDG Study Jam (College Admin)', c: 'Permit', s: 'Approved', due: -14, body: 'Letter signed by the Program Leader for lab and seminar hall use, 10:00–16:00.' },
+      { t: 'Cloud Kitchen — Quote (Snack Boxes)', c: 'Quote', s: 'Approved', v: 'cloud', a: 28000, due: -5 },
+      { t: 'Himalayan Sound — Booking Confirmation', c: 'Contract', s: 'Signed', v: 'himal', a: 12000, due: -3 },
+      { t: 'Thamel Print — Certificates & Name Tags', c: 'Quote', s: 'Received', v: 'thamel', a: 6500, due: 2 },
+      { t: 'RFQ — Temporary Lab Internet Line', c: 'RFQ', s: 'Sent', v: 'isp', due: 1, body: 'Request for a same-day temporary 200 Mbps line for 120 students building AI demos.' },
+      { t: 'Study Jam Run Sheet', c: 'Plan', s: 'Approved', body: '| Time | Item |\n|---|---|\n| 10:00 | Check-in |\n| 11:00 | Welcome & Gemini API intro |\n| 11:45 | Build sprint |\n| 14:15 | Mini demos |\n| 15:30 | Feedback & certificates |' },
     ],
   },
 
-  // ============================ 2. UPCOMING — AT RISK ============================
+  // ====================== 2. COMPLETED — Islington Hackathon 2026 ======================
   {
-    title: 'Leadership Offsite — Q4 Strategy',
-    description: 'Three-day executive offsite: 2027 strategy workshops, budget alignment and team dinner for 60 leaders.',
-    location: 'Bayview Resort & Conference Centre',
-    startsAt: dayAt(21, 9),
-    endsAt: dayAt(23, 17),
-    capacity: 60,
+    title: 'Islington Hackathon 2026',
+    description:
+      'Our flagship 24-hour inter-college hackathon. 60 teams, 220 participants, 3 tracks (EdTech, HealthTech, Smart Kathmandu), mentors from local startups and a prize pool for the top five.',
+    location: 'Islington College, Kamalpokhari — Main Auditorium & Lab Block',
+    startsAt: dayAt(-16, 10),
+    endsAt: dayAt(-15, 10),
+    capacity: 240,
     status: 'published',
-    createdAt: dayAt(-48, 9),
-    staff: ['nina', 'hannah', 'priya', 'carlos', 'leila', 'sofia'],
+    createdAt: dayAt(-90, 10),
+    staff: ['aashutosh', 'nozomi', 'priyanka', 'ayusha', 'drishya', 'bibek', 'sabina', 'anish', 'kritika', 'rojina', 'suman', 'samikshya', 'pratik', 'niraj'],
     schedule: [
-      T('venue', 'Select venue & sign contract', 'priya', -D(35), 240, 'Done'),
-      T('guests', 'Confirm attendee list with executive office', 'nina', -D(28), 120, 'Done'),
-      T('travel', 'Book flights & accommodation block', 'carlos', -D(22), 180, 'In Progress'),
-      T('budget', 'Reconcile spend against approved budget', 'leila', -D(23), 120, 'In Progress', null, 1440),
-      T('fac', 'Confirm external facilitator', 'priya', -D(20), 90, 'Blocked', 'venue'),
-      T('diet', 'Collect dietary & accessibility requirements', 'hannah', -D(16), 60),
-      T('agenda', 'Finalise agenda with CEO office', 'nina', -D(14), 120, 'Pending', 'fac'),
-      T('signoff', 'Executive budget sign-off', 'alex', -D(12), 45, 'Pending', 'budget'),
-      T('workbook', 'Print offsite workbook & name tents', 'carlos', -D(8), 120, 'Pending', 'agenda'),
-      T('welcome', 'Welcome session & icebreaker', 'nina', 0, 90),
-      T('workshop', 'Strategy workshop — Day 1', 'nina', 120, 240, 'Pending', 'welcome'),
-      T('dinner', 'Team dinner — Dining Terrace', 'carlos', 600, 150),
-      T('close', 'Closing session & action items', 'nina', D(2) + 240, 120, 'Pending', 'workshop'),
+      T('sponsor', 'Pitch & close sponsors (prize pool + food)', 'priyanka', -D(60), 240, 'Done'),
+      T('brand', 'Design logo, posters & social media kit', 'nozomi', -D(45), 300, 'Done'),
+      T('open', 'Open registrations & team formation channel on Discord', 'aashutosh', -D(40), 90, 'Done'),
+      T('judges', 'Confirm judging panel & mentors', 'rojina', -D(25), 120, 'Done'),
+      T('budget', 'Approve final budget with treasurer', 'sworna', -D(21), 60, 'Done'),
+      T('venue', 'Book auditorium, labs & overnight access permission', 'suman', -D(18), 90, 'Done'),
+      T('swag', 'Order T-shirts, stickers & name tags', 'ayusha', -D(10), 120, 'Done'),
+      T('setup', 'Venue setup: tables, extension boards & Wi-Fi', 'drishya', -240, 210, 'Done'),
+      T('checkin', 'Participant check-in & swag distribution', 'sabina', -60, 90, 'Done', 'setup'),
+      T('opening', 'Opening ceremony & rules briefing', 'sworna', 0, 60, 'Done', 'setup'),
+      T('hacking', '24-hour hacking begins', 'aashutosh', 60, 1080, 'Done', 'opening'),
+      T('midnight', 'Midnight snack & chiya run', 'samikshya', 780, 60, 'Done'),
+      T('mentoring', 'Mentor rounds (every 4 hours)', 'rojina', 240, 900, 'Done', 'hacking'),
+      T('submit', 'Project submission deadline', 'aashutosh', 1140, 60, 'Done', 'hacking'),
+      T('judging', 'Judging & demo rounds', 'rojina', 1200, 150, 'Done', 'submit'),
+      T('awards', 'Awards & closing ceremony', 'sworna', 1350, 60, 'Done', 'judging'),
+      T('prizes', 'Transfer prize money & sponsor thank-yous', 'anish', D(3), 90, 'Done', 'awards'),
+      T('report', 'Publish sponsor report & photo album', 'kritika', D(5), 120, 'Done', 'awards'),
     ],
     floors: [
       {
-        name: 'Conference Level',
+        name: 'Main Auditorium',
         rooms: [
-          ['ball', 'Plenary Ballroom', 40, 40, 432, 288, 80, '#e4f7f9'],
-          ['s1', 'Breakout Studio 1', 512, 40, 192, 144, 20, '#e8f0e0'],
-          ['s2', 'Breakout Studio 2', 512, 200, 192, 128, 20, '#fff4cc'],
-          ['terr', 'Dining Terrace', 40, 368, 288, 144, 70, '#fdebd0'],
-          ['foyer', 'Registration Foyer', 368, 368, 336, 144, 30, '#ece6f5'],
+          ['stage', 'Stage & Judges Panel', 40, 40, 504, 120, 12, '#ece6f5'],
+          ['hack', 'Hacking Floor', 40, 190, 504, 290, 160, '#e4f7f9'],
+          ['reg', 'Check-in & Swag Desk', 584, 40, 192, 128, 20, '#fff4cc'],
+          ['food', 'Food & Chiya Counter', 584, 200, 192, 140, 60, '#fdebd0'],
         ],
-        people: [['nina', 'ball'], ['hannah', 'foyer'], ['sofia', 's1'], ['carlos', 'terr'], ['leila', 's2'], ['priya', null, 740, 360]],
+        people: [['suman', 'stage'], ['sabina', 'reg'], ['samikshya', 'food'], ['aashutosh', 'hack'], ['bibek', 'hack'], ['pratik', 'hack']],
+      },
+      {
+        name: 'Lab Block',
+        rooms: [
+          ['lab1', 'Lab 1 — Teams 1–20', 40, 40, 264, 216, 60, '#e4f7f9'],
+          ['lab2', 'Lab 2 — Teams 21–40', 344, 40, 264, 216, 60, '#e8f0e0'],
+          ['lab3', 'Lab 3 — Teams 41–60', 648, 40, 264, 216, 60, '#fff4cc'],
+          ['rest', 'Quiet Rest Room', 40, 296, 264, 144, 20, '#fbe3e8'],
+          ['mentor', 'Mentor Lounge', 344, 296, 264, 144, 15, '#ece6f5'],
+        ],
+        people: [['rojina', 'mentor'], ['drishya', 'lab1'], ['niraj', 'rest'], ['ayusha', 'lab2'], ['kritika', 'lab3']],
       },
     ],
+    incidents: [
+      { title: 'Power fluctuation in Lab 2 around 2 AM', description: 'Brief outage in Lab 2. Inverter backup kicked in; no work lost, but two teams lost their live demos.', location: 'Lab 2 — Teams 21–40', priority: 'Critical', status: 'Resolved', by: 'drishya', to: 'ayusha', at: 840, res: 870 },
+      { title: 'Wi-Fi slowed to a crawl with 200+ devices', description: 'Added a second access point and moved mentors to hotspot. Speeds recovered within 40 minutes.', location: 'Hacking Floor', priority: 'Critical', status: 'Resolved', by: 'aashutosh', to: 'bibek', at: 300, res: 340 },
+      { title: 'Chiya & snacks ran out at midnight', description: 'Late-night food order arrived 45 minutes late. Canteen opened early and restocked.', location: 'Food & Chiya Counter', priority: 'Medium', status: 'Resolved', by: 'samikshya', to: 'samikshya', at: 760, res: 820 },
+      { title: 'Team locked out of the submission portal', description: 'Portal rejected the zip upload near the deadline. Extended the deadline by 10 minutes for all teams and shared the manual link.', location: 'Hacking Floor', priority: 'Medium', status: 'Resolved', by: 'sabina', to: 'aashutosh', at: 1120, res: 1150 },
+      { title: 'Participant felt dizzy during overnight session', description: 'Moved to the rest room, given water and snacks; recovered after a short break.', location: 'Quiet Rest Room', priority: 'Low', status: 'Resolved', by: 'niraj', to: 'niraj', at: 900, res: 930 },
+      { title: 'Extra T-shirt sizes requested', description: 'Ran out of XL. Noted for next year and promised delivery by courier.', location: 'Check-in & Swag Desk', priority: 'Low', status: 'Resolved', by: 'sabina', to: 'ayusha', at: -20, res: 60 },
+    ],
+    inventory: [
+      ['Hackathon T-shirts', 'Swag', 8, 260, 'Check-in Desk', 'Low Stock'],
+      ['Sticker packs', 'Swag', 40, 300, 'Check-in Desk', 'Available'],
+      ['Participant name tags', 'Registration', 20, 260, 'Check-in Desk', 'Low Stock'],
+      ['Extension boards', 'Electrical', 28, 30, 'Lab Block storage', 'Available'],
+      ['Backup access points', 'Network', 2, 2, 'IT Room', 'Checked Out'],
+      ['Energy drink cartons', 'Refreshments', 0, 20, 'Food & Chiya Counter', 'Available'],
+      ['Chiya flasks (5 L)', 'Refreshments', 3, 8, 'Food & Chiya Counter', 'Available'],
+      ['Winner trophies', 'Awards', 5, 5, 'Stage Table', 'Available'],
+      ['Wireless mics', 'AV', 2, 4, 'Auditorium Booth', 'Damaged'],
+      ['Printed certificates', 'Stationery', 220, 260, 'Club Office', 'Available'],
+    ],
+    vendors: [
+      { k: 'bhoj', name: 'Bhoj Ghar Catering', type: 'Catering', contactName: 'Gita Maharjan', phone: '+977 9812000111', email: 'events@bhojghar.example', website: 'https://bhojghar.example', address: 'Kamalpokhari, Kathmandu', stage: 'Paid', scope: 'Dinner, midnight snacks and breakfast for 240 people', quoteAmount: 185000 },
+      { k: 'himal', name: 'Himalayan Sound & Lights', type: 'AV', contactName: 'Pasang Sherpa', phone: '+977 9801000145', email: 'book@himalayansound.example', website: 'https://himalayansound.example', address: 'Putalisadak, Kathmandu', stage: 'Paid', scope: 'Stage, PA, projector and live camera', quoteAmount: 62000 },
+      { k: 'ktmtees', name: 'KTM Tees & Merch', type: 'Merchandise', contactName: 'Anil Shakya', phone: '+977 9812000134', email: 'orders@ktmtees.example', website: 'https://ktmtees.example', address: 'Patan Dhoka, Lalitpur', stage: 'Paid', scope: '260 T-shirts, 300 sticker packs', quoteAmount: 78000 },
+      { k: 'thamel', name: 'Thamel Print House', type: 'Printing', contactName: 'Rajesh Joshi', phone: '+977 9801000167', email: 'hello@thamelprint.example', website: 'https://thamelprint.example', address: 'Thamel, Kathmandu', stage: 'Paid', scope: 'Banners, name tags and certificates', quoteAmount: 24500 },
+      { k: 'isp', name: 'FiberLink Nepal (backup uplink)', type: 'Internet', contactName: 'Sunita Karn', phone: '+977 9801000189', email: 'sales@fiberlink.example', website: 'https://fiberlink.example', address: 'Baneshwor, Kathmandu', stage: 'Paid', scope: 'Dedicated 300 Mbps line for 24 hours', quoteAmount: 35000 },
+      { k: 'power', name: 'PowerBackup Solutions', type: 'Power', contactName: 'Dipesh Karmacharya', phone: '+977 9812000156', email: 'rent@powerbackup.example', website: 'https://powerbackup.example', address: 'Kalimati, Kathmandu', stage: 'Paid', scope: 'Inverter & generator rental for lab block', quoteAmount: 18000 },
+      { k: 'shoot', name: 'Pixel Pahad Studios', type: 'Photography', contactName: 'Utsav Khadka', phone: '+977 9812000178', email: 'shoot@pixelpahad.example', website: 'https://pixelpahad.example', address: 'Jhamsikhel, Lalitpur', stage: 'Rejected', scope: 'Event photo & video package', quoteAmount: 55000, notes: 'Over budget. Our own media team shot the event instead.' },
+    ],
+    documents: [
+      { t: 'Hackathon Budget & Sponsor Plan', c: 'Plan', s: 'Approved', due: -60, body: '## Budget summary (NPR)\n\n| Item | Amount |\n|---|---|\n| Food & refreshments | 185,000 |\n| Stage, AV & lighting | 62,000 |\n| Merchandise | 78,000 |\n| Backup internet & power | 53,000 |\n| Print | 24,500 |\n| Prize pool | 300,000 |\n\nFunded by sponsors and college support.' },
+      { t: 'Prize Pool Agreement — Sponsors', c: 'Contract', s: 'Signed', a: 300000, due: -40, body: 'Sponsor commitments for first to fifth place prizes, payable within 7 days of the event.' },
+      { t: 'Bhoj Ghar — Catering Invoice', c: 'Invoice', s: 'Paid', v: 'bhoj', a: 185000, due: -10 },
+      { t: 'Himalayan Sound — Invoice', c: 'Invoice', s: 'Paid', v: 'himal', a: 62000, due: -10 },
+      { t: 'KTM Tees — T-shirt Order Receipt', c: 'Receipt', s: 'Paid', v: 'ktmtees', a: 78000, due: -20 },
+      { t: 'Overnight Access Permission', c: 'Permit', s: 'Approved', due: -17, body: 'College admin approval for building access from 06:00 to 18:00 the next day, with guard and caretaker assigned.' },
+      { t: 'Hackathon Final Report', c: 'Plan', s: 'Approved', body: '## Highlights\n- 60 teams, 220 participants\n- 3 tracks, 14 mentors, 6 judges\n- Total spend NPR 427,000\n- Biggest lesson: add a second Wi-Fi access point from the start.' },
+    ],
+  },
+
+  // ====================== 3. UPCOMING — Guest Speaker Session ======================
+  {
+    title: "Guest Speaker Session — Founders' Fireside",
+    description:
+      'Fireside chat with a Nepali startup founder on building products in Nepal: first customers, fundraising, hiring and failing forward. Open to all students, with a 20-minute Q&A and networking over chiya.',
+    location: 'Islington College, Kamalpokhari — Seminar Hall',
+    startsAt: dayAt(3, 14),
+    endsAt: dayAt(3, 16, 30),
+    capacity: 150,
+    status: 'published',
+    createdAt: dayAt(-18, 10),
+    staff: ['rohan', 'kritika', 'sabina', 'pratik', 'samikshya', 'suman'],
+    schedule: [
+      T('invite', 'Send speaker invite & confirm date', 'rohan', -D(14), 60, 'Done'),
+      T('topic', 'Agree topic, bio & talking points with speaker', 'rohan', -D(10), 90, 'Done'),
+      T('hall', 'Book seminar hall & get permission letter', 'suman', -D(8), 60, 'Done'),
+      T('poster', 'Design poster & announce on socials', 'kritika', -D(7), 120, 'Done'),
+      T('rsvp', 'Open RSVP form & share in batch groups', 'sabina', -D(6), 45, 'In Progress'),
+      T('pickup', 'Arrange speaker pick-up & parking', 'rohan', -D(1), 30, 'Pending'),
+      T('mc', 'Prepare MC script & speaker introduction', 'rohan', -120, 60, 'Pending', 'topic'),
+      T('setup', 'Hall setup: mic, projector & seating', 'suman', -90, 60),
+      T('talk', 'Fireside chat', 'rohan', 0, 70, 'Pending', 'setup'),
+      T('qa', 'Audience Q&A', 'rohan', 70, 30, 'Pending', 'talk'),
+      T('network', 'Chiya & networking', 'samikshya', 100, 50),
+      T('thanks', 'Thank-you note & share session photos', 'kritika', D(1), 60, 'Pending', 'network'),
+    ],
+    floors: [],
     incidents: [],
     inventory: [
-      ['Printed workbooks', 'Stationery', 0, 60, 'Print vendor', 'Ordered'],
-      ['Name tents', 'Stationery', 60, 60, 'HQ Ops Cupboard', 'Available'],
-      ['Whiteboards & easels', 'Facilitation', 4, 8, 'HQ Store', 'Available'],
-      ['Sticky-note & marker kits', 'Facilitation', 10, 12, 'HQ Ops Cupboard', 'Available'],
-      ['Welcome gift bags', 'Merchandise', 20, 60, 'HQ Store', 'Low Stock'],
+      ['Wireless mics', 'AV', 2, 2, 'Seminar Hall', 'Available'],
+      ['Speaker memento (khada & plaque)', 'Gifts', 1, 1, 'Club Office', 'Available'],
+      ['Feedback QR standees', 'Stationery', 0, 4, 'Thamel Print House', 'Ordered'],
+      ['Chiya flasks (5 L)', 'Refreshments', 4, 4, 'Club Office', 'Available'],
     ],
     vendors: [
-      { k: 'bayview', name: 'Bayview Resort & Conference Centre', type: 'Venue', contactName: 'Marcus Teo', phone: '+65 6555 0201', email: 'groups@bayviewresort.example', website: 'https://bayviewresort.example', address: '1 Bayview Drive, Singapore', stage: 'Booked', scope: 'Plenary ballroom, 2 studios, 30 rooms x 2 nights', quoteAmount: 54000 },
-      { k: 'peak', name: 'Summit Peak Facilitation', type: 'Facilitation', contactName: 'Dr. Amara Singh', phone: '+65 6555 0219', email: 'engage@summitpeak.example', website: 'https://summitpeak.example', address: '40 Anson Road, Singapore', stage: 'RFQ Sent', scope: 'Two-day strategy facilitation for 60 executives', notes: 'No response yet; agenda is blocked on this.' },
-      { k: 'horizon', name: 'Horizon Coaches', type: 'Transport', contactName: 'Zul Rahman', phone: '+65 6555 0233', email: 'charters@horizoncoaches.example', website: 'https://horizoncoaches.example', address: '12 Woodlands Terrace, Singapore', stage: 'Quoted', scope: 'Return coach transfers, 2 x 40-seaters', quoteAmount: 7200 },
-      { k: 'lattice', name: 'Lattice Experiences', type: 'Team Activities', contactName: 'Pia Romero', phone: '+65 6555 0244', email: 'hello@lattice-exp.example', website: 'https://lattice-exp.example', address: '77 Robinson Road, Singapore', stage: 'Shortlisted', scope: 'Half-day leadership team challenge' },
+      { k: 'cloud', name: 'Cloud Kitchen Kathmandu', type: 'Catering', contactName: 'Sanjay Pradhan', phone: '+977 9801000123', email: 'orders@cloudkitchen-ktm.example', website: 'https://cloudkitchen-ktm.example', address: 'Kamalpokhari, Kathmandu', stage: 'Quoted', scope: 'Chiya and light snacks for 150', quoteAmount: 18000 },
+      { k: 'pixel', name: 'Pixel Pahad Studios', type: 'Photography', contactName: 'Utsav Khadka', phone: '+977 9812000178', email: 'shoot@pixelpahad.example', website: 'https://pixelpahad.example', address: 'Jhamsikhel, Lalitpur', stage: 'Shortlisted', scope: 'Half-day coverage and 30 edited photos', quoteAmount: 8000 },
     ],
     documents: [
-      { t: 'Bayview Resort — Group Booking Contract', c: 'Contract', s: 'Signed', v: 'bayview', a: 54000, due: -14, body: 'Ballroom, two studios and 30 rooms for two nights. Cancellation free until 14 days before arrival.' },
-      { t: 'RFQ — Strategy Facilitation (2 days)', c: 'RFQ', s: 'Sent', v: 'peak', due: 3, body: 'Seeking quotes for a two-day facilitated strategy workshop for 60 executives.' },
-      { t: 'Horizon Coaches — Transfer Quote', c: 'Quote', s: 'Received', v: 'horizon', a: 7200, due: 10 },
-      { t: 'Budget Request — Q4 Strategy Offsite', c: 'Other', s: 'Draft', a: 78500, due: 7, body: 'Venue 54,000 · Transport 7,200 · Facilitation TBC · Contingency 10%.' },
-      { t: 'Offsite Agenda — Draft v2', c: 'Plan', s: 'Draft', body: '## Day 1\n- 09:00 Welcome\n- 10:00 2027 strategy workshop\n\n## Day 2\n- Budget alignment\n\n## Day 3\n- Action items and close' },
+      { t: 'Speaker Brief & Talking Points', c: 'Plan', s: 'Approved', body: '## Topics\n1. How I found my first 10 customers\n2. Fundraising in Nepal: what actually works\n3. Hiring when nobody wants to join a startup\n4. One failure we learned from' },
+      { t: 'Speaker Honorarium & Travel Note', c: 'Other', s: 'Draft', a: 5000, due: 3, body: 'Token of appreciation and fuel reimbursement. Awaiting treasurer approval.' },
+      { t: 'Cloud Kitchen — Snack Quote', c: 'Quote', s: 'Received', v: 'cloud', a: 18000, due: 1 },
     ],
   },
 
-  // ============================ 3. COMPLETED ============================
+  // ====================== 4. UPCOMING — Figma ======================
   {
-    title: 'Q3 All-Hands & Town Hall',
-    description: 'Company-wide quarterly update with CEO address, department highlights and live Q&A. Streamed to all offices.',
-    location: 'HQ Atrium, Level 1',
-    startsAt: dayAt(-12, 14),
-    endsAt: dayAt(-12, 16, 30),
-    capacity: 600,
-    status: 'published',
-    createdAt: dayAt(-60, 9),
-    staff: ['marcus', 'yuki', 'sofia', 'daniel', 'grace', 'hannah'],
-    schedule: [
-      T('book', 'Book HQ atrium & overflow seating', 'sofia', -D(30), 60, 'Done'),
-      T('rehearse', 'AV rehearsal with CEO team', 'marcus', -D(1), 90, 'Done'),
-      T('stream', 'Livestream & captioning setup', 'yuki', -120, 60, 'Done', 'rehearse'),
-      T('doors', 'Doors & seating marshals', 'daniel', -45, 45, 'Done'),
-      T('townhall', 'Town hall & live Q&A', 'hannah', 0, 150, 'Done'),
-      T('survey', 'Post-event pulse survey', 'yuki', D(1), 60, 'Done'),
-      T('report', 'Publish attendance & feedback report', 'alex', D(3), 90, 'Done', 'survey'),
-    ],
-    floors: [
-      {
-        name: 'Atrium',
-        rooms: [
-          ['stage', 'Stage & AV', 40, 40, 552, 100, 12, '#ece6f5'],
-          ['seat', 'Atrium Seating', 40, 170, 552, 260, 600, '#e4f7f9'],
-          ['live', 'Livestream Corner', 632, 40, 168, 120, 4, '#e8f0e0'],
-          ['reg', 'Check-in', 632, 200, 168, 120, 20, '#fff4cc'],
-        ],
-        people: [['marcus', 'stage'], ['yuki', 'live'], ['grace', 'reg'], ['sofia', 'seat'], ['hannah', 'seat'], ['daniel', null, 700, 400]],
-      },
-    ],
-    incidents: [
-      { title: 'Wireless mic dropout during CEO address', description: 'Lapel mic lost signal for ~20 seconds. Swapped to backup handheld.', location: 'Stage & AV', priority: 'Medium', status: 'Resolved', by: 'yuki', to: 'marcus', at: 20, res: 28 },
-      { title: 'Overflow seating needed on balcony level', description: 'Atrium filled early. Opened balcony overflow with a live relay screen.', location: 'Atrium Seating', priority: 'Low', status: 'Resolved', by: 'grace', to: 'sofia', at: 40, res: 75 },
-      { title: 'Catering delivery arrived 30 minutes late', description: 'Afternoon refreshments delayed in traffic. Served after the first segment.', location: 'Atrium Seating', priority: 'Low', status: 'Resolved', by: 'sofia', to: 'hannah', at: -90, res: -50 },
-    ],
-    inventory: [
-      ['Lapel mics', 'AV', 10, 10, 'Atrium Stage', 'Available'],
-      ['Stackable chairs', 'Furniture', 480, 600, 'Facilities Store', 'Available'],
-      ['Branded notebooks', 'Merchandise', 40, 700, 'HQ Level 1', 'Low Stock'],
-    ],
-    vendors: [
-      { k: 'apex', name: 'Apex AV & Staging', type: 'AV & Staging', contactName: 'Ravi Menon', phone: '+65 6555 0188', email: 'bookings@apex-av.example', website: 'https://apex-av.example', address: '24 Kallang Way, Singapore', stage: 'Paid', scope: 'Stage, PA and screens for atrium', quoteAmount: 9800 },
-      { k: 'saffron', name: 'Saffron & Salt Catering', type: 'Catering', contactName: 'Mei Lin Koh', phone: '+65 6555 0107', email: 'corporate@saffronsalt.example', website: 'https://saffronsalt.example', address: '88 Telok Ayer St, Singapore', stage: 'Paid', scope: 'Afternoon refreshments, 600 guests', quoteAmount: 8400 },
-      { k: 'hush', name: 'Hush Livestream Studios', type: 'Livestream', contactName: 'Ben Alcaraz', phone: '+65 6555 0177', email: 'live@hushstudios.example', website: 'https://hushstudios.example', address: '61 Ubi Avenue 1, Singapore', stage: 'Paid', scope: 'Multi-camera livestream and captioning', quoteAmount: 3200 },
-    ],
-    documents: [
-      { t: 'Apex AV — Invoice (Q3 All-Hands)', c: 'Invoice', s: 'Paid', v: 'apex', a: 9800, due: -20 },
-      { t: 'Hush Livestream — Invoice', c: 'Invoice', s: 'Paid', v: 'hush', a: 3200, due: -18 },
-      { t: 'Post-event Report — Q3 All-Hands', c: 'Plan', s: 'Approved', body: '## Highlights\n- 540 on-site attendees, 1,900 streamed\n- 92% positive pulse-survey score\n- Under budget by 6%' },
-    ],
-  },
-
-  // ============================ 4. UPCOMING — CLIENT DINNER ============================
-  {
-    title: 'Client Appreciation Dinner',
-    description: 'Seated dinner for 80 key clients and executive hosts, with a welcome reception and short host remarks.',
-    location: 'The Alder Room, Marina Bay',
-    startsAt: dayAt(9, 18, 30),
-    endsAt: dayAt(9, 22),
+    title: 'Figma Friends Kathmandu — Design Systems Night',
+    description:
+      'Evening community meetup for Nepali designers and students: lightning talks, a live component-library teardown and a hands-on workshop on design tokens and variables in Figma.',
+    location: 'Jhamsikhel Co-working Loft, Lalitpur',
+    startsAt: dayAt(6, 17),
+    endsAt: dayAt(6, 20, 30),
     capacity: 80,
     status: 'published',
-    createdAt: dayAt(-30, 11),
-    staff: ['tom', 'nina', 'priya', 'leila'],
+    createdAt: dayAt(-21, 12),
+    staff: ['nozomi', 'kritika', 'sabina', 'pratik', 'samikshya', 'drishya'],
     schedule: [
-      T('room', 'Book private dining room', 'priya', -D(25), 60, 'Done'),
-      T('invites', 'Send invitations & collect RSVPs', 'nina', -D(16), 120, 'Done'),
-      T('tasting', 'Menu tasting with chef', 'tom', -D(14), 120, 'Done'),
-      T('budgetap', 'Approve dinner budget', 'alex', -D(12), 30, 'Done'),
-      T('favors', 'Select & order guest gifts', 'nina', -D(11), 90, 'In Progress'),
-      T('wine', 'Wine pairing sign-off', 'tom', -D(6), 45, 'Pending', 'tasting'),
-      T('seating', 'Finalise seating chart', 'nina', -D(5), 120, 'Pending', 'invites'),
-      T('recep', 'Guest reception & welcome toast', 'tom', 0, 60),
-      T('dinnersvc', 'Seated dinner & host remarks', 'tom', 60, 150, 'Pending', 'recep'),
+      T('venue', 'Book co-working loft', 'nozomi', -D(20), 60, 'Done'),
+      T('speakers', 'Confirm 3 lightning-talk speakers', 'nozomi', -D(15), 120, 'Done'),
+      T('brand', 'Design event poster & Figma-themed stickers', 'nozomi', -D(12), 240, 'Done'),
+      T('rsvp', 'Open RSVP & share in design communities', 'kritika', -D(10), 60, 'Done'),
+      T('workshop', 'Prepare workshop Figma file & duplicate links', 'nozomi', -D(4), 180, 'In Progress'),
+      T('swag', 'Print stickers & name tags', 'drishya', -D(3), 90, 'Pending'),
+      T('snacks', 'Order snacks & drinks', 'samikshya', -D(2), 45, 'Pending'),
+      T('setup', 'Set up chairs, screen & power strips', 'drishya', -90, 60),
+      T('checkin', 'Check-in & name tags', 'sabina', -30, 45, 'Pending', 'setup'),
+      T('talks', 'Lightning talks (3 × 10 min)', 'nozomi', 0, 45, 'Pending', 'setup'),
+      T('teardown', 'Live design-system teardown', 'nozomi', 45, 40, 'Pending', 'talks'),
+      T('hands', 'Hands-on workshop: variables & tokens', 'nozomi', 85, 60, 'Pending', 'teardown'),
+      T('social', 'Networking & photos', 'pratik', 145, 45, 'Pending', 'hands'),
     ],
     floors: [
       {
-        name: 'The Alder Room',
+        name: 'Co-working Loft',
         rooms: [
-          ['dine', 'Private Dining', 40, 40, 360, 264, 80, '#fdebd0'],
-          ['bar', 'Bar & Reception', 440, 40, 240, 168, 40, '#e4f7f9'],
-          ['foyer', 'Coat Check & Foyer', 440, 248, 240, 96, 20, '#fff4cc'],
-          ['pass', "Chef's Pass", 40, 344, 200, 96, 6, '#e8f0e0'],
+          ['main', 'Main Room', 40, 40, 408, 264, 80, '#e4f7f9'],
+          ['bar', 'Snacks & Drinks', 488, 40, 216, 120, 25, '#fdebd0'],
+          ['desk', 'Check-in Desk', 488, 200, 216, 104, 10, '#fff4cc'],
+          ['gallery', 'Sticker & Poster Wall', 40, 344, 264, 120, 20, '#ece6f5'],
         ],
-        people: [['tom', 'pass'], ['nina', 'foyer'], ['priya', 'dine'], ['leila', 'bar']],
+        people: [['nozomi', 'main'], ['sabina', 'desk'], ['samikshya', 'bar'], ['pratik', 'main'], ['drishya', 'main'], ['kritika', 'gallery']],
       },
     ],
     incidents: [],
     inventory: [
-      ['Guest gift boxes', 'Gifts', 0, 80, 'Gifted & Co — in production', 'Ordered'],
-      ['Place cards & menus', 'Stationery', 80, 80, 'HQ Ops Cupboard', 'Available'],
-      ['Wine (cases)', 'Catering', 0, 12, "Vintner's Cellar — pending quote", 'Ordered'],
+      ['Figma-themed sticker packs', 'Swag', 0, 150, 'Thamel Print House', 'Ordered'],
+      ['Name tags', 'Registration', 80, 100, 'Club Office', 'Available'],
+      ['Power strips', 'Electrical', 5, 8, 'Club Office', 'Available'],
+      ['HDMI to USB-C adapters', 'AV', 2, 4, 'Club Office', 'Low Stock'],
+      ['Backdrop banner (3×6 ft)', 'Signage', 1, 1, 'Club Office', 'Available'],
     ],
     vendors: [
-      { k: 'alder', name: 'The Alder Room', type: 'Venue', contactName: 'Camille Ward', phone: '+65 6555 0301', email: 'private@alderroom.example', website: 'https://alderroom.example', address: '8 Marina Boulevard, Singapore', stage: 'Booked', scope: 'Private dining, 80 covers, 3-course menu', quoteAmount: 12800 },
-      { k: 'vintner', name: "Vintner's Cellar", type: 'Wine & Beverage', contactName: 'Paolo Ferraro', phone: '+65 6555 0312', email: 'corporate@vintnerscellar.example', website: 'https://vintnerscellar.example', address: '30 Duxton Road, Singapore', stage: 'Quoted', scope: 'Wine pairing for 80 guests', quoteAmount: 3400 },
-      { k: 'gifted', name: 'Gifted & Co', type: 'Gifts', contactName: 'Helena Cruz', phone: '+65 6555 0327', email: 'corporate@giftedco.example', website: 'https://giftedco.example', address: '14 Haji Lane, Singapore', stage: 'Quoted', scope: 'Branded gift boxes x80', quoteAmount: 2100 },
-      { k: 'harp', name: 'Harp & Strings Quartet', type: 'Entertainment', contactName: 'Isla Murray', phone: '+65 6555 0338', email: 'bookings@harpstrings.example', website: 'https://harpstrings.example', address: '2 Orchard Link, Singapore', stage: 'Shortlisted', scope: 'Live background music, 90 minutes' },
+      { k: 'loft', name: 'Jhamsikhel Co-working Loft', type: 'Venue', contactName: 'Saugat Bista', phone: '+977 9823000101', email: 'hello@jhamloft.example', website: 'https://jhamloft.example', address: 'Jhamsikhel, Lalitpur', stage: 'Booked', scope: 'Evening hire with projector, Wi-Fi and chairs', quoteAmount: 15000 },
+      { k: 'momo', name: 'Momo & More Catering', type: 'Catering', contactName: 'Pema Tamang', phone: '+977 9823000122', email: 'party@momomore.example', website: 'https://momomore.example', address: 'Pulchowk, Lalitpur', stage: 'Quoted', scope: 'Momo trays, samosa and drinks for 80', quoteAmount: 22000 },
+      { k: 'thamel', name: 'Thamel Print House', type: 'Printing', contactName: 'Rajesh Joshi', phone: '+977 9801000167', email: 'hello@thamelprint.example', website: 'https://thamelprint.example', address: 'Thamel, Kathmandu', stage: 'Booked', scope: 'Stickers, posters and name tags', quoteAmount: 9500 },
     ],
     documents: [
-      { t: 'The Alder Room — Private Dining Contract', c: 'Contract', s: 'Signed', v: 'alder', a: 12800, due: -20 },
-      { t: "Vintner's Cellar — Wine Pairing Quote", c: 'Quote', s: 'Received', v: 'vintner', a: 3400, due: 4 },
-      { t: 'PO — Guest Gift Boxes', c: 'Purchase Order', s: 'Draft', v: 'gifted', a: 2100, due: 2 },
+      { t: 'Co-working Loft — Booking Confirmation', c: 'Contract', s: 'Signed', v: 'loft', a: 15000, due: -15 },
+      { t: 'Momo & More — Catering Quote', c: 'Quote', s: 'Received', v: 'momo', a: 22000, due: 2 },
+      { t: 'PO — Stickers & Posters', c: 'Purchase Order', s: 'Sent', v: 'thamel', a: 9500, due: 1 },
+      { t: 'Workshop Outline — Variables & Tokens', c: 'Plan', s: 'Draft', body: '1. Why design systems matter\n2. Setting up variables and modes\n3. Building a themed button component\n4. Dev handoff checklist' },
     ],
   },
 
-  // ============================ 5. UPCOMING — COMPLIANCE WEEK ============================
+  // ====================== 5. UPCOMING — Leapfrog (AT RISK) ======================
   {
-    title: 'Annual Compliance & Safety Training Week',
-    description: 'Mandatory five-day training programme: workplace safety, data protection, code of conduct and first aid. Rolled out department by department.',
-    location: 'HQ Training Rooms 3–5',
-    startsAt: dayAt(4, 9),
-    endsAt: dayAt(8, 17),
-    capacity: 200,
+    title: 'Leapfrog Tech Talk & Internship Info Session',
+    description:
+      'Engineers from Leapfrog share how they build software, what they look for in interns and how to prepare for tech interviews, followed by an open Q&A and CV tips corner for students.',
+    location: 'Islington College, Kamalpokhari — Main Auditorium',
+    startsAt: dayAt(12, 13),
+    endsAt: dayAt(12, 16),
+    capacity: 220,
     status: 'published',
-    createdAt: dayAt(-35, 9),
-    staff: ['omar', 'hannah', 'sofia', 'daniel', 'grace'],
+    createdAt: dayAt(-14, 10),
+    staff: ['priyanka', 'rohan', 'suman', 'kritika', 'sabina', 'bibek'],
     schedule: [
-      T('book', 'Book training rooms & certified trainers', 'sofia', -D(20), 60, 'Done'),
-      T('roster', 'Compile per-department attendance roster', 'omar', -D(7), 120, 'In Progress'),
-      T('reading', 'Distribute pre-reading & e-learning links', 'hannah', -D(5), 60, 'Done'),
-      T('d1', 'Day 1 — Workplace safety fundamentals', 'omar', 0, 420),
-      T('d2', 'Day 2 — Data protection & security awareness', 'omar', D(1), 420, 'Pending', 'd1'),
-      T('d3', 'Day 3 — Code of conduct & anti-harassment', 'hannah', D(2), 420, 'Pending', 'd2'),
-      T('d4', 'Day 4 — First aid & emergency response', 'omar', D(3), 420, 'Pending', 'd3'),
-      T('drill', 'Fire-evacuation drill coordination', 'daniel', D(3) + 300, 90, 'Pending', 'd4'),
-      T('certs', 'Issue completion certificates', 'grace', D(4) + 420, 60, 'Pending', 'drill'),
-      T('report', 'Sign off compliance completion report', 'alex', D(4) + 480, 60, 'Pending', 'certs'),
+      T('outreach', 'Outreach email & first call with company contact', 'priyanka', -D(12), 90, 'Done'),
+      T('agenda', 'Agree agenda & speaker list', 'rohan', -D(9), 90, 'Blocked', 'outreach'),
+      T('permit', 'College admin approval for external guests', 'suman', -D(8), 60, 'In Progress', null, 2880),
+      T('poster', 'Poster & announcement', 'kritika', -D(7), 120, 'Pending', 'agenda'),
+      T('rsvp', 'Open RSVP & CV collection form', 'sabina', -D(6), 60, 'Pending', 'agenda'),
+      T('badges', 'Visitor passes for company team', 'suman', -D(2), 45, 'Pending', 'permit'),
+      T('av', 'AV test with speaker slides', 'bibek', -120, 45, 'Pending', 'agenda'),
+      T('talk', 'Tech talk & internship overview', 'rohan', 0, 75, 'Pending', 'av'),
+      T('qa', 'Open Q&A', 'rohan', 75, 30, 'Pending', 'talk'),
+      T('cv', 'CV tips corner', 'priyanka', 105, 60, 'Pending', 'qa'),
+      T('thanks', 'Send thank-you & collect feedback', 'kritika', D(1), 60, 'Pending', 'cv'),
     ],
     floors: [],
     incidents: [],
     inventory: [
-      ['First-aid training dummies', 'Training', 3, 6, 'Training Room 3', 'Low Stock'],
-      ['AED trainer units', 'Training', 2, 4, 'Training Room 4', 'Available'],
-      ['Fire-extinguisher trainers', 'Training', 4, 4, 'Facilities Store', 'Available'],
-      ['Sign-in sheets & pens', 'Stationery', 200, 200, 'HQ Ops Cupboard', 'Available'],
+      ['Visitor passes', 'Registration', 0, 15, 'Club Office', 'Ordered'],
+      ['CV tips handouts', 'Stationery', 0, 100, 'Thamel Print House', 'Ordered'],
+      ['Wireless mics', 'AV', 2, 2, 'Auditorium Booth', 'Available'],
     ],
     vendors: [
-      { k: 'safeworks', name: 'SafeWorks Training Partners', type: 'Training', contactName: 'Greg Holloway', phone: '+65 6555 0401', email: 'corporate@safeworks.example', website: 'https://safeworks.example', address: '21 Science Park Road, Singapore', stage: 'Booked', scope: 'Certified trainers for safety, first aid and fire modules', quoteAmount: 11500 },
-      { k: 'certifirst', name: 'CertiFirst First-Aid', type: 'Training', contactName: 'Nadia Karim', phone: '+65 6555 0412', email: 'groups@certifirst.example', website: 'https://certifirst.example', address: '6 Eu Tong Sen Street, Singapore', stage: 'Quoted', scope: 'Add-on first-aid certification', quoteAmount: 2900 },
+      { k: 'himal', name: 'Himalayan Sound & Lights', type: 'AV', contactName: 'Pasang Sherpa', phone: '+977 9801000145', email: 'book@himalayansound.example', website: 'https://himalayansound.example', address: 'Putalisadak, Kathmandu', stage: 'Shortlisted', scope: 'Auditorium AV support (if the college booth is unavailable)' },
+      { k: 'cloud', name: 'Cloud Kitchen Kathmandu', type: 'Catering', contactName: 'Sanjay Pradhan', phone: '+977 9801000123', email: 'orders@cloudkitchen-ktm.example', website: 'https://cloudkitchen-ktm.example', address: 'Kamalpokhari, Kathmandu', stage: 'RFQ Sent', scope: 'Light refreshments for 220 and 15 guests', notes: 'Waiting for a quote.' },
     ],
     documents: [
-      { t: 'SafeWorks — Training Services Contract', c: 'Contract', s: 'Signed', v: 'safeworks', a: 11500, due: -15 },
-      { t: 'CertiFirst — First-Aid Certification Quote', c: 'Quote', s: 'Received', v: 'certifirst', a: 2900, due: 3 },
-      { t: 'Training Week Schedule', c: 'Plan', s: 'Approved', body: '| Day | Module |\n|---|---|\n| 1 | Workplace safety |\n| 2 | Data protection |\n| 3 | Code of conduct |\n| 4 | First aid & drill |\n| 5 | Certification & review |' },
+      { t: 'Outreach Email — Leapfrog (v2)', c: 'Other', s: 'Sent', body: 'Hello, we are the tech club at Islington College and would love to host a tech talk and internship info session for our students...' },
+      { t: 'Permission Request — External Guests', c: 'Permit', s: 'Sent', due: -4, body: 'Request to the Program Leader to allow company staff on campus; awaiting reply.' },
+      { t: 'RFQ — Refreshments for Info Session', c: 'RFQ', s: 'Sent', v: 'cloud', due: 4 },
+      { t: 'Draft Agenda', c: 'Plan', s: 'Draft', body: '13:00 Welcome\n13:10 Engineering at Leapfrog\n13:50 Intern hiring Q&A\n14:25 CV tips corner' },
     ],
   },
 
-  // ============================ 6. DRAFT ============================
+  // ====================== 6. UPCOMING — Club Fair ======================
   {
-    title: 'Year-End Holiday Party',
-    description: 'Company-wide celebration for ~350 guests. Venue, theme and budget still being decided.',
-    location: 'Skyline Rooftop Venue (TBC)',
-    startsAt: dayAt(74, 18),
-    endsAt: dayAt(74, 23),
-    capacity: 350,
-    status: 'draft',
-    createdAt: dayAt(-5, 15),
-    staff: ['hannah', 'tom', 'yuki'],
+    title: 'Club Fair & Freshers Welcome',
+    description:
+      'Annual open day where every student club sets up a stall to recruit new members: demos, games, performances and a quick-fire hackathon teaser. Expected footfall of around 800 students.',
+    location: 'Islington College, Kamalpokhari — Main Ground & Atrium',
+    startsAt: dayAt(25, 10),
+    endsAt: dayAt(25, 16),
+    capacity: 800,
+    status: 'published',
+    createdAt: dayAt(-10, 11),
+    staff: ['ayusha', 'drishya', 'nozomi', 'kritika', 'bibek', 'niraj', 'samikshya', 'anish', 'suman'],
     schedule: [
-      T('venue', 'Shortlist & tour venues', 'hannah', -D(60), 180),
-      T('budget', 'Submit party budget for approval', 'alex', -D(55), 45),
-      T('theme', 'Agree theme & entertainment brief', 'yuki', -D(50), 90),
-      T('caterer', 'Request catering quotes', 'tom', -D(45), 90, 'Pending', 'venue'),
+      T('approve', 'Get permission & ground booking from admin', 'suman', -D(20), 60, 'Done'),
+      T('invite', 'Invite all clubs & collect stall requests', 'drishya', -D(18), 90, 'Done'),
+      T('map', 'Design stall layout & ground map', 'nozomi', -D(14), 180, 'In Progress'),
+      T('budget', 'Approve budget with treasurer', 'sworna', -D(12), 45, 'Pending'),
+      T('tents', 'Book tents, tables & chairs', 'ayusha', -D(10), 60, 'Pending'),
+      T('perf', 'Schedule cultural performances', 'kritika', -D(8), 90),
+      T('sound', 'Sound system & stage booking', 'bibek', -D(7), 45, 'Pending'),
+      T('volunteers', 'Recruit & brief 25 volunteers', 'drishya', -D(5), 90, 'Pending', 'invite'),
+      T('setup', 'Stall setup & signage', 'ayusha', -150, 120, 'Pending', 'tents'),
+      T('open', 'Opening & ribbon cutting', 'sworna', 0, 30, 'Pending', 'setup'),
+      T('fair', 'Club fair open hours', 'drishya', 30, 300, 'Pending', 'open'),
+      T('stage', 'Stage performances & club teasers', 'kritika', 120, 150, 'Pending', 'sound'),
+      T('cleanup', 'Cleanup & equipment return', 'ayusha', 360, 90, 'Pending', 'fair'),
     ],
-    floors: [],
+    floors: [
+      {
+        name: 'Main Ground',
+        rooms: [
+          ['stalls', 'Stall Area (30 tents)', 40, 40, 552, 264, 500, '#e8f0e0'],
+          ['stage', 'Performance Stage', 632, 40, 192, 144, 200, '#ece6f5'],
+          ['food', 'Food Court', 632, 224, 192, 120, 80, '#fdebd0'],
+          ['help', 'Help & Lost-and-Found', 40, 344, 192, 96, 6, '#fff4cc'],
+          ['aid', 'First Aid Post', 272, 344, 160, 96, 6, '#fbe3e8'],
+        ],
+        people: [['ayusha', 'stalls'], ['drishya', 'help'], ['niraj', 'aid'], ['bibek', 'stage'], ['kritika', 'stage'], ['samikshya', 'food'], ['nozomi', 'stalls']],
+      },
+    ],
     incidents: [],
-    inventory: [],
+    inventory: [
+      ['Tents (10×10 ft)', 'Furniture', 0, 30, 'Rental vendor', 'Ordered'],
+      ['Tables', 'Furniture', 18, 40, 'College store', 'Low Stock'],
+      ['Folding chairs', 'Furniture', 90, 200, 'College store', 'Available'],
+      ['Volunteer T-shirts', 'Merchandise', 25, 30, 'Club Office', 'Available'],
+      ['Stage speakers', 'AV', 2, 4, 'College store', 'Available'],
+    ],
     vendors: [
-      { k: 'skyline', name: 'Skyline Rooftop Venue', type: 'Venue', contactName: 'Jasmine Lau', phone: '+65 6555 0501', email: 'events@skylinerooftop.example', website: 'https://skylinerooftop.example', address: '100 Cecil Street, Singapore', stage: 'Shortlisted', scope: 'Rooftop party for 350' },
-      { k: 'glass', name: 'The Glasshouse Events', type: 'Venue', contactName: 'Owen Price', phone: '+65 6555 0514', email: 'hello@glasshouse-events.example', website: 'https://glasshouse-events.example', address: '4 Gardens Walk, Singapore', stage: 'Shortlisted', scope: 'Garden pavilion for 400' },
-      { k: 'pavilion', name: 'Marina Pavilion', type: 'Venue', contactName: 'Sara Boon', phone: '+65 6555 0526', email: 'bookings@marinapavilion.example', website: 'https://marinapavilion.example', address: '2 Marina Gardens, Singapore', stage: 'Shortlisted', scope: 'Waterfront pavilion for 380' },
+      { k: 'tent', name: 'Everest Tents & Events', type: 'Rental', contactName: 'Mingma Lama', phone: '+977 9841000101', email: 'rent@everesttents.example', website: 'https://everesttents.example', address: 'Teku, Kathmandu', stage: 'Quoted', scope: '30 tents, 40 tables and 200 chairs for one day', quoteAmount: 68000 },
+      { k: 'himal', name: 'Himalayan Sound & Lights', type: 'AV', contactName: 'Pasang Sherpa', phone: '+977 9801000145', email: 'book@himalayansound.example', website: 'https://himalayansound.example', address: 'Putalisadak, Kathmandu', stage: 'Shortlisted', scope: 'Stage and PA for performances' },
+      { k: 'food', name: 'Chatpate Street Food Stalls', type: 'Catering', contactName: 'Ramesh Shahi', phone: '+977 9841000143', email: 'stalls@chatpate.example', website: 'https://chatpate.example', address: 'Putalisadak, Kathmandu', stage: 'Shortlisted', scope: '4 food stalls on commission' },
     ],
     documents: [
-      { t: 'Venue Shortlist & Comparison', c: 'Plan', s: 'Draft', body: '| Venue | Capacity | Notes |\n|---|---|---|\n| Skyline Rooftop | 350 | Weather backup needed |\n| Glasshouse | 400 | Higher F&B minimum |\n| Marina Pavilion | 380 | Best transport links |' },
+      { t: 'Ground Booking Permission', c: 'Permit', s: 'Approved', due: -18, body: 'Admin approval for the main ground and atrium from 08:00 to 18:00.' },
+      { t: 'Everest Tents — Quote', c: 'Quote', s: 'Received', v: 'tent', a: 68000, due: 6 },
+      { t: 'Club Fair Budget Request', c: 'Other', s: 'Draft', a: 140000, due: 8, body: 'Tents 68,000 · Sound 22,000 · Print 18,000 · Misc 32,000.' },
+      { t: 'Ground Layout Map v1', c: 'Plan', s: 'Draft' },
     ],
   },
 
-  // ============================ 7. CANCELLED ============================
+  // ====================== 7. DRAFT ======================
   {
-    title: 'Regional Vendor Expo (Cancelled)',
-    description: 'Supplier showcase for regional offices. Cancelled after the venue became unavailable; to be re-planned next quarter.',
-    location: 'Expo Hall 2 (released)',
-    startsAt: dayAt(35, 9),
-    endsAt: dayAt(35, 17),
+    title: 'Tihar Cultural Night & Club Reunion',
+    description:
+      'Festive evening for all clubs and alumni: deusi-bhailo performances, a music jam, food stalls and a photo wall. Date and venue are still being finalised with the college.',
+    location: 'College Atrium (TBC)',
+    startsAt: dayAt(45, 16),
+    endsAt: dayAt(45, 21),
     capacity: 300,
-    status: 'cancelled',
-    createdAt: dayAt(-70, 10),
-    staff: ['carlos', 'priya'],
+    status: 'draft',
+    createdAt: dayAt(-3, 15),
+    staff: ['kritika', 'nozomi', 'samikshya', 'drishya', 'suman', 'priyanka'],
     schedule: [
-      T('venue', 'Venue booking (released)', 'carlos', -D(60), 60, 'Done'),
-      T('inform', 'Notify exhibitors of cancellation', 'priya', -D(40), 120, 'Done'),
+      T('date', 'Confirm date with college calendar', 'suman', -D(20), 45),
+      T('theme', 'Agree theme & performances', 'kritika', -D(18), 90),
+      T('budget', 'Draft budget & find sponsors', 'priyanka', -D(15), 120),
+      T('decor', 'Plan decor: diyas, marigold & lights', 'nozomi', -D(12), 120, 'Pending', 'theme'),
     ],
     floors: [],
     incidents: [],
     inventory: [],
     vendors: [
-      { k: 'hall', name: 'Expo Hall Rentals', type: 'Venue', contactName: 'Ken Soh', phone: '+65 6555 0601', email: 'hire@expohall.example', website: 'https://expohall.example', address: '1 Expo Drive, Singapore', stage: 'Rejected', scope: 'Hall 2 rental', notes: 'Venue became unavailable.' },
+      { k: 'decor', name: 'Marigold Decor Studio', type: 'Decor', contactName: 'Binita Rajbhandari', phone: '+977 9851000101', email: 'hello@marigolddecor.example', website: 'https://marigolddecor.example', address: 'Bhaktapur', stage: 'Shortlisted', scope: 'Marigold garlands, diyas and string lights' },
+      { k: 'band', name: 'Sunkoshi Folk Band', type: 'Entertainment', contactName: 'Hari Gurung', phone: '+977 9851000122', email: 'book@sunkoshiband.example', website: 'https://sunkoshiband.example', address: 'Kirtipur', stage: 'Shortlisted', scope: 'Live folk set for 90 minutes' },
+    ],
+    documents: [
+      { t: 'Cultural Night Concept Note', c: 'Plan', s: 'Draft', body: 'Deusi-bhailo performances, open mic, momo stalls, photo wall and an alumni reunion corner.' },
+    ],
+  },
+
+  // ====================== 8. CANCELLED ======================
+  {
+    title: 'Inter-College Quiz Bowl (Cancelled)',
+    description:
+      'Tech and general-knowledge quiz bowl for five colleges. Cancelled because it clashed with mid-term exams; to be rescheduled next semester.',
+    location: 'Seminar Hall (released)',
+    startsAt: dayAt(18, 11),
+    endsAt: dayAt(18, 15),
+    capacity: 120,
+    status: 'cancelled',
+    createdAt: dayAt(-40, 10),
+    staff: ['rojina', 'rohan'],
+    schedule: [
+      T('teams', 'Invite colleges & collect team lists', 'rohan', -D(25), 90, 'Done'),
+      T('inform', 'Notify teams of cancellation', 'rojina', -D(10), 60, 'Done'),
+    ],
+    floors: [],
+    incidents: [],
+    inventory: [],
+    vendors: [
+      { k: 'quiz', name: 'QuizMaster Nepal', type: 'Entertainment', contactName: 'Prabin Neupane', phone: '+977 9861000101', email: 'host@quizmasternepal.example', website: 'https://quizmasternepal.example', address: 'Lazimpat, Kathmandu', stage: 'Rejected', scope: 'Professional quiz host', notes: 'Cancelled due to exam clash.' },
     ],
     documents: [],
   },
@@ -469,12 +542,17 @@ const buildFloors = (floors, ids) =>
 let vendorPin = 0;
 const pin = () => {
   const i = vendorPin++;
-  return { latitude: +(CITY.lat + (((i * 7) % 11) - 5) * 0.004).toFixed(5), longitude: +(CITY.lng + (((i * 5) % 13) - 6) * 0.004).toFixed(5) };
+  return {
+    latitude: +(CITY.lat + (((i * 7) % 11) - 5) * 0.004).toFixed(5),
+    longitude: +(CITY.lng + (((i * 5) % 13) - 6) * 0.004).toFixed(5),
+  };
 };
 
 async function wipe(fresh) {
   if (fresh) {
-    await Promise.all([User, Event, Schedule, FloorPlan, Incident, Inventory, EventVendor, Doc, AgentConversation, AgentAction].map((M) => M.deleteMany({})));
+    await Promise.all(
+      [User, Event, Schedule, FloorPlan, Incident, Inventory, EventVendor, Doc, AgentConversation, AgentAction].map((M) => M.deleteMany({}))
+    );
     return;
   }
   const rx = new RegExp(`@${DOMAIN.replace(/\./g, '\\.')}$`, 'i');
@@ -513,7 +591,7 @@ async function main() {
       endsAt: def.endsAt,
       capacity: def.capacity,
       status: def.status,
-      organizer: ids.alex,
+      organizer: ids[ORGANIZER],
       staff: def.staff.map((k) => ids[k]),
       createdAt: def.createdAt,
     });
@@ -562,7 +640,9 @@ async function main() {
     // inventory
     if (def.inventory.length) {
       await Inventory.insertMany(
-        def.inventory.map(([name, category, stock, maxStock, location, status]) => ({ event: event._id, name, category, stock, maxStock, location, status }))
+        def.inventory.map(([name, category, stock, maxStock, location, status]) => ({
+          event: event._id, name, category, stock, maxStock, location, status,
+        }))
       );
       counts.inventory += def.inventory.length;
     }
@@ -588,7 +668,7 @@ async function main() {
         currency: d.a !== undefined ? CURRENCY : undefined,
         dueDate: d.due !== undefined ? dayAt(d.due, 17) : undefined,
         content: d.body || '',
-        createdBy: ids.alex,
+        createdBy: ids[ORGANIZER],
       });
       counts.documents++;
     }
@@ -596,8 +676,8 @@ async function main() {
 
   console.log('\nSeeded:', counts);
   console.log('\nDemo logins (password for all: %s)', PASSWORD);
-  console.log(`  Organizer (Operations Manager): ${emailOf(PEOPLE.alex[0])}`);
-  console.log(`  Staff example:                  ${emailOf(PEOPLE.marcus[0])}`);
+  console.log(`  Organizer (sees everything):  ${emailOf(PEOPLE[ORGANIZER][0])}`);
+  console.log(`  Staff (sees only own tasks):  ${emailOf(PEOPLE.aashutosh[0])}`);
   await mongoose.disconnect();
 }
 
