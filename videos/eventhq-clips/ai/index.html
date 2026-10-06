@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1600, height=1000">
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/v2.css">
+    <style>
+      .ai { color: var(--ai-ink); background: #eee9fa; }
+      .lbl { display: flex; align-items: center; gap: 10px; font-family: "Geist Mono", monospace; font-size: 15px; letter-spacing: .06em; color: var(--accent); }
+      .lbl i { width: 10px; height: 10px; border-radius: 99px; background: #8a75d1; }
+      /* 1. Brief → plan */
+      .split { display: grid; grid-template-columns: 1fr 1.25fr; gap: 20px; margin-top: 30px; }
+      .brief { padding: 28px; display: flex; flex-direction: column; gap: 18px; height: 700px; }
+      .brief .txt { position: relative; padding: 22px; border-radius: 16px; border: 2px solid var(--line); font-size: 21px; line-height: 1.55; height: 330px; }
+      .brief .txt p { clip-path: inset(0 100% 0 0); }
+      .brief .btn { align-self: flex-start; }
+      .plan .h { padding: 22px 26px; border-bottom: 2px solid var(--line-soft); display: flex; justify-content: space-between; align-items: center; font-size: 22px; font-weight: 500; }
+      .ws { padding: 14px 26px 6px; font-family: "Geist Mono", monospace; font-size: 14px; letter-spacing: .06em; color: var(--ink-3); background: var(--soft); }
+      .tk { display: grid; grid-template-columns: 1fr auto auto; gap: 16px; align-items: center; padding: 0 26px; height: 66px; border-bottom: 2px solid var(--line-soft); font-size: 20px; }
+      .tk .o { font-size: 17px; color: var(--ink-3); }
+      .approve { margin: 18px 26px; display: inline-flex; }
+      /* 2. Delay fix */
+      .chain { display: grid; grid-template-columns: 1fr 60px 1fr 60px 1fr; align-items: center; margin-top: 34px; }
+      .node { padding: 24px; height: 200px; display: flex; flex-direction: column; gap: 10px; }
+      .node .k { font-family: "Geist Mono", monospace; font-size: 14px; letter-spacing: .06em; color: var(--ink-3); }
+      .node .t { font-size: 24px; font-weight: 500; letter-spacing: -0.02em; }
+      .node .d { font-size: 18px; color: var(--ink-3); }
+      .arrow { height: 3px; background: var(--ink-3); margin: 0 10px; transform-origin: left; }
+      .fixes { margin-top: 24px; padding: 26px; }
+      .fix { display: grid; grid-template-columns: 30px 1fr auto; gap: 16px; align-items: center; padding: 18px 20px; margin-top: 12px; border-radius: 14px; border: 2px solid var(--line); font-size: 21px; }
+      .fix .r { width: 26px; height: 26px; border-radius: 99px; border: 2px solid #8a978f; position: relative; }
+      .fix .r::after { content: ""; position: absolute; inset: 5px; border-radius: 99px; background: var(--ink); opacity: var(--on, 0); }
+      .fix .m { font-family: "Geist Mono", monospace; font-size: 15px; color: var(--ink-3); }
+      .done { margin-top: 20px; display: flex; align-items: center; gap: 14px; font-size: 21px; opacity: 0; }
+      /* 3. Debrief */
+      .doc { margin-top: 30px; padding: 40px 48px; height: 720px; }
+      .doc .tt { font-size: 36px; font-weight: 500; letter-spacing: -0.03em; margin-top: 10px; }
+      .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 28px; }
+      .kpi { padding: 18px 20px; border-radius: 16px; background: var(--soft); }
+      .kpi .k { font-family: "Geist Mono", monospace; font-size: 14px; color: var(--ink-3); }
+      .kpi .v { font-size: 40px; font-weight: 500; letter-spacing: -0.05em; margin-top: 6px; }
+      .sec { margin-top: 30px; font-family: "Geist Mono", monospace; font-size: 15px; letter-spacing: .06em; color: var(--ink-3); }
+      .ln { height: 16px; border-radius: 8px; background: var(--line); margin-top: 16px; transform-origin: left; }
+      .lesson { margin-top: 20px; display: flex; gap: 14px; align-items: center; padding: 16px 20px; border-radius: 14px; background: #eee9fa; font-size: 20px; color: var(--ai-ink); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="ai" data-start="0" data-duration="25" data-width="1600" data-height="1000">
+      <div class="shell">
+        <aside class="side">
+          <div class="brand"><span class="mark"></span>EventOps</div>
+          <div class="cur"><div class="k mono">CURRENT EVENT</div><div class="v">TechSummit 2026</div></div>
+          <div class="nav">
+            <div class="nv" id="nv-ev"><div class="hl"></div><i style="background:#16231c"></i><span>Events</span></div>
+            <div class="nv"><div class="hl"></div><i style="background:#3f8a64"></i><span>My Tasks</span></div>
+            <div class="nv" id="nv-sc"><div class="hl"></div><i style="background:#6f9bd6"></i><span>Schedule</span></div>
+            <div class="nv"><div class="hl"></div><i style="background:#c9a54a"></i><span>Staff</span></div>
+            <div class="nv"><div class="hl"></div><i style="background:#8a75d1"></i><span>Vendors</span></div>
+            <div class="nv"><div class="hl"></div><i style="background:#c9668e"></i><span>Incidents</span></div>
+            <div class="nv"><div class="hl"></div><i style="background:#7db394"></i><span>Floor Plan</span></div>
+            <div class="nv"><div class="hl"></div><i style="background:#5c6a62"></i><span>Documents</span></div>
+          </div>
+        </aside>
+
+        <main class="main">
+          <!-- 1. Brief → plan -->
+          <section class="view" id="v-plan">
+            <div class="top"><div><div class="eyebrow mono">NEW EVENT · TECHSUMMIT 2026</div><div class="h1">Plan from a brief</div><div class="sub">The copilot drafts. You edit and approve.</div></div></div>
+            <div class="split">
+              <div class="card brief">
+                <div class="lbl"><i></i>YOUR BRIEF</div>
+                <div class="txt"><p id="brief">One-day developer summit for 600 at Lisbon Congress Centre on Aug 9. Keynote at 10:00 in Hall A, breakouts in Hall B, lunch for 400, registration from 07:30. Five crew.</p></div>
+                <div class="btn" id="draft">Draft the plan →</div>
+              </div>
+              <div class="card plan">
+                <div class="h">Draft plan <span class="pill ai" id="aitag">AI · 16 TASKS</span></div>
+                <div class="ws">TECHNICAL</div>
+                <div class="tk"><span>AV setup, Hall B</span><span class="o">Rui Okafor</span><span class="pill quiet">08:00</span></div>
+                <div class="tk"><span>Sound check</span><span class="o">Dev Malhotra</span><span class="pill quiet">after AV</span></div>
+                <div class="ws">LOGISTICS</div>
+                <div class="tk"><span>Registration desk open</span><span class="o">Ines Park</span><span class="pill quiet">07:30</span></div>
+                <div class="tk"><span>Venue walkthrough</span><span class="o">Priya Raman</span><span class="pill quiet">07:00</span></div>
+                <div class="ws">CATERING</div>
+                <div class="tk"><span>Lunch for 400</span><span class="o">Sam Whitaker</span><span class="pill quiet">12:00</span></div>
+                <div class="approve"><span class="btn" id="ok"><span class="swap"><span id="ok-a">Approve plan</span><span id="ok-b" style="opacity:0">✓ Plan approved</span></span></span></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 2. Delay fix -->
+          <section class="view" id="v-fix">
+            <div class="top"><div><div class="eyebrow mono">SCHEDULE · AUG 9 · 08:47</div><div class="h1">A delay, caught early</div><div class="sub">Trigger → impact → suggested fix</div></div></div>
+            <div class="chain">
+              <div class="card node"><div class="k">TRIGGER</div><div class="t">AV check +15 min</div><div class="d">Rui Okafor · Hall B</div></div>
+              <div class="arrow"></div>
+              <div class="card node" style="background:#f4dce6"><div class="k">IMPACT</div><div class="t">Sound check, keynote</div><div class="d">Keynote starts 10:12, not 10:00</div></div>
+              <div class="arrow"></div>
+              <div class="card node" style="background:#eee9fa"><div class="k">AI SUGGESTS</div><div class="t">3 ways to hold 10:00</div><div class="d">Ranked by people affected</div></div>
+            </div>
+            <div class="card fixes">
+              <div class="lbl"><i></i>PICK A FIX</div>
+              <div class="fix" id="f1"><span class="r"></span><span>Move the venue walkthrough 5 min earlier</span><span class="m">1 OWNER</span></div>
+              <div class="fix" id="f2"><span class="r"></span><span>Run sound check in parallel with AV in Hall A</span><span class="m">2 OWNERS</span></div>
+              <div class="fix" id="f3"><span class="r"></span><span>Push the keynote to 10:15 and notify attendees</span><span class="m">600 PEOPLE</span></div>
+              <div class="done" id="done"><span class="pill good">APPLIED</span>Keynote holds at 10:00 · 2 owners notified</div>
+            </div>
+          </section>
+
+          <!-- 3. Debrief -->
+          <section class="view" id="v-deb">
+            <div class="top"><div><div class="eyebrow mono">EVENTS · TECHSUMMIT 2026 · 23:10</div><div class="h1">Debrief</div><div class="sub">Drafted after doors closed</div></div><div class="btn">Share with stakeholders</div></div>
+            <div class="card doc">
+              <div class="lbl"><i></i>AI DRAFT · EDIT BEFORE SHARING</div>
+              <div class="tt">TechSummit 2026 wrap-up</div>
+              <div class="kpis">
+                <div class="kpi"><div class="k">TASKS DONE</div><div class="v">16 / 16</div></div>
+                <div class="kpi"><div class="k">INCIDENTS</div><div class="v">3</div></div>
+                <div class="kpi"><div class="k">AVG RESOLVE</div><div class="v">6 min</div></div>
+                <div class="kpi"><div class="k">KEYNOTE START</div><div class="v">10:00</div></div>
+              </div>
+              <div class="sec">WHAT HAPPENED</div>
+              <div class="ln" style="width:92%"></div><div class="ln" style="width:84%"></div><div class="ln" style="width:70%"></div>
+              <div class="sec">FOR NEXT YEAR</div>
+              <div class="lesson"><span class="pill ai">LESSON</span>Book a backup projector for Hall B. It failed at 09:12.</div>
+              <div class="lesson"><span class="pill ai">LESSON</span>Start AV setup 20 minutes earlier.</div>
+            </div>
+          </section>
+        </main>
+      </div>
+
+      <div class="cap" id="cap1"><b>01</b>Paste a brief, get a plan</div>
+      <div class="cap" id="cap2"><b>02</b>See the cascade, pick the fix</div>
+      <div class="cap" id="cap3"><b>03</b>The debrief writes itself</div>
+    </div>
+    <script>
+      gsap.set(".arrow", { scaleX: 0 });
+      gsap.set(".ln", { scaleX: 0 });
+      gsap.set("#v-plan .plan", { opacity: 0.35 });
+      const tl = gsap.timeline({ paused: true });
+      const E = "expo.out";
+      const cap = (id, a, b) => tl.fromTo(id, { y: 20, xPercent: -50, x: 0 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, a).to(id, { opacity: 0, y: 10, duration: 0.3 }, b);
+      const view = (from, to, t) => tl.to(from, { opacity: 0, y: -12, duration: 0.35 }, t).fromTo(to, { y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, t + 0.2);
+
+      // 0–9: brief is typed, plan drafts, approved.
+      tl.set("#nv-ev .hl", { opacity: 1 }, 0)
+        .fromTo("#v-plan", { y: 16 }, { opacity: 1, y: 0, duration: 0.6, ease: E }, 0.1)
+        .to("#brief", { clipPath: "inset(0 0% 0 0)", duration: 2.2, ease: "none" }, 0.6)
+        .to("#draft", { scale: 0.95, duration: 0.12, yoyo: true, repeat: 1 }, 3.0)
+        .to("#v-plan .plan", { opacity: 1, duration: 0.3 }, 3.2)
+        .from("#aitag", { opacity: 0, duration: 0.3 }, 3.3)
+        .from("#v-plan .tk, #v-plan .ws", { x: 16, opacity: 0, duration: 0.45, ease: E, stagger: 0.12 }, 3.4)
+        .to("#ok", { scale: 0.95, duration: 0.12, yoyo: true, repeat: 1 }, 6.6)
+        .to("#ok-a", { opacity: 0, duration: 0.2 }, 6.7)
+        .to("#ok-b", { opacity: 1, duration: 0.2 }, 6.75)
+        .to("#ok", { backgroundColor: "#2f7552", duration: 0.3 }, 6.7);
+      cap("#cap1", 0.6, 8.4);
+
+      // 9–18: delay chain and fix.
+      tl.to("#nv-ev .hl", { opacity: 0, duration: 0.3 }, 8.8).to("#nv-sc .hl", { opacity: 1, duration: 0.3 }, 8.8);
+      view("#v-plan", "#v-fix", 8.8);
+      tl.from("#v-fix .node", { y: 20, opacity: 0, duration: 0.5, ease: E, stagger: 0.6 }, 9.2)
+        .to(".arrow", { scaleX: 1, duration: 0.4, ease: "power2.out", stagger: 0.6 }, 9.6)
+        .from("#v-fix .fix", { y: 14, opacity: 0, duration: 0.45, ease: E, stagger: 0.1 }, 11.4)
+        .to("#f2", { borderColor: "#16231c", "--on": 1, duration: 0.25 }, 13.6)
+        .fromTo("#done", { y: 10 }, { opacity: 1, y: 0, duration: 0.45, ease: E }, 14.6);
+      cap("#cap2", 9.6, 17.4);
+
+      // 18–25: debrief drafts itself.
+      tl.to("#nv-sc .hl", { opacity: 0, duration: 0.3 }, 17.8).to("#nv-ev .hl", { opacity: 1, duration: 0.3 }, 17.8);
+      view("#v-fix", "#v-deb", 17.8);
+      tl.from("#v-deb .kpi", { y: 16, opacity: 0, duration: 0.45, ease: E, stagger: 0.1 }, 18.4)
+        .to(".ln", { scaleX: 1, duration: 0.7, ease: "power2.out", stagger: 0.25 }, 19.2)
+        .from("#v-deb .lesson", { y: 14, opacity: 0, duration: 0.5, ease: E, stagger: 0.4 }, 20.6);
+      cap("#cap3", 18.6, 24.4);
+      tl.to({}, { duration: 0.1 }, 24.9);
+      window.__timelines["ai"] = tl;
+    </script>
+  </body>
+</html>

@@ -23,6 +23,8 @@ const userSchema = new mongoose.Schema(
       enum: ['organizer', 'staff'],
       default: 'organizer',
     },
+    // Billing entitlements, see billing/billing.js.
+    workspace: { type: mongoose.Schema.Types.Mixed },
   },
   { timestamps: true }
 );

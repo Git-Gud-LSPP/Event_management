@@ -1,5 +1,6 @@
 const repo = require('./floorplan.repository');
 const Event = require('../event/event.model');
+const { KINDS } = require('./floorplan.model');
 
 const DEFAULT_FLOORS = () => [{ name: 'Floor 1', rooms: [], placements: [] }];
 
@@ -34,6 +35,13 @@ const validate = (floors, staffIds) => {
       if (room.capacity !== undefined && (!num(room.capacity) || room.capacity < 0)) {
         return `room ${room.id} has invalid capacity`;
       }
+      if (room.kind !== undefined && !KINDS.includes(room.kind)) {
+        return `room ${room.id} has unknown kind ${room.kind}`;
+      }
+      if (room.rot !== undefined && !num(room.rot)) return `room ${room.id} has invalid rotation`;
+      if (room.owner != null && !staffIds.has(String(room.owner))) {
+        return `owner ${room.owner} is not staff on this event`;
+      }
     }
 
     for (const p of placements) {
@@ -54,7 +62,7 @@ const validate = (floors, staffIds) => {
 exports.get = async (req, res, next) => {
   try {
     // canViewEvent already loaded the event; repopulate for staff names.
-    const event = await Event.findById(req.params.eventId).populate('staff', 'name email');
+    const event = await Event.findById(req.params.eventId).populate('staff', 'name email role');
     const plan = await repo.findByEvent(req.params.eventId);
 
     res.json({

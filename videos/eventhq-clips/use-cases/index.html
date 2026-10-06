@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1600, height=1000">
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/v2.css">
+    <style>
+      .uc { position: absolute; inset: 0; padding: 70px 72px; display: grid; grid-template-columns: 1fr 1fr; gap: 56px; opacity: 0; }
+      .num { font-family: "Geist Mono", monospace; font-size: 18px; color: var(--ink-3); letter-spacing: .06em; }
+      .name { margin-top: 16px; font-size: 84px; line-height: 1; font-weight: 500; letter-spacing: -0.045em; }
+      .head { margin-top: 22px; font-size: 28px; line-height: 1.3; color: #56645b; letter-spacing: -0.02em; }
+      .metric { margin-top: 36px; display: inline-flex; flex-direction: column; padding: 22px 26px; border-radius: 20px; background: #e4eee6; }
+      .metric .v { font-size: 64px; font-weight: 500; letter-spacing: -0.05em; }
+      .metric .l { font-size: 19px; color: #56645b; }
+      .tiles { position: absolute; left: 72px; bottom: 150px; width: 700px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+      .tile { padding: 14px 16px; border-radius: 14px; background: var(--surface); font-size: 18px; color: var(--ink-3); display: flex; align-items: center; gap: 10px; }
+      .tile i { width: 10px; height: 10px; border-radius: 3px; background: #c4cec6; }
+      .tiles-k { position: absolute; left: 72px; bottom: 270px; font-family: "Geist Mono", monospace; font-size: 15px; letter-spacing: .06em; color: var(--ink-3); }
+      .panel { align-self: center; overflow: hidden; }
+      .ph { padding: 22px 26px; border-bottom: 2px solid var(--line-soft); display: flex; justify-content: space-between; align-items: center; font-size: 22px; font-weight: 500; }
+      .ph .mono { font-size: 14px; font-weight: 400; color: var(--ink-3); }
+      .row { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 0 26px; height: 84px; border-bottom: 2px solid var(--line-soft); font-size: 21px; }
+      .row:last-child { border-bottom: 0; }
+      .row small { display: block; font-size: 16px; color: var(--ink-3); margin-top: 3px; }
+      .lane { position: relative; height: 84px; border-bottom: 2px solid var(--line-soft); display: grid; grid-template-columns: 200px 1fr; align-items: center; font-size: 19px; }
+      .lane > span { padding-left: 26px; }
+      .lane .bar { position: absolute; top: 22px; height: 40px; border-radius: 10px; transform-origin: left; font-family: "Geist Mono", monospace; font-size: 13px; display: flex; align-items: center; padding: 0 12px; }
+      .b-done { background: var(--line); color: var(--ink-3); }
+      .b-prog { background: var(--ink); color: var(--bg); }
+      .b-pend { background: #fff; border: 2px solid #c4cec6; color: var(--ink-2); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="use-cases" data-start="0" data-duration="24" data-width="1600" data-height="1000">
+
+      <!-- 1. Conferences -->
+      <section class="uc" id="u1">
+        <div>
+          <div class="num">01 · CONFERENCES</div>
+          <div class="name">Conferences</div>
+          <div class="head">Three stages, twelve breakouts and 48 crew on one run-of-show.</div>
+          <div class="metric"><span class="v">−52%</span><span class="l">planning hours vs. last year</span></div>
+        </div>
+        <div class="card panel">
+          <div class="ph">Run-of-show · Main stage <span class="mono">AUG 9</span></div>
+          <div class="lane"><span>Lighting test</span><div class="bar b-done" style="left:220px;width:150px">DONE</div></div>
+          <div class="lane"><span>AV check</span><div class="bar b-prog" style="left:300px;width:200px">IN PROGRESS</div></div>
+          <div class="lane"><span>Sound check</span><div class="bar b-pend s1" style="left:500px;width:120px">PENDING</div></div>
+          <div class="lane" style="border-bottom:0"><span>Keynote</span><div class="bar b-pend s1" style="left:540px;width:150px">10:00</div></div>
+        </div>
+      </section>
+
+      <!-- 2. Festivals -->
+      <section class="uc" id="u2">
+        <div>
+          <div class="num">02 · FESTIVALS &amp; TICKETED</div>
+          <div class="name">Festivals</div>
+          <div class="head">120 staff across 8 stages. Incidents reported from phones and routed to whoever is on site.</div>
+          <div class="metric"><span class="v">90k</span><span class="l">attendees through gates in a day</span></div>
+        </div>
+        <div class="card panel">
+          <div class="ph">Incidents · live <span class="mono">8 STAGES</span></div>
+          <div class="row r2"><div>Crowd surge at Gate C<small>Gate C · Aisha Okoye</small></div><span class="pill crit">CRITICAL</span></div>
+          <div class="row r2"><div>Bar 3 out of cups<small>Bar 3 · Sam Whitaker</small></div><span class="pill warnp">MEDIUM</span></div>
+          <div class="row r2"><div>Lost child at info tent<small>Info tent · Ines Park</small></div><span class="pill dark">IN PROGRESS</span></div>
+          <div class="row r2"><div>Stage 4 monitor feedback<small>Stage 4 · Dev Malhotra</small></div><span class="pill good">RESOLVED</span></div>
+        </div>
+      </section>
+
+      <!-- 3. Corporate -->
+      <section class="uc" id="u3">
+        <div>
+          <div class="num">03 · CORPORATE &amp; INTERNAL</div>
+          <div class="name">Corporate</div>
+          <div class="head">Offsites and kickoffs planned from a one-paragraph brief, with suppliers near the venue.</div>
+          <div class="metric"><span class="v">98%</span><span class="l">RSVP completion via SSO invite</span></div>
+        </div>
+        <div class="card panel">
+          <div class="ph">Booked vendors · Leadership offsite <span class="mono">3 TRACKED</span></div>
+          <div class="row r3"><div>Lakeside Catering<small>Dinner for 60 · 0.6 km</small></div><span class="swap"><span class="pill" style="background:#dde7f5;color:#2e4f80" id="v-rfq">RFQ SENT</span><span class="pill good" id="v-ok" style="opacity:0">BOOKED</span></span></div>
+          <div class="row r3"><div>Pinecrest Florals<small>Table arrangements · 1.2 km</small></div><span class="pill good">BOOKED</span></div>
+          <div class="row r3"><div>Summit AV Hire<small>Projector + 4 mics · 3.4 km</small></div><span class="pill warnp">QUOTED</span></div>
+        </div>
+      </section>
+
+      <div class="tiles-k">TYPICAL STACK</div>
+      <div class="tiles">
+        <div class="tile" id="t-ev"><i></i>Events</div>
+        <div class="tile" id="t-mt"><i></i>My Tasks</div>
+        <div class="tile" id="t-sc"><i></i>Schedule</div>
+        <div class="tile" id="t-st"><i></i>Staff</div>
+        <div class="tile" id="t-ve"><i></i>Vendors</div>
+        <div class="tile" id="t-in"><i></i>Incidents</div>
+        <div class="tile" id="t-fp"><i></i>Floor Plan</div>
+        <div class="tile" id="t-ai"><i></i>EventOps AI</div>
+      </div>
+    </div>
+    <script>
+      gsap.set(".bar", { scaleX: 0 });
+      const tl = gsap.timeline({ paused: true });
+      const E = "expo.out";
+      const ON = { backgroundColor: "#e3f1e7", color: "#16231c" }, OFF = { backgroundColor: "#ffffff", color: "#5c6a62" };
+      const stack = (ids, t) => {
+        tl.to(".tile", { ...OFF, duration: 0.25 }, t).to(".tile i", { backgroundColor: "#c4cec6", duration: 0.25 }, t);
+        ids.forEach((id, i) => tl.to(`#t-${id}`, { ...ON, duration: 0.3 }, t + 0.4 + i * 0.15).to(`#t-${id} i`, { backgroundColor: "#3f8a64", duration: 0.3 }, t + 0.4 + i * 0.15));
+      };
+      const enter = (id, t) => tl.fromTo(id, { y: 24 }, { opacity: 1, y: 0, duration: 0.6, ease: E }, t).from(`${id} .name`, { yPercent: 40, opacity: 0, duration: 0.8, ease: E }, t + 0.1);
+      const leave = (id, t) => tl.to(id, { opacity: 0, y: -16, duration: 0.4, ease: "power2.in" }, t);
+
+      // 0–8: conferences — a late AV check pushes the keynote lane.
+      tl.from(".tiles, .tiles-k", { opacity: 0, duration: 0.5 }, 0.2);
+      enter("#u1", 0.1);
+      stack(["ev", "sc", "fp", "in", "ai"], 0.6);
+      tl.to("#u1 .bar", { scaleX: 1, duration: 0.7, ease: E, stagger: 0.15 }, 1.0)
+        .to("#u1 .b-prog", { width: 250, duration: 0.6, ease: "power2.inOut" }, 3.6)
+        .to("#u1 .s1", { x: 50, duration: 0.7, ease: "power3.inOut", stagger: 0.12 }, 4.0);
+      leave("#u1", 7.6);
+
+      // 8–16: festivals — incidents stream in.
+      enter("#u2", 8.0);
+      stack(["st", "in", "fp", "ai"], 8.2);
+      tl.from("#u2 .r2", { x: 20, opacity: 0, duration: 0.5, ease: E, stagger: 0.5 }, 8.8);
+      leave("#u2", 15.6);
+
+      // 16–24: corporate — a caterer gets booked.
+      enter("#u3", 16.0);
+      stack(["ev", "mt", "sc", "ve", "ai"], 16.2);
+      tl.from("#u3 .r3", { x: 20, opacity: 0, duration: 0.5, ease: E, stagger: 0.2 }, 16.8)
+        .to("#v-rfq", { opacity: 0, duration: 0.2 }, 19.6)
+        .to("#v-ok", { opacity: 1, duration: 0.25 }, 19.65)
+        .to({}, { duration: 0.1 }, 23.9);
+      window.__timelines["use-cases"] = tl;
+    </script>
+  </body>
+</html>

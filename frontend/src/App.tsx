@@ -7,14 +7,15 @@ import {
   Outlet,
   useLocation,
 } from "react-router-dom";
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 import Sidebar from "./components/Sidebar";
-import { NAV } from "./components/nav";
+import { NAV, navFor } from "./components/nav";
 import { listEvents, type EventRecord } from "./features/events/api";
 import { getSelectedEventId } from "./services/selectedEvent";
 import LandingPage from "./marketing/LandingPage";
 import Gate from "./features/billing/Gate";
-import { isLoggedIn } from "./services/authApi";
+import { getStoredUser, isLoggedIn } from "./services/authApi";
+import { syncWorkspace, useWorkspace } from "./billing/plan";
 
 // Landing stays in the main chunk (it's the LCP page); everything behind it loads on demand,
 // so visitors don't download Leaflet/Konva/Gantt to read the homepage.
@@ -22,7 +23,6 @@ const AgentPanel = lazy(() => import("./features/agent/AgentPanel"));
 const AuthPage = lazy(() => import("./features/auth/AuthPage"));
 const SignupPage = lazy(() => import("./features/billing/SignupPage"));
 const OnboardingPage = lazy(() => import("./features/billing/OnboardingPage"));
-const ContactSalesPage = lazy(() => import("./marketing/ContactSalesPage"));
 const ModulesPage = lazy(() => import("./features/billing/ModulesPage"));
 const BillingPage = lazy(() => import("./features/billing/BillingPage"));
 const CheckoutPage = lazy(() => import("./features/billing/CheckoutPage"));
@@ -40,7 +40,7 @@ const DocumentsPage = lazy(() => import("./features/documents/DocumentsPage"));
 // Pages reach the assistant drawer through useOutletContext<LayoutContext>().
 export type LayoutContext = { openAgent: () => void };
 
-const EXTRA_CRUMBS: Record<string, string> = { "/modules": "Modules", "/billing": "Plan & billing", "/billing/checkout": "Checkout" };
+const EXTRA_CRUMBS: Record<string, string> = { "/events": "Events", "/modules": "Modules", "/billing": "Plan & billing", "/billing/checkout": "Checkout" };
 
 // Layout wrapper for authenticated application routes.
 // No token -> straight to the login screen, remembering where they were headed.
@@ -52,6 +52,11 @@ const MainLayout = () => {
   // switch to per-page refetch hooks if that bites.
   const [dataVersion, setDataVersion] = useState(0);
   const [events, setEvents] = useState<EventRecord[]>([]);
+  const ws = useWorkspace();
+
+  useEffect(() => {
+    void syncWorkspace();
+  }, []);
 
   // The sidebar's "current event" card. Refetched when the agent changes data.
   useEffect(() => {
@@ -75,7 +80,7 @@ const MainLayout = () => {
 
   const selectedId = getSelectedEventId();
   const event = events.find((e) => e._id === selectedId) ?? events[0] ?? null;
-  const here = NAV.find((n) => location.pathname.startsWith(n.path))?.label ?? EXTRA_CRUMBS[location.pathname] ?? "Workspace";
+  const here = EXTRA_CRUMBS[location.pathname] ?? NAV.find((n) => location.pathname.startsWith(n.path))?.label ?? "Workspace";
   const openAgent = () => setAgentOpen(true);
 
   return (
@@ -102,9 +107,9 @@ const MainLayout = () => {
           </div>
           {/* Narrow screens: the sidebar is hidden, so workspaces become a scrolling pill row. */}
           <nav aria-label="Workspaces" className="flex gap-1.5 overflow-x-auto px-4 pb-2.5 lg:hidden">
-            {NAV.map((n) => (
+            {navFor(event, ws).map((n) => (
               <NavLink
-                key={n.path}
+                key={n.label}
                 to={n.path}
                 className={({ isActive }) => `rounded-full px-3 py-1.5 text-[13px] whitespace-nowrap ${isActive ? "bg-ink text-paper" : "bg-surface text-ink-2"}`}
               >
@@ -130,15 +135,23 @@ const MainLayout = () => {
   );
 };
 
+// Plan and billing belong to the organizer; staff land back on their tasks.
+const OrganizerOnly = ({ children }: { children: ReactNode }) =>
+  getStoredUser()?.role === "staff" ? <Navigate to="/my-tasks" replace /> : children;
+
 const App = () => {
   return (
     <BrowserRouter>
       <Routes>
         {/* 1. Public */}
-        <Route path="/" element={<LandingPage />} />
+        {/* Marketing pages share the landing shell (nav, footer, motion); the key remounts it so scroll motion re-binds. */}
+        <Route path="/" element={<LandingPage key="home" />} />
+        {["/demo", "/product", "/ai", "/use-cases", "/pricing"].map((p) => (
+          <Route key={p} path={p} element={<LandingPage key={p} />} />
+        ))}
         <Route path="/login" element={<Suspense><AuthPage /></Suspense>} />
         <Route path="/signup" element={<Suspense><SignupPage /></Suspense>} />
-        <Route path="/contact-sales" element={<Suspense><ContactSalesPage /></Suspense>} />
+        <Route path="/contact-sales" element={<Navigate to="/demo" replace />} />
         <Route
           path="/welcome"
           element={isLoggedIn() ? <Suspense><OnboardingPage /></Suspense> : <Navigate to="/signup" replace />}
@@ -156,9 +169,9 @@ const App = () => {
           <Route path="/staffs" element={<StaffDashboard />} />
           <Route path="/floorplan" element={<Gate id="floor-plan"><FloorPlanPage /></Gate>} />
           <Route path="/documents" element={<DocumentsPage />} />
-          <Route path="/modules" element={<ModulesPage />} />
-          <Route path="/billing" element={<BillingPage />} />
-          <Route path="/billing/checkout" element={<CheckoutPage />} />
+          <Route path="/modules" element={<OrganizerOnly><ModulesPage /></OrganizerOnly>} />
+          <Route path="/billing" element={<OrganizerOnly><BillingPage /></OrganizerOnly>} />
+          <Route path="/billing/checkout" element={<OrganizerOnly><CheckoutPage /></OrganizerOnly>} />
         </Route>
 
         {/* 3. Fallback */}

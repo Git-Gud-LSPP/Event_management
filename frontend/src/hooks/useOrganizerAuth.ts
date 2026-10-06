@@ -5,11 +5,13 @@ import { authApi, saveSession, type AuthUser } from '../services/authApi';
 export type AuthMode = 'login' | 'register';
 
 export function useOrganizerAuth(onSuccess?: (token: string, user?: AuthUser) => void) {
-  const [mode, setMode] = useState<AuthMode>('login');
+  // Staff invite links (/login?invite=staff) open straight on a staff sign-up.
+  const invited = new URLSearchParams(window.location.search).get('invite') === 'staff';
+  const [mode, setMode] = useState<AuthMode>(invited ? 'register' : 'login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'organizer' | 'staff'>('organizer');
+  const [role, setRole] = useState<'organizer' | 'staff'>(invited ? 'staff' : 'organizer');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 

@@ -82,3 +82,7 @@ export function Wordmark() {
     </span>
   );
 }
+
+export const Dot = ({ c = "bg-live", className = "" }: { c?: string; className?: string }) => (
+  <span className={`size-1.5 shrink-0 rounded-full ${c} ${className}`} aria-hidden="true" />
+);

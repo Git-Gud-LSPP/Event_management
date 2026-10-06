@@ -1,9 +1,11 @@
 import { useSyncExternalStore } from "react";
 import { byId, planById, TRIAL_PLAN, type EventType, type PlanId } from "./catalog";
+import { apiFetch } from "../services/api";
+import { getStoredUser, isLoggedIn } from "../services/authApi";
 
-// Workspace entitlements.
-// ponytail: client-side mock in localStorage, so it's trivially editable. Move to /api/billing and
-// enforce on the server before charging money; the browser is not a trust boundary.
+// Workspace entitlements. localStorage is the fast local copy; the server copy (/api/billing/workspace)
+// is the one backend routes enforce (backend/billing/billing.js).
+// ponytail: plan changes have no payment behind them yet; verify against Stripe before charging money.
 
 export interface Workspace {
   plan: PlanId;
@@ -42,6 +44,8 @@ function normalize(w: Workspace): Workspace {
   // Pre-v2 workspaces stored a "free" plan; Starter is the free tier now.
   if ((w.plan as string) === "free") w = { ...w, plan: "starter" };
   if ((w.pendingPlan as string) === "free") w = { ...w, pendingPlan: "starter" };
+  // Core modules are always on and never take a slot (an older stack could list them as add-ons).
+  if (w.addOns.some((id) => byId(id)?.core)) w = { ...w, addOns: w.addOns.filter((id) => !byId(id)?.core) };
   // A scheduled downgrade/cancel takes effect once its date passes. Kept add-ons are ordered first.
   if (w.pendingPlan && w.cancelAt && w.cancelAt <= today) w = { ...w, plan: w.pendingPlan, pendingPlan: undefined, cancelAt: undefined };
   // Unpaid trial ran out: back to Starter (free). Add-ons stay listed (locked, data kept) so upgrading restores them.
@@ -60,7 +64,14 @@ export function readWorkspace(): Workspace {
   return cache;
 }
 
-export function saveWorkspace(next: Workspace) {
+const pushToServer = (w: Workspace) => {
+  if (isLoggedIn() && getStoredUser()?.role !== "staff") {
+    apiFetch("/billing/workspace", { method: "PUT", body: JSON.stringify(w) }).catch(() => {});
+  }
+};
+
+// Local only (used when the server copy arrives).
+function storeLocal(next: Workspace) {
   cache = normalize(next);
   try {
     localStorage.setItem(KEY, JSON.stringify(cache));
@@ -68,6 +79,23 @@ export function saveWorkspace(next: Workspace) {
     /* private mode: keep in memory */
   }
   listeners.forEach((l) => l());
+}
+
+export function saveWorkspace(next: Workspace) {
+  storeLocal(next);
+  pushToServer(cache!);
+}
+
+/** On app load: take the server copy (staff get their organizer's), or seed the server from this browser. */
+export async function syncWorkspace() {
+  if (!isLoggedIn()) return;
+  try {
+    const { workspace } = await apiFetch<{ workspace: Workspace | null }>("/billing/workspace");
+    if (workspace) storeLocal(workspace);
+    else pushToServer(readWorkspace());
+  } catch {
+    /* offline: keep the local copy */
+  }
 }
 
 const update = (fn: (w: Workspace) => Partial<Workspace>) => saveWorkspace({ ...readWorkspace(), ...fn(readWorkspace()) });

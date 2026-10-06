@@ -1,30 +1,21 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { isLoggedIn } from "../services/authApi";
-import { Mark, Wordmark } from "./ui";
+import { Dot, Mark, Wordmark } from "./ui";
+import { eyebrow, h2, lede, muted, pad, pillDark, pillLight, wrap } from "./lib";
+import { CompareTable, DemoPage, FeaturePage, PricingPage } from "./FeaturePage";
 import { swapIn, useLandingMotion } from "./landingMotion";
 import {
-  AFTER_MODS, AI_STAGES, BEFORE_TOOLS, CAP_TIER, CATS, CERTS, COMPARE, DEFAULT_STACK, FAQS, FEED, FOOTER, HERO_BARS, HERO_MODULES,
-  INT_FEATS, INT_ROWS, LOGO_ROW, METRICS, NO, QUOTES, REG_FIELDS, SECURITY, SESSIONS, STEPS, TIER_CARDS, TIERS, TOOLS, USE_CASES,
-  WORKSTREAMS, planFor, priceLabel, type Billing,
+  AFTER_MODS, AI_STAGES, FEATURES, BEFORE_TOOLS, CAP_TIER, CATS, CERTS, COMPARE, DEFAULT_STACK, FAQS, FEED, FOOTER, HERO_BARS, HERO_MODULES,
+  INT_FEATS, INT_ROWS, LOGO_ROW, METRICS, QUOTES, REG_FIELDS, SECURITY, SESSIONS, STEPS, TIER_CARDS, TIERS, TOOLS, USE_CASES,
+  WORKSTREAMS, planFor, priceLabel, type Billing, type FeatureId,
 } from "./landingData";
 
 // v2 landing (claude.ai/design "EventOps Landing v2"). Motion lives in landingMotion.ts and attaches via data-* hooks.
 
-const wrap = "mx-auto max-w-[1280px] px-[clamp(20px,4vw,40px)]";
-const pad = "py-[clamp(56px,7vw,96px)]";
-const eyebrow = "font-mono text-xs tracking-[.04em] text-ink-3";
-const h2 = "m-0 text-[clamp(34px,4.4vw,56px)] leading-[1.02] font-medium tracking-[-0.04em]";
-const muted = "text-[#6E7C73]";
-const lede = "m-0 max-w-[520px] text-base leading-[1.6] text-pretty text-[#56645B]";
-const pillDark = "inline-flex items-center gap-2.5 rounded-full bg-ink text-paper hover:bg-ink-hover hover:text-paper";
-const pillLight = "inline-flex items-center gap-2.5 rounded-full bg-surface text-ink ring-1 ring-transparent hover:ring-ink";
 const card = "rounded-[22px] bg-surface";
 const navLink =
   "bg-[linear-gradient(#16231C,#16231C)] bg-no-repeat bg-[position:0_100%] bg-[length:0%_1px] pb-0.5 text-ink-2 transition-[background-size,color] duration-[400ms] ease-[cubic-bezier(.2,.7,.2,1)] hover:bg-[length:100%_1px] hover:text-ink";
-const Dot = ({ c = "bg-live", className = "" }: { c?: string; className?: string }) => (
-  <span className={`size-1.5 shrink-0 rounded-full ${c} ${className}`} aria-hidden="true" />
-);
 const Glow = () => (
   <div
     data-spot-glow
@@ -45,22 +36,26 @@ const SectionHead = ({ kicker, title, sub, body }: { kicker: ReactNode; title: s
   </div>
 );
 
+
 export default function LandingPage() {
   const root = useRef<HTMLDivElement>(null);
+  const { pathname } = useLocation();
+  const page = pathname.slice(1) || "home";
   const pricingRef = useRef<HTMLElement>(null);
   const [cat, setCat] = useState(0);
   const [sel, setSel] = useState<Set<string>>(() => new Set(DEFAULT_STACK));
   const [billing, setBilling] = useState<Billing>("annual");
   const [count, setCount] = useState(18);
-  const [showTable, setShowTable] = useState(false);
   const [uc, setUc] = useState(0);
   const [faq, setFaq] = useState(0);
   const motion = useLandingMotion(root, setUc);
   const loggedIn = isLoggedIn();
 
   useEffect(() => {
-    document.title = "EventOps: AI-assisted event operations";
-  }, []);
+    window.scrollTo(0, 0);
+    const t = page === "demo" ? "Book a demo" : page === "pricing" ? "Pricing" : FEATURES[page as FeatureId]?.nav;
+    document.title = t ? `${t} · EventOps` : "EventOps: AI-assisted event operations";
+  }, [page]);
 
   // Small swap-in tweens on state changes. The first run (mount) is skipped.
   const first = useRef(true);
@@ -68,7 +63,6 @@ export default function LandingPage() {
   useEffect(() => void (motion.current.on && !first.current && swapIn.category()), [cat, motion]);
   useEffect(() => void (motion.current.on && !first.current && swapIn.faq()), [faq, motion]);
   useEffect(() => void (motion.current.on && !first.current && swapIn.price()), [billing, motion]);
-  useEffect(() => void (motion.current.on && !first.current && swapIn.refresh()), [showTable, motion]);
   useEffect(() => void (first.current = false), []);
 
   const selNames = [...sel];
@@ -99,18 +93,22 @@ export default function LandingPage() {
       <div className="flex flex-wrap items-center justify-center gap-3 bg-ink px-5 py-[9px] text-center text-[13px] text-paper">
         <span className="font-mono text-[11px] tracking-[.06em] text-ai">NEW</span>
         <span>EventOps AI now works across every stage — plan, staff, source, run and debrief.</span>
-        <a href="#ai" className="border-b border-[#4C5E53] !text-paper">See how →</a>
+        <a href={page === "home" ? "#ai" : "/#ai"} className="border-b border-[#4C5E53] !text-paper">See how →</a>
       </div>
 
       {/* 1. NAV */}
       <nav data-nav className="sticky top-0 z-50 border-b border-line bg-[rgba(245,244,241,.82)] backdrop-blur-[14px]">
         <div className={`${wrap} flex h-[60px] items-center justify-between gap-6`}>
           <div className="flex items-center gap-10">
-            <a href="#top" aria-label="EventOps home"><Wordmark /></a>
+            <Link to="/" aria-label="EventOps home"><Wordmark /></Link>
             <div className="hidden gap-[26px] text-sm min-[900px]:flex">
-              {[["Platform", "#platform"], ["Product", "#modules"], ["AI", "#ai"], ["Use cases", "#use-cases"], ["Pricing", "#pricing"], ["Customers", "#customers"]].map(([l, h]) => (
-                <a key={h} href={h} className={navLink}>{l}</a>
-              ))}
+              {[["Platform", "#platform"], ["Product", "/product"], ["AI", "/ai"], ["Use cases", "/use-cases"], ["Pricing", "/pricing"], ["Customers", "#customers"]].map(([l, h]) =>
+                h.startsWith("/") ? (
+                  <Link key={h} to={h} className={`${navLink} ${pathname === h ? "!bg-[length:100%_1px] !text-ink" : ""}`}>{l}</Link>
+                ) : (
+                  <a key={h} href={page === "home" ? h : `/${h}`} className={navLink}>{l}</a>
+                )
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2 text-sm">
@@ -119,13 +117,14 @@ export default function LandingPage() {
             ) : (
               <Link to="/login" className="hidden px-3 py-2 text-ink-2 min-[900px]:block">Log in</Link>
             )}
-            <Link to="/contact-sales" className={`${pillLight} px-3.5 py-2`}>Book a demo</Link>
+            <Link to="/demo" className={`${pillLight} px-3.5 py-2`}>Book a demo</Link>
             <Link data-magnetic to="/signup" className={`${pillDark} px-[15px] py-[9px]`}>Start free</Link>
           </div>
         </div>
       </nav>
 
       <main id="main">
+        {page === "demo" ? <DemoPage /> : page === "pricing" ? <PricingPage /> : page in FEATURES ? <FeaturePage id={page as FeatureId} /> : <>
         {/* 2. HERO */}
         <header id="top" className={`${wrap} pt-[clamp(56px,9vw,112px)]`}>
           <div className="grid items-end gap-x-16 gap-y-10 [grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))]">
@@ -151,7 +150,7 @@ export default function LandingPage() {
                 <Link data-magnetic to="/signup" className={`${pillDark} px-5 py-[13px] text-[15px]`}>
                   Start free <span data-arrow className="inline-block">→</span>
                 </Link>
-                <Link data-magnetic to="/contact-sales" className={`${pillLight} px-5 py-3 text-[15px]`}>Book a demo</Link>
+                <Link data-magnetic to="/demo" className={`${pillLight} px-5 py-3 text-[15px]`}>Book a demo</Link>
               </div>
               <div data-hero-in className="mt-[18px] font-mono text-[11.5px] tracking-[.02em] text-ink-3">AI INCLUDED ON EVERY PLAN · NO CARD REQUIRED</div>
             </div>
@@ -357,6 +356,7 @@ export default function LandingPage() {
                   <button type="button" onClick={seePlan} className={`${pillDark} mt-3.5 w-full cursor-pointer justify-center px-3.5 py-[11px] text-sm`}>
                     See pricing for this stack →
                   </button>
+                  <Link to="/product" className="mt-2.5 block text-center text-sm text-ink-2 hover:text-ink">Learn more about each workspace →</Link>
                 </div>
               </div>
             </div>
@@ -589,45 +589,15 @@ export default function LandingPage() {
                 <div className="text-lg font-medium tracking-[-0.02em]">Running 50+ events a year or need custom modules?</div>
                 <div className="mt-1 text-sm text-[#56645B]">Enterprise includes volume pricing, SSO/SCIM, data residency, a 99.99% SLA and onsite support.</div>
               </div>
-              <Link data-magnetic to="/contact-sales" className={`${pillDark} px-[18px] py-[11px] text-sm whitespace-nowrap`}>Talk to sales →</Link>
+              <Link data-magnetic to="/demo" className={`${pillDark} px-[18px] py-[11px] text-sm whitespace-nowrap`}>Talk to sales →</Link>
             </div>
 
             <div className="mt-16">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h3 className="m-0 text-2xl font-medium tracking-[-0.03em]">Compare plans</h3>
-                <button type="button" aria-expanded={showTable} onClick={() => setShowTable((v) => !v)} className={`${pillLight} cursor-pointer px-3.5 py-2 text-sm`}>
-                  {showTable ? "Hide full comparison" : "Show full comparison"}
-                </button>
+                <Link to="/pricing" className={`${pillLight} px-3.5 py-2 text-sm`}>See the full breakdown →</Link>
               </div>
-              <div className="overflow-x-auto rounded-2xl bg-surface">
-                <table className="w-full min-w-[760px] border-collapse text-left text-[13.5px]">
-                  <thead className="sticky top-0 bg-surface">
-                    <tr className="border-b border-line text-sm">
-                      <th className="w-[30%] px-5 py-4 font-medium"><span className="sr-only">Feature</span></th>
-                      {TIERS.map((n, i) => (
-                        <th key={n} scope="col" className={`px-5 py-4 font-medium ${i === activeTier ? "text-accent" : ""}`}>{n}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  {(showTable ? COMPARE : COMPARE.slice(0, 1)).map((g) => (
-                    <tbody key={g.g}>
-                      <tr>
-                        <th colSpan={5} scope="colgroup" className="border-b border-line-soft bg-soft px-5 pt-[18px] pb-2 font-mono text-[11px] font-normal tracking-[.04em] text-ink-3">{g.g}</th>
-                      </tr>
-                      {g.rows.map(([l, v]) => (
-                        <tr key={l} className="border-b border-line-soft">
-                          <th scope="row" className="px-5 py-[13px] font-normal text-ink-2">{l}</th>
-                          {v.map((t, i) => (
-                            <td key={i} className={`px-5 py-[13px] ${t === NO ? "text-[#B5C0B8]" : i === activeTier ? "text-ink" : "text-ink-2"}`}>
-                              {t === NO ? <><span aria-hidden="true">—</span><span className="sr-only">Not included</span></> : t}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  ))}
-                </table>
-              </div>
+              <CompareTable groups={COMPARE.slice(0, 1)} active={activeTier} />
             </div>
           </div>
         </section>
@@ -709,7 +679,7 @@ export default function LandingPage() {
             <div data-reveal>
               <h2 className={h2}>Questions<br /><span className={muted}>teams ask first.</span></h2>
               <p className="mt-5 text-[15px] text-[#56645B]">
-                Something else? <Link to="/contact-sales" className="border-b border-ink">Ask a product specialist</Link>.
+                Something else? <Link to="/demo" className="border-b border-ink">Ask a product specialist</Link>.
               </p>
             </div>
             <div className="border-t border-line lg:col-span-2">
@@ -735,8 +705,10 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+        </>}
 
         {/* 14. FINAL CTA */}
+        {page !== "demo" && (
         <section id="demo">
           <div className={`${wrap} ${pad}`}>
             <div data-cta className="relative overflow-hidden rounded-3xl bg-[#E5EEE6] px-6 py-[clamp(72px,11vw,140px)] text-center">
@@ -746,12 +718,13 @@ export default function LandingPage() {
                 <p data-reveal className="mx-auto mt-5 mb-8 max-w-[460px] text-[17px] text-[#2B3830]">Free to start, AI included. A 30-minute demo if you'd rather see it first.</p>
                 <div data-reveal className="flex flex-wrap justify-center gap-2.5">
                   <Link data-magnetic to="/signup" className={`${pillDark} px-[22px] py-3.5 text-[15px]`}>Start free <span data-arrow className="inline-block">→</span></Link>
-                  <Link data-magnetic to="/contact-sales" className={`${pillLight} px-[22px] py-[13px] text-[15px]`}>Book a demo</Link>
+                  <Link data-magnetic to="/demo" className={`${pillLight} px-[22px] py-[13px] text-[15px]`}>Book a demo</Link>
                 </div>
               </div>
             </div>
           </div>
         </section>
+        )}
       </main>
 
       {/* 15. FOOTER */}

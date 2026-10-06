@@ -76,20 +76,36 @@ exports.remove = async (req, res, next) => {
     next(err);
   }
 };
-// POST /:id/tasks-assign - organizer hands a schedule task to a staff member on the event.
+// POST /:id/tasks-assign - organizer hands a schedule task to a staff member, or to themselves.
 exports.assign = async (req, res, next) => {
   try {
     const { assigneeId } = req.body;
     if (!assigneeId) return res.status(400).json({ message: 'assigneeId is required' });
 
-    if (!req.event.staff.some((s) => s.toString() === assigneeId)) {
-      return res.status(400).json({ message: 'Assignee must be staff on this event' });
+    const isOrganizer = req.event.organizer.toString() === assigneeId;
+    if (!isOrganizer && !req.event.staff.some((s) => s.toString() === assigneeId)) {
+      return res.status(400).json({ message: 'Assignee must be the organizer or staff on this event' });
     }
 
     const item = await Schedule.findOne({ _id: req.params.id, event: req.event._id });
     if (!item) return res.status(404).json({ message: 'Schedule item not found' });
 
     res.json(await repo.update(item._id, { owner: assigneeId }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /:id/claim - anyone on the event takes an unassigned (backlog) task.
+// Atomic on owner:null so two people can't both grab it.
+exports.claim = async (req, res, next) => {
+  try {
+    const taken = await Schedule.findOneAndUpdate(
+      { _id: req.params.id, event: req.event._id, owner: null },
+      { owner: req.user.userId }
+    );
+    if (!taken) return res.status(409).json({ message: 'Task is already assigned or no longer exists' });
+    res.json(await repo.findById(taken._id));
   } catch (err) {
     next(err);
   }

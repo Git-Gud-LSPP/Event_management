@@ -30,6 +30,8 @@ const documentSchema = new mongoose.Schema(
       size: Number,
       data: { type: Buffer, select: false },
     },
+    // Staff who can see it; the organizer always can. Empty = organizer only.
+    sharedWith: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   },
   { timestamps: true }

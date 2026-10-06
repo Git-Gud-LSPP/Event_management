@@ -7,11 +7,12 @@ interface ScheduleListProps {
   tasks: Task[];
   staff?: StaffRef[];
   onAssign?: (taskId: string, staffId: string) => void;
+  busyFor?: (taskId: string, staffId: string) => string | undefined; // name of the clashing task
   onEdit?: (taskId: string) => void;
   onDelete?: (taskId: string) => void;
 }
 
-export default function ScheduleList({ tasks, staff, onAssign, onEdit, onDelete }: ScheduleListProps) {
+export default function ScheduleList({ tasks, staff, onAssign, busyFor, onEdit, onDelete }: ScheduleListProps) {
   const canManage = Boolean(onEdit || onDelete);
   const cols = `grid gap-2 ${canManage ? "grid-cols-[2fr_1.3fr_.7fr_.7fr_1fr_1.3fr_64px]" : "grid-cols-[2fr_1.2fr_.8fr_.8fr_1fr_1.4fr]"}`;
 
@@ -45,9 +46,14 @@ export default function ScheduleList({ tasks, staff, onAssign, onEdit, onDelete 
                   className="h-8 min-w-0 rounded-full border border-line bg-surface px-2.5 text-[13px] text-ink outline-none hover:border-ink focus:border-ink"
                 >
                   <option value="">Unassigned</option>
-                  {(staff ?? []).map((s) => (
-                    <option key={s._id} value={s._id}>{s.name}</option>
-                  ))}
+                  {(staff ?? []).map((s) => {
+                    const busy = s._id !== task.ownerId ? busyFor?.(task.id, s._id) : undefined;
+                    return (
+                      <option key={s._id} value={s._id} disabled={Boolean(busy)}>
+                        {busy ? `${s.name} (busy: ${busy})` : s.name}
+                      </option>
+                    );
+                  })}
                 </select>
               ) : (
                 <span className="flex min-w-0 items-center gap-2">

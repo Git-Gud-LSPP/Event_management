@@ -1,22 +1,31 @@
+import type { LucideIcon } from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
 import type { EventRecord } from "../features/events/api";
+import { moduleIcon } from "../billing/icons";
+import { hasModule, type Workspace } from "../billing/plan";
 
 export interface NavItem {
   label: string;
   path: string;
-  dot: string; // the small coloured square per workspace, as in the v2 design
+  icon: LucideIcon;
+  tint: string; // per-workspace icon colour
   module?: string; // gated add-on: shows a lock when not in the plan
 }
 
 export const NAV: NavItem[] = [
-  { label: "Events", path: "/events", dot: "bg-ink" },
-  { label: "My Tasks", path: "/my-tasks", dot: "bg-live" },
-  { label: "Schedule", path: "/schedule", dot: "bg-[#6F9BD6]" },
-  { label: "Staff", path: "/staffs", dot: "bg-[#C9A54A]" },
-  { label: "Vendors", path: "/vendors", dot: "bg-[#8A75D1]", module: "vendors" },
-  { label: "Incidents", path: "/incidents", dot: "bg-[#C9668E]", module: "incidents" },
-  { label: "Floor Plan", path: "/floorplan", dot: "bg-[#7DB394]", module: "floor-plan" },
-  { label: "Documents", path: "/documents", dot: "bg-ink-3" },
+  { label: "Dashboard", path: "/events", icon: LayoutDashboard, tint: "text-ink" }, // pointed at the current event by navFor()
+  { label: "My Tasks", path: "/my-tasks", icon: moduleIcon("my-tasks"), tint: "text-live" },
+  { label: "Schedule", path: "/schedule", icon: moduleIcon("run-of-show"), tint: "text-[#6F9BD6]" },
+  { label: "Staff", path: "/staffs", icon: moduleIcon("staff"), tint: "text-[#C9A54A]" },
+  { label: "Vendors", path: "/vendors", icon: moduleIcon("vendors"), tint: "text-[#8A75D1]", module: "vendors" },
+  { label: "Incidents", path: "/incidents", icon: moduleIcon("incidents"), tint: "text-[#C9668E]", module: "incidents" },
+  { label: "Floor Plan", path: "/floorplan", icon: moduleIcon("floor-plan"), tint: "text-[#7DB394]", module: "floor-plan" },
+  { label: "Documents", path: "/documents", icon: moduleIcon("documents"), tint: "text-ink-3" },
 ];
+
+/** NAV minus add-ons not in the plan, with Dashboard opening the current event (the event list when there is none). */
+export const navFor = (event: EventRecord | null, ws: Workspace): NavItem[] =>
+  NAV.filter((n) => !n.module || hasModule(ws, n.module)).map((n, i) => (i === 0 && event ? { ...n, path: `/events/${event._id}` } : n));
 
 export const initials = (name = "") =>
   name

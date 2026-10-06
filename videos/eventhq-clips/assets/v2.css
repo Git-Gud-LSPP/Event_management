@@ -1,0 +1,70 @@
+/* EventOps v2 app UI at ~1.6x for a 1600x1000 product demo. Tokens mirror frontend/src/index.css. */
+@font-face { font-family: "Geist"; src: url("geist.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Geist Mono"; src: url("geist-mono.woff2") format("woff2"); font-weight: 100 900; }
+:root {
+  --bg: #f2f5f1; --surface: #fff; --sunken: #e6ece5; --soft: #f6f9f5;
+  --ink: #16231c; --ink-2: #44524a; --ink-3: #5c6a62; --muted: #6e7c73;
+  --line: #e1e8e0; --line-soft: #edf2ec; --accent: #2f7552; --live: #3f8a64; --accent-soft: #e3f1e7; --good: #2a6e4b;
+  --ai: #c9bdf2; --ai-ink: #4b3a86; --danger: #8a2e52; --danger-soft: #f4dce6; --warn: #6b5112; --warn-soft: #f3e7c8;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1600px; height: 1000px; overflow: hidden; background: var(--bg); }
+body { font-family: "Geist", sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+#root { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.mono { font-family: "Geist Mono", monospace; letter-spacing: .04em; }
+
+/* Shell */
+.shell { position: absolute; inset: 0; display: grid; grid-template-columns: 300px 1fr; }
+.side { border-right: 2px solid var(--line); display: flex; flex-direction: column; }
+.brand { height: 92px; display: flex; align-items: center; gap: 14px; padding: 0 28px; border-bottom: 2px solid var(--line); font-size: 27px; font-weight: 600; letter-spacing: -0.02em; }
+.mark { position: relative; width: 32px; height: 32px; border-radius: 8px; background: var(--ink); flex: none; }
+.mark::after { content: ""; position: absolute; right: 20%; bottom: 20%; width: 35%; height: 35%; border-radius: 3px; background: var(--live); }
+.cur { margin: 22px 18px 8px; padding: 14px 18px; background: var(--surface); border-radius: 16px; }
+.cur .k { font-size: 15px; color: var(--ink-3); }
+.cur .v { margin-top: 4px; font-size: 21px; font-weight: 500; display: flex; justify-content: space-between; align-items: center; }
+.nav { display: flex; flex-direction: column; gap: 2px; padding: 8px 18px; }
+.nv { position: relative; display: flex; align-items: center; gap: 16px; height: 54px; padding: 0 16px; border-radius: 12px; font-size: 22px; color: var(--ink-2); }
+.nv i { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+.nv .hl { position: absolute; inset: 0; border-radius: 12px; background: var(--surface); box-shadow: 0 1px 3px rgba(20,45,30,.08); opacity: 0; }
+.nv span, .nv i { position: relative; }
+.main { position: relative; overflow: hidden; }
+.view { position: absolute; inset: 0; padding: 44px 48px; opacity: 0; }
+.eyebrow { font-size: 16px; color: var(--ink-3); }
+.h1 { margin-top: 10px; font-size: 52px; font-weight: 500; letter-spacing: -0.04em; }
+.sub { margin-top: 6px; font-size: 22px; color: var(--ink-3); }
+.top { display: flex; justify-content: space-between; align-items: flex-end; }
+.btn { display: inline-flex; align-items: center; gap: 10px; height: 56px; padding: 0 26px; border-radius: 999px; background: var(--ink); color: var(--bg); font-size: 21px; }
+.card { background: var(--surface); border-radius: 26px; overflow: hidden; }
+.pill { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 999px; font-family: "Geist Mono", monospace; font-size: 15px; letter-spacing: .04em; white-space: nowrap; }
+.good { background: var(--accent-soft); color: var(--good); }
+.bad { background: var(--danger-soft); color: var(--danger); }
+.crit { background: var(--danger); color: #fff; }
+.warnp { background: var(--warn-soft); color: var(--warn); }
+.quiet { background: var(--line-soft); color: #56645b; }
+.dark { background: var(--ink); color: var(--bg); }
+.dot { width: 9px; height: 9px; border-radius: 999px; background: var(--live); }
+.av { width: 42px; height: 42px; border-radius: 12px; background: #e4eee6; display: inline-grid; place-items: center; font-size: 16px; flex: none; }
+.swap { position: relative; display: inline-grid; }
+.swap > * { grid-area: 1 / 1; }
+
+/* Captions */
+.cap { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); display: flex; align-items: center; gap: 18px; padding: 20px 30px; border-radius: 999px; background: var(--ink); color: var(--bg); font-size: 26px; white-space: nowrap; box-shadow: 0 30px 60px -30px rgba(20,45,30,.6); opacity: 0; z-index: 20; }
+.cap b { font-family: "Geist Mono", monospace; font-weight: 400; font-size: 18px; color: var(--ai); }
+
+/* Intro + outro */
+.stage { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; z-index: 30; }
+#intro { background: radial-gradient(40% 48% at 22% 30%, #eaf4e6 0%, rgba(234,244,230,0) 70%), radial-gradient(36% 46% at 80% 22%, #9ccbae 0%, rgba(156,203,174,0) 72%), radial-gradient(30% 40% at 70% 90%, #d9cef3 0%, rgba(217,206,243,0) 70%), #cfe5d6; }
+#outro { background: var(--ink); color: var(--bg); opacity: 0; }
+.wm { display: flex; align-items: center; gap: 18px; font-size: 40px; font-weight: 600; letter-spacing: -0.02em; }
+.wm .mark { width: 44px; height: 44px; border-radius: 11px; }
+.big { margin-top: 40px; font-size: 92px; line-height: .98; font-weight: 500; letter-spacing: -0.045em; }
+.big .w { display: inline-block; overflow: hidden; padding-bottom: .1em; margin-bottom: -.1em; vertical-align: top; }
+.big .w span { display: inline-block; }
+.tag { margin-top: 34px; font-family: "Geist Mono", monospace; font-size: 20px; letter-spacing: .06em; color: #56645b; }
+#outro .mark { background: var(--bg); }
+#outro .tag { color: var(--ai); }
+.url { margin-top: 44px; display: inline-flex; align-items: center; gap: 14px; padding: 22px 36px; border-radius: 999px; background: var(--bg); color: var(--ink); font-size: 30px; }
+
+.seg { display: inline-flex; padding: 4px; border-radius: 999px; background: var(--line-soft); font-size: 19px; }
+.seg span { padding: 9px 20px; border-radius: 999px; }
+.seg .on { background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.08); }

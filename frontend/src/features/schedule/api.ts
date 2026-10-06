@@ -30,11 +30,33 @@ export const updateTask = (eventId: string, id: string, data: Partial<ScheduleIt
 export const deleteTask = (eventId: string, id: string) =>
   apiFetch<void>(`${base(eventId)}/${id}`, { method: "DELETE" });
 
+export const claimTask = (eventId: string, id: string) =>
+  apiFetch<ScheduleItem>(`${base(eventId)}/${id}/claim`, { method: "POST" });
+
 export const assignTask = (eventId: string, id: string, assigneeId: string) =>
   apiFetch<ScheduleItem>(`${base(eventId)}/${id}/tasks-assign`, {
     method: "POST",
     body: JSON.stringify({ assigneeId }),
   });
+
+// The unfinished task (if any) that already has `ownerId` busy during `slot`. A task with no end
+// time occupies just its start minute.
+export const clashFor = (
+  items: ScheduleItem[],
+  ownerId: string,
+  slot: { _id?: string; startsAt: string; endsAt?: string }
+): ScheduleItem | undefined => {
+  const span = (t: { startsAt: string; endsAt?: string }) => {
+    const start = new Date(t.startsAt).getTime();
+    return [start, Math.max(start + 60_000, t.endsAt ? new Date(t.endsAt).getTime() : 0)];
+  };
+  const [start, end] = span(slot);
+  return items.find((i) => {
+    if (i._id === slot._id || i.owner?._id !== ownerId || i.status === "Done") return false;
+    const [s, e] = span(i);
+    return s < end && start < e;
+  });
+};
 
 // --- mapping backend shape -> the shape the list/gantt views already render ---
 

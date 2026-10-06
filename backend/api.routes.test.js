@@ -19,12 +19,15 @@ const app = require('./app');
     assert.strictEqual(res.status, 401, `${path} should require a token, got ${res.status}`);
   }
 
-  // Vendors are public but validate their query - 400 proves the mount is live.
+  // Vendor search sits behind login and the vendors module now - 401 proves the guard is mounted.
   const nearby = await request(app).get('/api/vendors/nearby');
-  assert.strictEqual(nearby.status, 400, `vendors/nearby should be mounted, got ${nearby.status}`);
+  assert.strictEqual(nearby.status, 401, `vendors/nearby should need a token, got ${nearby.status}`);
 
-  const route = await request(app).get('/api/vendors/route');
-  assert.strictEqual(route.status, 400, `vendors/route should be mounted, got ${route.status}`);
+  const billing = await request(app).get('/api/billing/workspace');
+  assert.strictEqual(billing.status, 401, `billing/workspace should need a token, got ${billing.status}`);
+
+  const gen = await request(app).post('/api/events/000000000000000000000000/documents/generate');
+  assert.strictEqual(gen.status, 401, `documents/generate should need a token, got ${gen.status}`);
 
   // Login still rejects an empty body rather than crashing.
   const login = await request(app).post('/api/auth/login').send({});
