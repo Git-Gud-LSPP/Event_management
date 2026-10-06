@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Loader2, Download, Printer, Pencil, Trash2, Paperclip } from "lucide-react";
+import { X, Loader2, Download, Printer, Pencil, Trash2, Paperclip, Sparkles } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { fileToAttachment, MAX_ATTACHMENT_BYTES } from "../agent/api";
@@ -10,6 +10,7 @@ import {
   createDocument,
   deleteDocument,
   downloadDocument,
+  generateDocument,
   getDocument,
   updateDocument,
   type DocCategory,
@@ -18,6 +19,7 @@ import {
   type DocumentRecord,
   type EventVendor,
 } from "./api";
+import type { StaffRef } from "../events/api";
 
 // One stylesheet for the modal preview and the print window (which can't see Tailwind).
 const MD_CSS = `
@@ -44,6 +46,7 @@ export default function DocumentModal({
   eventId,
   doc,
   vendors,
+  staff,
   canEdit,
   initialVendorId,
   onClose,
@@ -53,6 +56,7 @@ export default function DocumentModal({
   eventId: string;
   doc: DocumentRecord | null; // null = create
   vendors: EventVendor[];
+  staff: StaffRef[];
   canEdit: boolean;
   initialVendorId?: string;
   onClose: () => void;
@@ -74,6 +78,23 @@ export default function DocumentModal({
   const [dueDate, setDueDate] = useState(doc?.dueDate?.slice(0, 10) ?? "");
   const [content, setContent] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [shared, setShared] = useState<string[]>(doc?.sharedWith ?? []);
+  const [spec, setSpec] = useState(""); // what to ask the AI for
+  const [aiOpen, setAiOpen] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  const generate = async () => {
+    if (content && !window.confirm("Replace the current content with the AI draft?")) return;
+    setGenerating(true);
+    setError(null);
+    try {
+      setContent(await generateDocument(eventId, { spec, title, category, vendor: vendor || undefined }));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   useEffect(() => {
     if (!doc) return;
@@ -114,6 +135,7 @@ export default function DocumentModal({
         currency: currency || undefined,
         dueDate: dueDate || null,
         content,
+        sharedWith: shared,
       };
       if (!doc && file) {
         if (file.size > MAX_ATTACHMENT_BYTES) throw new Error(`${file.name} is larger than 5 MB`);
@@ -270,6 +292,83 @@ export default function DocumentModal({
                   <label className={label}>Due date</label>
                   <input className={field} type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
                 </div>
+              </div>
+              <fieldset>
+                <div className="mb-1 flex items-center justify-between">
+                  <legend className={label}>Visible to staff</legend>
+                  {staff.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShared(shared.length === staff.length ? [] : staff.map((s) => s._id))}
+                      className="text-xs font-medium text-accent hover:underline"
+                    >
+                      {shared.length === staff.length ? "Clear" : "Select all"}
+                    </button>
+                  )}
+                </div>
+                {staff.length === 0 ? (
+                  <p className="text-xs text-ink-3">No staff on this event yet. Only you can see it.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {staff.map((s) => {
+                      const on = shared.includes(s._id);
+                      return (
+                        <label
+                          key={s._id}
+                          className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${on ? "border-ink bg-ink text-paper" : "border-line text-ink-2 hover:border-ink"}`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={on}
+                            onChange={() => setShared(on ? shared.filter((id) => id !== s._id) : [...shared, s._id])}
+                          />
+                          {s.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </fieldset>
+              <div className="rounded-xl border border-dashed border-line p-3">
+                {!aiOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setAiOpen(true)}
+                    className="flex items-center gap-2 text-sm font-medium text-accent hover:underline"
+                  >
+                    <Sparkles size={15} /> Generate with AI
+                  </button>
+                ) : (
+                  <>
+                    <label className={label} htmlFor="doc-spec">
+                      Describe the document. Event, vendor and category above are filled in for you.
+                    </label>
+                    <textarea
+                      id="doc-spec"
+                      className={field}
+                      rows={4}
+                      maxLength={4000}
+                      placeholder="e.g. RFQ for 300 chairs and 30 round tables, delivery the day before, quotes due in 7 days, formal tone"
+                      value={spec}
+                      onChange={(e) => setSpec(e.target.value)}
+                    />
+                    <div className="mt-2 flex justify-end gap-2">
+                      <button type="button" onClick={() => setAiOpen(false)} className="rounded-lg px-3 py-1.5 text-xs text-ink-2 hover:bg-sunken">
+                        Close
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!spec.trim() || generating}
+                        onClick={() => void generate()}
+                        className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        {generating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                        {generating ? "Writing…" : "Generate"}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
               {!doc && (
                 <div>

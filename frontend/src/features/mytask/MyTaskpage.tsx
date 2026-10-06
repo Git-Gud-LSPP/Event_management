@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Hand, Inbox, Loader2 } from "lucide-react";
 
 import { priorityOf, type Task, type TaskStatus } from "../schedule/data";
-import { listSchedule, toTask, updateTask } from "../schedule/api";
+import { claimTask, listSchedule, toTask, updateTask } from "../schedule/api";
 import { PageHeader, Segmented } from "../../components/DashboardHeader";
 import EventPicker, { useEventSelection } from "../../components/EventPicker";
 import { PRIORITY_TEXT, card, mono, pillOf } from "../../components/ui";
@@ -20,11 +20,12 @@ const GROUPS: { title: string; hint: string; test: (t: Task) => boolean }[] = [
 ];
 
 // Board view: columns are statuses, so dragging a card between them changes its status.
-const COLUMNS: { title: string; status: TaskStatus }[] = [
-  { title: "To do", status: "Pending" },
-  { title: "In progress", status: "In Progress" },
-  { title: "Blocked", status: "Blocked" },
-  { title: "Done", status: "Done" },
+// Tinted by severity: blocked is the alarm, in progress a caution, done is settled.
+const COLUMNS: { title: string; status: TaskStatus; bg: string; dot: string }[] = [
+  { title: "To do", status: "Pending", bg: "bg-soft", dot: "bg-ink-3" },
+  { title: "In progress", status: "In Progress", bg: "bg-warn-soft", dot: "bg-[#C9A54A]" },
+  { title: "Blocked", status: "Blocked", bg: "bg-danger-soft", dot: "bg-danger" },
+  { title: "Done", status: "Done", bg: "bg-accent-soft", dot: "bg-live" },
 ];
 
 const when = (iso: string) => {
@@ -73,11 +74,27 @@ export default function MyTasksPage() {
     };
   }, [selectedId]);
 
-  // Staff see only their own assignments; organizers see the whole event.
+  // Unassigned tasks are the event backlog. Otherwise staff see only their own; organizers see the whole event.
+  const backlog = allTasks.filter((t) => !t.ownerId && t.status !== "Done");
   const myTasks = useMemo(
-    () => (!user || user.role === "organizer" ? allTasks : allTasks.filter((t) => t.ownerId === user.id)),
+    () => allTasks.filter((t) => t.ownerId && (!user || user.role === "organizer" || t.ownerId === user.id)),
     [allTasks, user]
   );
+
+  const [claiming, setClaiming] = useState<string | null>(null);
+  const takeOn = async (t: Task) => {
+    if (!selectedId) return;
+    setClaiming(t.id);
+    setError(null);
+    try {
+      const mine = toTask(await claimTask(selectedId, t.id));
+      setAllTasks((cur) => cur.map((x) => (x.id === t.id ? mine : x)));
+    } catch (e) {
+      setError(`Could not take on "${t.name}": ${(e as Error).message}`);
+    } finally {
+      setClaiming(null);
+    }
+  };
 
   // Optimistic status change, rolled back if the server refuses.
   const moveTask = async (taskId: string, status: TaskStatus) => {
@@ -101,8 +118,8 @@ export default function MyTasksPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="My tasks"
-        title={`${greeting()}, ${(user?.name ?? "there").split(" ")[0]}.`}
+        eyebrow="Tasks"
+        title="My Tasks"
         subtitle={`${open} open task${open === 1 ? "" : "s"} on ${eventTitle}${blocked ? ` · ${blocked} blocked` : ""}`}
       >
         <EventPicker events={events} selectedId={selectedId} onSelect={setSelectedId} />
@@ -119,7 +136,47 @@ export default function MyTasksPage() {
         </div>
       ) : !selectedId ? (
         <p className="py-16 text-center text-sm text-ink-3">No events yet. Create one on the Events page first.</p>
-      ) : myTasks.length === 0 ? (
+      ) : (
+        <>
+          {backlog.length > 0 && (
+            <section className={`${card} mb-5`} aria-labelledby="backlog">
+              <div className="flex items-center justify-between border-b border-line-soft bg-soft px-[18px] py-3.5">
+                <h2 id="backlog" className="flex items-center gap-2.5 text-[15px] font-medium">
+                  <Inbox size={15} className="text-ink-3" aria-hidden="true" />
+                  Event backlog
+                  <span className={`${mono} font-normal text-[#6E7C73]`}>{backlog.length}</span>
+                </h2>
+                <span className="text-xs text-[#6E7C73]">Unassigned · anyone on the event can take these on</span>
+              </div>
+              {backlog.map((t) => {
+                const p = priorityOf(t);
+                return (
+                  <div key={t.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3.5 border-b border-line-soft px-[18px] py-[13px] text-[13.5px] last:border-0">
+                    <div className="min-w-0">
+                      <div className="truncate text-ink">{t.name}</div>
+                      <div className="mt-0.5 truncate text-xs text-[#6E7C73]">
+                        starts {when(t.startsAt)}
+                        {t.dependsOn && ` · after ${t.dependsOn}`}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`${mono} hidden sm:inline ${PRIORITY_TEXT[p]}`}>{p.toUpperCase()}</span>
+                      <button
+                        type="button"
+                        onClick={() => void takeOn(t)}
+                        disabled={claiming === t.id}
+                        className="flex cursor-pointer items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-xs text-paper hover:bg-ink-hover disabled:opacity-60"
+                      >
+                        {claiming === t.id ? <Loader2 size={12} className="animate-spin" /> : <Hand size={12} />}
+                        Take on
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+          )}
+          {myTasks.length === 0 ? (
         <p className="py-16 text-center text-sm text-ink-3">No tasks assigned to you on this event yet.</p>
       ) : view === "List" ? (
         <div className="flex flex-col gap-5">
@@ -178,10 +235,13 @@ export default function MyTasksPage() {
                   const id = e.dataTransfer.getData("text/plain");
                   if (id) moveTask(id, col.status);
                 }}
-                className={`flex min-h-[200px] flex-col gap-2 rounded-2xl bg-soft p-3 ${overCol === col.status ? "ring-2 ring-live" : ""}`}
+                className={`flex min-h-[200px] flex-col gap-2 rounded-2xl p-3 ${col.bg} ${overCol === col.status ? "ring-2 ring-live" : ""}`}
               >
                 <div className="flex justify-between px-1 pt-1 pb-2 text-sm font-medium">
-                  {col.title}
+                  <span className="flex items-center gap-2">
+                    <span className={`size-2 rounded-full ${col.dot}`} aria-hidden="true" />
+                    {col.title}
+                  </span>
                   <span className={`${mono} font-normal text-[#6E7C73]`}>{items.length}</span>
                 </div>
                 {items.map((t) => {
@@ -217,11 +277,8 @@ export default function MyTasksPage() {
           })}
         </div>
       )}
+        </>
+      )}
     </div>
   );
 }
-
-const greeting = () => {
-  const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-};

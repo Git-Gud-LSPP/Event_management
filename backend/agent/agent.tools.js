@@ -23,6 +23,7 @@ const VENDOR_TYPES = ['photographer', 'bakery', 'florist', 'hotel', 'catering', 
 const VENDOR_STAGES = ['Shortlisted', 'RFQ Sent', 'Quoted', 'Booked', 'Paid', 'Rejected'];
 const DOC_CATEGORIES = ['Contract', 'Quote', 'RFQ', 'Purchase Order', 'Invoice', 'Receipt', 'Permit', 'Insurance', 'Plan', 'Other'];
 const DOC_STATUSES = ['Draft', 'Sent', 'Received', 'Approved', 'Signed', 'Paid', 'Void'];
+const FLOOR_KINDS = ['room', 'zone', 'stage', 'booth', 'registration', 'entrance', 'exit', 'firstaid', 'restroom', 'access'];
 
 const PAGES = {
   events: '/events',
@@ -68,6 +69,7 @@ const floorSchema = z.object({
   rooms: z.array(
     z.object({
       id: z.string().describe('Stable client id; keep existing ids unchanged'),
+      kind: z.enum(FLOOR_KINDS).optional().describe('room/zone are spaces; the rest are markers. Defaults to room'),
       name: z.string(),
       x: z.number(),
       y: z.number(),
@@ -75,6 +77,9 @@ const floorSchema = z.object({
       height: z.number().min(1),
       capacity: z.number().min(0).optional(),
       color: z.string().optional(),
+      rot: z.number().optional(),
+      locked: z.boolean().optional(),
+      owner: id('Staff user id who owns this point on show day').nullable().optional(),
     })
   ),
   placements: z.array(
@@ -203,8 +208,8 @@ const makeTools = ({ call, queueConfirm, emit }) => ({
     ({ eventId }) => call('GET', `/events/${eventId}/schedule${qs({ limit: 100 })}`)
   ),
   create_task: t(
-    'Create a schedule task for an event (organizer only). name, owner and startsAt are required.',
-    { eventId: id('Event id'), ...taskFields, name: z.string(), owner: id('User id of the task owner'), startsAt: isoDate('Start time') },
+    'Create a schedule task for an event (organizer only). name and startsAt are required; leave owner out to put it in the event backlog.',
+    { eventId: id('Event id'), ...taskFields, name: z.string(), startsAt: isoDate('Start time') },
     ({ eventId, ...fields }) => call('POST', `/events/${eventId}/schedule`, fields)
   ),
   update_task: t(
@@ -214,7 +219,7 @@ const makeTools = ({ call, queueConfirm, emit }) => ({
   ),
   assign_task: t(
     'Hand a task to a staff member of the event (organizer only).',
-    { eventId: id('Event id'), taskId: id('Task id'), assigneeId: id('Staff user id') },
+    { eventId: id('Event id'), taskId: id('Task id'), assigneeId: id("Staff user id, or the organizer's own id") },
     ({ eventId, taskId, assigneeId }) =>
       call('POST', `/events/${eventId}/schedule/${taskId}/tasks-assign`, { assigneeId })
   ),

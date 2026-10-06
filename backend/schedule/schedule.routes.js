@@ -16,6 +16,7 @@ router
   .patch(authenticate, authorizeScheduleAccess('staff'), c.update) // staff: own task status only, see c.update
   .delete(authenticate, authorizeScheduleAccess('organizer'), c.remove);
 
+router.post('/:id/claim', authenticate, canViewSchedule, c.claim);
 router.post('/:id/tasks-assign', authenticate, canManageSchedule, c.assign);
 
 module.exports = router;

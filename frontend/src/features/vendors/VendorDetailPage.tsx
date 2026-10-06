@@ -5,24 +5,7 @@ import { API_BASE } from "../../services/api";
 import { getStoredUser } from "../../services/authApi";
 import { useEventSelection } from "../../components/EventPicker";
 import { addEventVendor } from "../documents/api";
-import {
-  ArrowLeft,
-  MapPin,
-  Phone,
-  Globe,
-  Camera,
-  CakeSlice,
-  Utensils,
-  Flower2,
-  Music,
-  Palette,
-  Hotel,
-  Navigation,
-  Star,
-  ExternalLink,
-  Plus,
-  Check,
-} from "lucide-react";
+import { Camera, CakeSlice, Utensils, Flower2, Music, Palette, Hotel } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                               */
@@ -142,8 +125,9 @@ const VendorMap = ({ userLocation, vendor, onRouteLoaded }: MapProps) => {
       // Initialise map
       const map = L.map(mapContainerRef.current!, {
         scrollWheelZoom: true,
-        zoomControl: true,
+        zoomControl: false,
       });
+      L.control.zoom({ position: "topright" }).addTo(map);
 
       mapRef.current = map;
 
@@ -213,9 +197,9 @@ const VendorMap = ({ userLocation, vendor, onRouteLoaded }: MapProps) => {
 
         // Draw a light dashed placeholder line immediately
         const placeholder = L.polyline([userLatLng, vendorLatLng], {
-          color: "#C9BDF2",
+          color: "#9C8BDB",
           weight: 2,
-          opacity: 0.55,
+          opacity: 0.7,
           dashArray: "6, 8",
         }).addTo(map);
 
@@ -224,7 +208,8 @@ const VendorMap = ({ userLocation, vendor, onRouteLoaded }: MapProps) => {
           const [uLat, uLon] = userLatLng;
           const [vLat, vLon] = vendorLatLng;
           const resp = await fetch(
-            `${API_BASE}/vendors/route?fromLat=${uLat}&fromLon=${uLon}&toLat=${vLat}&toLon=${vLon}`
+            `${API_BASE}/vendors/route?fromLat=${uLat}&fromLon=${uLon}&toLat=${vLat}&toLon=${vLon}`,
+            { headers: { Authorization: `Bearer ${localStorage.getItem("authToken") || ""}` } }
           );
 
           if (resp.ok) {
@@ -281,27 +266,10 @@ const VendorMap = ({ userLocation, vendor, onRouteLoaded }: MapProps) => {
 };
 
 /* ------------------------------------------------------------------ */
-/*  Info row helper                                                     */
-/* ------------------------------------------------------------------ */
-
-const InfoRow = ({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) => (
-  <div className="py-4 border-b border-line last:border-0">
-    <p className="text-xs font-semibold uppercase tracking-wide text-ink-3 mb-1">
-      {label}
-    </p>
-    <div className="text-ink">{children}</div>
-  </div>
-);
-
-/* ------------------------------------------------------------------ */
 /*  Main VendorDetailPage                                               */
 /* ------------------------------------------------------------------ */
+
+const mono = "font-mono text-[10.5px] tracking-[.05em]";
 
 // Puts this search result on the selected event's procurement pipeline (Documents page),
 // where documents and the assistant can use its details.
@@ -331,16 +299,19 @@ function AddToEventButton({ vendor }: { vendor: Vendor }) {
   };
 
   if (!selected) return null;
+  const added = state === "added";
   const failed = !["idle", "saving", "added"].includes(state);
   return (
     <button
       onClick={add}
-      disabled={state === "saving" || state === "added"}
+      disabled={state === "saving" || added}
       title={failed ? state : `Add to ${selected.title}`}
-      className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-line bg-surface py-2.5 text-sm font-semibold text-ink-2 transition-colors hover:bg-soft disabled:opacity-70"
+      className={`flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm transition-colors ${
+        added ? "bg-accent-soft text-accent" : failed ? "bg-surface text-danger ring-1 ring-inset ring-danger/30" : "bg-surface text-ink hover:bg-accent-soft"
+      }`}
     >
-      {state === "added" ? <Check size={15} /> : <Plus size={15} />}
-      {state === "added" ? `On ${selected.title}` : failed ? "Retry add" : `Add to ${selected.title}`}
+      <span className="font-mono text-[13px]">{added ? "✓" : failed ? "↻" : "+"}</span>
+      {added ? `On ${selected.title}` : state === "saving" ? "Adding…" : failed ? "Retry add" : `Add to ${selected.title}`}
     </button>
   );
 }
@@ -358,22 +329,29 @@ const VendorDetailPage = () => {
   const vendor = state?.vendor ?? null;
   const userLocation = state?.userLocation ?? null;
 
+  // Road-route state:
+  //   undefined  = still loading (map not yet called back)
+  //   null       = OSRM failed -- show Haversine fallback
+  //   RouteInfo  = real road distance + duration
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null | undefined>(undefined);
+
   // Guard: if someone navigates directly without state, go back
   if (!vendor) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <MapPin size={40} className="text-line-strong" />
-        <h2 className="text-lg font-bold text-ink-2">Vendor not found</h2>
-        <p className="text-sm text-ink-3">
-          Please go back and select a vendor from the list.
-        </p>
-        <button
-          onClick={() => navigate("/vendors")}
-          className="mt-2 flex items-center gap-2 rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink-hover"
-        >
-          <ArrowLeft size={16} />
-          Back to Vendors
-        </button>
+      <div className="grid min-h-[70vh] place-items-center p-8">
+        <div className="flex max-w-[380px] flex-col items-center gap-2.5 text-center">
+          <div className="font-mono text-xs tracking-[.04em] text-ink-3">VENDOR · 404</div>
+          <h1 className="text-[32px] font-medium leading-[1.05] tracking-[-0.04em] text-ink">Vendor not found</h1>
+          <p className="text-[15px] leading-normal text-ink-2 text-pretty">
+            This link has expired or was opened directly. Pick the vendor again from your search results.
+          </p>
+          <button
+            onClick={() => navigate("/vendors")}
+            className="mt-2.5 rounded-full bg-ink px-5 py-2.5 text-sm text-paper hover:bg-ink-hover"
+          >
+            ← Back to vendors
+          </button>
+        </div>
       </div>
     );
   }
@@ -381,291 +359,186 @@ const VendorDetailPage = () => {
   // Haversine distance -- used as initial display value until OSRM responds
   const distanceKm =
     userLocation != null
-      ? haversineKm(
-          userLocation.latitude,
-          userLocation.longitude,
-          vendor.latitude,
-          vendor.longitude
-        )
+      ? haversineKm(userLocation.latitude, userLocation.longitude, vendor.latitude, vendor.longitude)
       : vendor.distance;
 
   const category = categories.find((c) => c.value === vendor.type);
-  const Icon = category?.icon ?? Camera;
+  const typeLabel = category?.name ?? vendor.type;
 
   // Validate website URL before rendering
   let validWebsite: string | null = null;
   if (vendor.website) {
     try {
       const parsed = new URL(vendor.website);
-      if (["http:", "https:"].includes(parsed.protocol)) {
-        validWebsite = parsed.href;
-      }
+      if (["http:", "https:"].includes(parsed.protocol)) validWebsite = parsed.href;
     } catch {
       // Not a valid URL
     }
   }
 
-  // Road-route state:
-  //   undefined  = still loading (map not yet called back)
-  //   null       = OSRM failed -- show Haversine fallback
-  //   RouteInfo  = real road distance + duration
-  const [routeInfo, setRouteInfo] = useState<RouteInfo | null | undefined>(undefined);
-  const routeLoading = routeInfo === undefined;
-
-  const [mapError] = useState(false);
   const hasCoordinates =
     typeof vendor.latitude === "number" &&
     typeof vendor.longitude === "number" &&
     !isNaN(vendor.latitude) &&
     !isNaN(vendor.longitude);
 
+  const telHref = vendor.phone ? `tel:${vendor.phone.replace(/[^\d+]/g, "")}` : "";
+  const hasRating = typeof vendor.rating === "number" && vendor.rating > 0;
+
+  // One place decides every distance label on the page
+  const rs = !userLocation ? "noLocation" : routeInfo === undefined ? "loading" : routeInfo ? "road" : "straight";
+  const straight = formatDistance(distanceKm);
+  const road = routeInfo ? formatRoadDistance(routeInfo.distance_m) : "";
+  const mins = routeInfo ? `~${Math.round(routeInfo.duration_s / 60)} min drive` : "";
+  const route = {
+    road:       { tag: "ROAD DISTANCE · OSRM", dot: "bg-live", line: `${road} · ${mins}`, label: "DISTANCE FROM YOU · BY ROAD", big: road, sub: mins },
+    loading:    { tag: "CALCULATING ROUTE", dot: "bg-ai animate-pulse", line: `${straight} straight-line`, label: "DISTANCE FROM YOU", big: "", sub: "" },
+    straight:   { tag: "STRAIGHT-LINE · ROUTE UNAVAILABLE", dot: "bg-line-strong", line: straight, label: "DISTANCE FROM YOU · STRAIGHT-LINE", big: straight, sub: "as the crow flies" },
+    noLocation: { tag: "STRAIGHT-LINE · FROM SEARCH POINT", dot: "bg-line-strong", line: straight, label: "DISTANCE FROM SEARCH POINT", big: straight, sub: "your location is off" },
+  }[rs];
+
+  const rows: { k: string; v: string; href?: string; external?: boolean }[] = [
+    { k: "TYPE", v: typeLabel },
+    { k: "ADDRESS", v: vendor.address || "Not listed" },
+    vendor.phone ? { k: "PHONE", v: vendor.phone, href: telHref } : { k: "PHONE", v: "Not listed" },
+    validWebsite
+      ? { k: "WEBSITE", v: validWebsite.replace(/^https?:\/\//, "").replace(/\/$/, ""), href: validWebsite, external: true }
+      : { k: "WEBSITE", v: "Not listed" },
+    { k: "RATING", v: hasRating ? `★ ${vendor.rating!.toFixed(1)}` : "Not available" },
+  ];
+  const muted = (v: string) => v === "Not listed" || v === "Not available";
+
   return (
-    <div className="">
-      <div className="">
-      {/* -- Back button -- */}
-      <button
-        onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-2 text-sm font-semibold text-ink-3 hover:text-ink transition-colors"
-      >
-        <ArrowLeft size={16} />
-        Back to Vendors
+    <div className="mx-auto max-w-[1320px]">
+      <button onClick={() => navigate(-1)} className="mb-[18px] text-[13px] text-ink-3 hover:text-ink">
+        ← Back to vendors
       </button>
 
-      {/* -- Page title badge -- */}
-      <div className="mb-3 inline-block rounded-full bg-accent-soft px-4 py-1.5 text-xs font-bold tracking-wide text-accent">
-        VENDOR DETAILS
-      </div>
-
-      {/* -- Two-column layout -- */}
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-
-        {/* LEFT -- Info */}
-        <div className="w-full lg:w-[420px] lg:shrink-0">
-          <div className="rounded-2xl border border-line bg-surface shadow-sm overflow-hidden">
-
-            {/* Category pill + icon header */}
-            <div className="flex items-center gap-4 border-b border-line bg-soft px-6 py-5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-ink text-white">
-                <Icon size={24} />
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-accent">
-                  {category?.name ?? vendor.type}
-                </p>
-                <h1 className="text-xl font-black tracking-tight text-ink leading-snug">
-                  {vendor.name}
-                </h1>
-              </div>
-            </div>
-
-            {/* Info rows */}
-            <div className="px-6">
-              {/* Address */}
-              <InfoRow label="Address">
-                <div className="flex items-start gap-2">
-                  <MapPin size={16} className="mt-0.5 shrink-0 text-ink-3" />
-                  <span className="text-sm leading-relaxed">
-                    {vendor.address || "Address not available"}
-                  </span>
-                </div>
-              </InfoRow>
-
-              {/* Phone */}
-              <InfoRow label="Contact Number">
-                {vendor.phone ? (
-                  <a
-                    href={`tel:${vendor.phone}`}
-                    className="flex items-center gap-2 text-sm font-medium text-accent hover:text-accent transition-colors"
-                  >
-                    <Phone size={15} />
-                    {vendor.phone}
-                  </a>
-                ) : (
-                  <span className="flex items-center gap-2 text-sm text-ink-3">
-                    <Phone size={15} />
-                    Phone number not available
-                  </span>
-                )}
-              </InfoRow>
-
-              {/* Website */}
-              <InfoRow label="Website">
-                {validWebsite ? (
-                  <a
-                    href={validWebsite}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm font-medium text-accent hover:text-accent transition-colors"
-                  >
-                    <ExternalLink size={15} />
-                    Visit Website
-                  </a>
-                ) : (
-                  <span className="flex items-center gap-2 text-sm text-ink-3">
-                    <Globe size={15} />
-                    No website available
-                  </span>
-                )}
-              </InfoRow>
-
-              {/* Rating -- only if the backend returns a real value */}
-              <InfoRow label="Rating">
-                {typeof vendor.rating === "number" && vendor.rating > 0 ? (
-                  <div className="flex items-center gap-1.5">
-                    <Star
-                      size={16}
-                      className="fill-warn text-warn"
-                    />
-                    <span className="text-sm font-semibold text-ink">
-                      {vendor.rating.toFixed(1)}
-                    </span>
-                  </div>
-                ) : (
-                  <span className="text-sm text-ink-3">Not available</span>
-                )}
-              </InfoRow>
-
-              {/* Distance -- updates once OSRM responds */}
-              <InfoRow label="Distance from You">
-                <div className="flex items-center gap-2">
-                  <Navigation size={16} className="shrink-0 text-accent" />
-                  {!userLocation ? (
-                    <span className="text-lg font-bold text-ink">
-                      {formatDistance(distanceKm)}
-                      <span className="ml-1 text-xs font-normal text-ink-3">(location unavailable)</span>
-                    </span>
-                  ) : routeLoading ? (
-                    <span className="text-sm text-ink-3 animate-pulse">Calculating road distance...</span>
-                  ) : routeInfo ? (
-                    <span className="text-lg font-bold text-ink">
-                      {formatRoadDistance(routeInfo.distance_m)}
-                      <span className="ml-2 text-sm font-medium text-ink-3">
-                        ~{Math.round(routeInfo.duration_s / 60)} min drive
-                      </span>
-                    </span>
-                  ) : (
-                    <span className="text-lg font-bold text-ink">
-                      {formatDistance(distanceKm)}
-                      <span className="ml-1 text-xs font-normal text-ink-3">(straight-line)</span>
-                    </span>
-                  )}
-                </div>
-              </InfoRow>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex gap-3 border-t border-line bg-soft px-6 py-4">
-              {vendor.phone && (
-                <a
-                  href={`tel:${vendor.phone}`}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-ink py-2.5 text-sm font-semibold text-white hover:bg-ink-hover transition-colors"
-                >
-                  <Phone size={15} />
-                  Call
-                </a>
-              )}
-              {validWebsite && (
-                <a
-                  href={validWebsite}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-line bg-surface py-2.5 text-sm font-semibold text-ink-2 hover:bg-soft transition-colors"
-                >
-                  <ExternalLink size={15} />
-                  Website
-                </a>
-              )}
-              {getStoredUser()?.role === "organizer" && <AddToEventButton vendor={vendor} />}
-              {!vendor.phone && !validWebsite && (
-                <p className="w-full text-center text-sm text-ink-3 py-1">
-                  No contact information available
-                </p>
-              )}
-            </div>
+      {/* Header */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
+        <div className="flex min-w-0 items-end gap-4">
+          {vendor.image ? (
+            <img src={vendor.image} alt="" className="h-[72px] w-[72px] flex-none rounded-[14px] object-cover" />
+          ) : (
+            <span
+              className="grid h-[72px] w-[72px] flex-none place-items-center rounded-[14px] font-mono text-[9px] tracking-[.04em] text-ink-3"
+              style={{ background: "repeating-linear-gradient(135deg,var(--color-sunken) 0 6px,var(--color-surface) 6px 12px)" }}
+            >
+              {typeLabel.slice(0, 5).toUpperCase()}
+            </span>
+          )}
+          <div className="min-w-0">
+            <div className="font-mono text-xs tracking-[.04em] text-ink-3">VENDOR · {typeLabel.toUpperCase()}</div>
+            <h1 className="mb-1.5 mt-2.5 text-[clamp(30px,3.4vw,44px)] font-medium leading-none tracking-[-0.045em] text-ink">
+              {vendor.name}
+            </h1>
+            {vendor.address && <div className="text-[15px] text-ink-2">{vendor.address}</div>}
           </div>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {validWebsite && (
+            <a
+              href={validWebsite}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-[7px] whitespace-nowrap rounded-full bg-surface px-4 py-2.5 text-sm text-ink hover:bg-accent-soft"
+            >
+              Website <span className="text-xs text-ink-3">↗</span>
+            </a>
+          )}
+          {getStoredUser()?.role === "organizer" && <AddToEventButton vendor={vendor} />}
+          {vendor.phone && (
+            <a href={telHref} className="whitespace-nowrap rounded-full bg-ink px-[18px] py-2.5 text-sm text-paper hover:bg-ink-hover">
+              Call {vendor.phone}
+            </a>
+          )}
+        </div>
+      </div>
 
-        {/* RIGHT -- Map */}
-        <div className="flex-1">
-          <div className="rounded-2xl border border-line bg-surface shadow-sm overflow-hidden">
-
-            {/* Map header */}
-            <div className="flex items-center justify-between border-b border-line px-5 py-4">
-              <div className="flex items-center gap-2">
-                <MapPin size={18} className="text-accent" />
-                <span className="font-semibold text-ink">Location</span>
-              </div>
-              <div className="flex items-center gap-4 text-xs text-ink-3">
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block h-3 w-3 rounded-full bg-live border-2 border-white shadow" />
-                  Your Location
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span
-                    className="inline-block h-3 w-3 rounded-full border-2 border-white shadow"
-                    style={{ background: "#16231C" }}
-                  />
-                  {vendor.name}
-                </span>
-              </div>
+      <div className="flex flex-wrap items-stretch gap-3">
+        {/* Map */}
+        <div className="flex min-w-0 flex-[1_1_520px] flex-col overflow-hidden rounded-2xl bg-surface">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-[18px] py-3.5">
+            <span className="text-[15px] font-medium text-ink">Location</span>
+            <div className="flex flex-wrap gap-3.5 text-xs text-ink-3">
+              {userLocation && (
+                <span className="flex items-center gap-1.5"><span className="h-[9px] w-[9px] rounded-full bg-live" />You</span>
+              )}
+              <span className="flex items-center gap-1.5"><span className="h-[9px] w-[9px] rounded-full bg-ink" />{vendor.name}</span>
             </div>
+          </div>
 
-            {/* Map body */}
-            <div className="relative" style={{ height: "440px" }}>
-              {!hasCoordinates || mapError ? (
-                <div className="flex h-full flex-col items-center justify-center gap-3 text-center p-8">
-                  <MapPin size={36} className="text-line-strong" />
-                  <p className="font-semibold text-ink-2">
-                    Location unavailable
-                  </p>
-                  <p className="text-sm text-ink-3">
-                    This vendor's coordinates could not be loaded.
-                  </p>
-                </div>
-              ) : (
+          <div className="relative min-h-[440px] flex-1">
+            {hasCoordinates ? (
+              <div className="absolute inset-0">
                 <VendorMap
                   userLocation={userLocation}
                   vendor={vendor}
                   key={vendor.id}
                   onRouteLoaded={(info) => setRouteInfo(info ?? null)}
                 />
-              )}
+              </div>
+            ) : (
+              <div className="grid h-full min-h-[440px] place-items-center p-8 text-center text-sm text-ink-3">
+                This vendor's coordinates could not be loaded.
+              </div>
+            )}
+            {!userLocation && hasCoordinates && (
+              <div className="absolute inset-x-3 bottom-3 z-[1000] flex items-center gap-2.5 rounded-xl bg-warn-soft px-3.5 py-2.5 text-[13px] text-warn">
+                <span className="h-1.5 w-1.5 flex-none rounded-full bg-warn" />
+                Your location is off — only the vendor is shown.
+              </div>
+            )}
+          </div>
 
-              {!userLocation && hasCoordinates && (
-                <div className="absolute bottom-3 left-3 right-3 rounded-xl border border-warn/30 bg-warn-soft px-4 py-2.5 text-xs font-medium text-warn shadow">
-                  Your location is unavailable -- only the vendor is shown.
-                </div>
-              )}
-            </div>
-
-            {/* Distance / route banner below map */}
-            <div className="flex items-center justify-between border-t border-line bg-soft px-5 py-3">
-              {!userLocation ? (
-                <span className="text-sm text-ink-3">Straight-line distance</span>
-              ) : routeLoading ? (
-                <span className="flex items-center gap-2 text-sm text-ink-3">
-                  <svg className="h-4 w-4 animate-spin text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  Calculating road distance...
-                </span>
-              ) : routeInfo ? (
-                <span className="text-sm font-medium text-accent">Road distance</span>
-              ) : (
-                <span className="text-sm text-ink-3">Straight-line distance</span>
-              )}
-
-              <span className="flex items-center gap-1.5 font-bold text-ink">
-                <Navigation size={15} className="text-accent" />
-                {routeInfo
-                  ? `${formatRoadDistance(routeInfo.distance_m)}  /  ~${Math.round(routeInfo.duration_s / 60)} min`
-                  : formatDistance(distanceKm)}
-              </span>
-            </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft bg-soft px-[18px] py-3.5">
+            <span className={`flex items-center gap-2 ${mono} ${rs === "road" ? "text-accent" : "text-ink-3"}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${route.dot}`} />
+              {route.tag}
+            </span>
+            <span className="whitespace-nowrap font-mono text-[13px] text-ink">{route.line}</span>
           </div>
         </div>
-      </div>
+
+        {/* Details */}
+        <div className="flex min-w-[min(100%,320px)] max-w-full flex-[1_1_340px] flex-col gap-3">
+          <div className="rounded-2xl bg-ink px-[18px] pb-4 pt-[18px] text-paper">
+            <div className={`${mono} opacity-70`}>{route.label}</div>
+            {rs === "loading" ? (
+              <div className="mt-3 animate-pulse text-[15px] opacity-80">Calculating road distance…</div>
+            ) : (
+              <div className="mt-2.5 flex flex-wrap items-baseline gap-2.5">
+                <span className="text-[40px] font-medium leading-none tracking-[-0.045em]">{route.big}</span>
+                <span className="text-sm opacity-80">{route.sub}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-hidden rounded-2xl bg-surface">
+            <div className="border-b border-line-soft px-[18px] py-3.5 text-[15px] font-medium text-ink">Details</div>
+            {rows.map((r) => (
+              <div key={r.k} className="grid grid-cols-[92px_minmax(0,1fr)] items-baseline gap-3 border-b border-line-soft px-[18px] py-3.5">
+                <span className={`${mono} text-ink-3`}>{r.k}</span>
+                {r.href ? (
+                  <a
+                    href={r.href}
+                    {...(r.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    className="text-sm leading-[1.45] text-accent [overflow-wrap:anywhere] hover:text-ink"
+                  >
+                    {r.v}
+                  </a>
+                ) : (
+                  <span className={`text-sm leading-[1.45] [overflow-wrap:anywhere] ${muted(r.v) ? "text-ink-3" : "text-ink"}`}>{r.v}</span>
+                )}
+              </div>
+            ))}
+            {!vendor.phone && !validWebsite && (
+              <div className="px-[18px] py-3.5 text-[13px] leading-normal text-ink-3">
+                No phone or website listed. Add it to an event and the assistant can look for contact details.
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

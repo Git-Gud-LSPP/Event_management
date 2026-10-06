@@ -67,5 +67,6 @@ export const saveSession = (token: string, user?: AuthUser) => {
 export const logout = () => {
   localStorage.removeItem("authToken");
   localStorage.removeItem("authUser");
+  localStorage.removeItem("eh.workspace"); // the next account loads its own from the server
   window.location.href = "/login";
 };

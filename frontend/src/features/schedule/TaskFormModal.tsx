@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Loader2 } from "lucide-react";
-import { createTask, updateTask, type ScheduleItem } from "./api";
+import { clashFor, createTask, updateTask, type ScheduleItem } from "./api";
 import type { TaskStatus } from "./data";
 import type { StaffRef } from "../events/api";
 
@@ -38,10 +38,21 @@ export default function TaskFormModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Who is already on another task during this slot. Only known once a start time is set.
+  const busyOf = (staffId: string) =>
+    startsAt
+      ? clashFor(siblings, staffId, {
+          _id: task?._id,
+          startsAt: new Date(startsAt).toISOString(),
+          endsAt: endsAt ? new Date(endsAt).toISOString() : undefined,
+        })?.name
+      : undefined;
+  const ownerBusy = owner ? busyOf(owner) : undefined;
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!owner) {
-      setError("Pick an owner — the backend requires one on every task.");
+    if (ownerBusy) {
+      setError(`That person is busy with "${ownerBusy}" at this time. Pick someone else or move the task.`);
       return;
     }
     setSaving(true);
@@ -49,7 +60,7 @@ export default function TaskFormModal({
     try {
       const payload = {
         name,
-        owner,
+        owner: owner || null, // none = event backlog
         startsAt: new Date(startsAt).toISOString(),
         endsAt: endsAt ? new Date(endsAt).toISOString() : undefined,
         status,
@@ -91,9 +102,9 @@ export default function TaskFormModal({
           </p>
         )}
 
-        {staff.length === 0 && (
+        {staff.length <= 1 && (
           <p className="mb-4 rounded-xl bg-warn-soft px-3 py-2 text-xs font-medium text-warn">
-            This event has no staff yet. Add people on the Staff page first — a task needs an owner.
+            This event has no staff yet. Add people on the Staff page, or assign the task to yourself.
           </p>
         )}
 
@@ -105,14 +116,20 @@ export default function TaskFormModal({
 
           <div>
             <label className="mb-1 block text-xs font-semibold text-ink-2">Owner</label>
-            <select className={field} value={owner} onChange={(e) => setOwner(e.target.value)} required>
-              <option value="">Select staff…</option>
-              {staff.map((s) => (
-                <option key={s._id} value={s._id}>
-                  {s.name}
-                </option>
-              ))}
+            <select className={field} value={owner} onChange={(e) => setOwner(e.target.value)}>
+              <option value="">Unassigned (backlog)</option>
+              {staff.map((s) => {
+                const busy = s._id !== owner ? busyOf(s._id) : undefined;
+                return (
+                  <option key={s._id} value={s._id} disabled={Boolean(busy)}>
+                    {busy ? `${s.name} (busy: ${busy})` : s.name}
+                  </option>
+                );
+              })}
             </select>
+            {ownerBusy && (
+              <p className="mt-1 text-xs text-danger">Busy with "{ownerBusy}" at this time.</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

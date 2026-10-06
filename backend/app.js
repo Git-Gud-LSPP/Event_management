@@ -15,6 +15,8 @@ const agentRoutes = require('./agent/agent.routes');
 const inventoryRoutes = require('./inventory/inventory.routes');
 const documentRoutes = require('./document/document.routes');
 const procurementRoutes = require('./procurement/procurement.routes');
+const { authenticate } = require('./auth/auth.middleware');
+const billing = require('./billing/billing');
 
 const app = express();
 
@@ -40,12 +42,14 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/events/:eventId/schedule', scheduleRoutes);
-app.use('/api/events/:eventId/floorplan', floorplanRoutes);
-app.use('/api/events/:eventId/incidents', incidentRoutes);
+// Add-on modules: off on the workspace's plan = 403, matching <Gate> in the frontend.
+app.use('/api/events/:eventId/floorplan', authenticate, billing.requireModule('floor-plan'), floorplanRoutes);
+app.use('/api/events/:eventId/incidents', authenticate, billing.requireModule('incidents'), incidentRoutes);
 app.use('/api/events/:eventId/inventory', inventoryRoutes);
 app.use('/api/events/:eventId/documents', documentRoutes);
 app.use('/api/events/:eventId/vendors', procurementRoutes);
-app.use('/api/vendors', vendorsRoutes);
+app.use('/api/vendors', authenticate, billing.requireModule('vendors'), vendorsRoutes);
+app.use('/api/billing', billing.router);
 app.use('/api/agent', agentRoutes);
 
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));

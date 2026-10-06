@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { Loader2, Pencil } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Loader2, Pencil, Trash2 } from 'lucide-react'
 import {
-  getEvent, listInventory, listDependencyChains,
+  getEvent, deleteEvent, listInventory, listDependencyChains,
   type EventRecord, type InventoryRecord, type DependencyChainRecord,
 } from './api'
 import { listIncidents, type IncidentRecord } from '../incidents/api'
@@ -28,6 +28,8 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!eventId) return
@@ -68,6 +70,18 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
   }
 
   const isOrganizer = getStoredUser()?.id === event.organizer
+
+  const remove = async () => {
+    if (!confirm(`Delete "${event.title}"? Its schedule, floor plan, incidents, inventory and documents go with it. This can't be undone.`)) return
+    setDeleting(true)
+    try {
+      await deleteEvent(event._id)
+      navigate('/events', { replace: true })
+    } catch (e) {
+      setError((e as Error).message)
+      setDeleting(false)
+    }
+  }
   const eventStaff = event.staff ?? []
   const inventoryAlerts = inventory.filter(i => i.status !== 'Available')
 
@@ -120,6 +134,11 @@ export default function EventDetail({ eventId: propEventId }: { eventId?: string
           {isOrganizer && (
             <button type="button" onClick={() => setEditing(true)} className="flex cursor-pointer items-center gap-1.5 rounded-full bg-surface px-4 py-2.5 text-sm ring-1 ring-transparent hover:ring-ink">
               <Pencil size={14} aria-hidden="true" /> Edit
+            </button>
+          )}
+          {isOrganizer && (
+            <button type="button" onClick={remove} disabled={deleting} className="flex cursor-pointer items-center gap-1.5 rounded-full bg-surface px-4 py-2.5 text-sm text-danger ring-1 ring-transparent hover:ring-danger disabled:opacity-50">
+              {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} aria-hidden="true" />} Delete
             </button>
           )}
           <Link to="/schedule" className="rounded-full bg-surface px-4 py-2.5 text-sm ring-1 ring-transparent hover:ring-ink">Open schedule</Link>

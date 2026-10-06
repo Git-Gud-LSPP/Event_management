@@ -8,6 +8,7 @@ const {
 
 // Event members can read the hub; the organizer adds, edits and deletes.
 router.route('/').get(authenticate, canViewEvent, c.list).post(authenticate, canManageEvent, c.create);
+router.post('/generate', authenticate, canManageEvent, c.generate);
 router
   .route('/:id')
   .get(authenticate, canViewEvent, c.getOne)

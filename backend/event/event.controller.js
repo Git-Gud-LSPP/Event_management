@@ -1,6 +1,17 @@
 const repo = require('./event.repository');
 const Event = require('./event.model');
 const User = require('../auth/user.model');
+const FloorPlan = require('../floorplan/floorplan.model');
+
+// Everything that hangs off an event; removed with it so nothing is left orphaned.
+const CHILDREN = [
+  require('../schedule/schedule.model'),
+  FloorPlan,
+  require('../incident/incident.model'),
+  require('../inventory/inventory.model'),
+  require('../document/document.model'),
+  require('../procurement/procurement.model'),
+];
 
 // Only fields a client is allowed to set.
 const FIELDS = ['title', 'description', 'location', 'startsAt', 'endsAt', 'capacity', 'status'];
@@ -65,6 +76,7 @@ exports.remove = async (req, res, next) => {
   try {
     const event = await repo.remove(req.params.id);
     if (!event) return res.status(404).json({ message: 'Event not found' });
+    await Promise.all(CHILDREN.map((M) => M.deleteMany({ event: event._id })));
     res.status(204).end();
   } catch (err) {
     next(err);
@@ -104,6 +116,11 @@ exports.removeStaff = async (req, res, next) => {
       { new: true }
     ).populate('staff', 'name email');
     if (!event) return res.status(404).json({ message: 'Event not found' });
+    // A placement for a non-staff user fails floor plan validation, so the next save would 400.
+    await FloorPlan.updateOne(
+      { event: event._id },
+      { $pull: { 'floors.$[].placements': { user: staffId } } }
+    );
     res.json(event);
   } catch (err) {
     next(err);

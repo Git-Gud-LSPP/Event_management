@@ -1,10 +1,14 @@
 const mongoose = require('mongoose');
 
+// Everything on the plan is a "room" row with a kind; only room/zone are spaces people sit in.
+const KINDS = ['room', 'zone', 'stage', 'booth', 'registration', 'entrance', 'exit', 'firstaid', 'restroom', 'access'];
+
 // Rooms carry a client-generated string id, not a Mongo _id: the whole plan is replaced on
 // every save, which would renumber _ids and break the placement -> room links.
 const roomSchema = new mongoose.Schema(
   {
     id: { type: String, required: true },
+    kind: { type: String, enum: KINDS, default: 'room' },
     name: { type: String, required: true, trim: true },
     x: { type: Number, required: true },
     y: { type: Number, required: true },
@@ -12,6 +16,9 @@ const roomSchema = new mongoose.Schema(
     height: { type: Number, required: true, min: 1 },
     capacity: { type: Number, min: 0, default: 0 },
     color: { type: String, default: '#e4f7f9' },
+    rot: { type: Number, default: 0 },
+    locked: { type: Boolean, default: false },
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // show-day owner
   },
   { _id: false }
 );
@@ -50,3 +57,4 @@ const floorPlanSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model('FloorPlan', floorPlanSchema);
+module.exports.KINDS = KINDS;

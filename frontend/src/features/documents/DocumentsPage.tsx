@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { FileText, Loader2, Paperclip, Plus, Sparkles, Trash2 } from "lucide-react";
+import { FileText, Loader2, Lock, Paperclip, Plus, Sparkles, Trash2, Users } from "lucide-react";
 import EventPicker, { useEventSelection } from "../../components/EventPicker";
 import DashboardHeader from "../../components/DashboardHeader";
 import { getStoredUser } from "../../services/authApi";
@@ -293,8 +293,14 @@ export default function DocumentsPage() {
                     {d.vendor && ` · ${d.vendor.name}`}
                     {d.amount != null && ` · ${money(d.amount, d.currency)}`}
                   </p>
-                  <p className="mt-2 text-[11px] text-ink-3">
-                    Updated {new Date(d.updatedAt).toLocaleDateString()} by {d.createdBy?.name ?? "unknown"}
+                  <p className="mt-2 flex items-center justify-between gap-2 text-[11px] text-ink-3">
+                    <span>Updated {new Date(d.updatedAt).toLocaleDateString()} by {d.createdBy?.name ?? "unknown"}</span>
+                    {isOrganizer && (
+                      <span className="flex shrink-0 items-center gap-1">
+                        {d.sharedWith?.length ? <Users size={12} /> : <Lock size={12} />}
+                        {d.sharedWith?.length ? `${d.sharedWith.length} staff` : "Only you"}
+                      </span>
+                    )}
                   </p>
                 </button>
               ))}
@@ -308,6 +314,7 @@ export default function DocumentsPage() {
           eventId={selectedId}
           doc={modal.doc}
           vendors={vendors}
+          staff={selected?.staff ?? []}
           canEdit={isOrganizer}
           initialVendorId={modal.vendorId}
           onClose={() => setModal(null)}
