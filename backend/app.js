@@ -15,12 +15,40 @@ const agentRoutes = require('./agent/agent.routes');
 const inventoryRoutes = require('./inventory/inventory.routes');
 const documentRoutes = require('./document/document.routes');
 const procurementRoutes = require('./procurement/procurement.routes');
+const budgetRoutes = require('./budget/budget.routes');
+const lostFoundRoutes = require('./lostfound/lostfound.routes');
+const integrations = require('./integration/integration');
+const analytics = require('./analytics/analytics');
 const { authenticate } = require('./auth/auth.middleware');
 const billing = require('./billing/billing');
 
 const app = express();
 
-app.use(cors());
+// CORS: in production set CORS_ORIGIN to your Vercel URL(s), comma-separated,
+// e.g. "https://eventhq.vercel.app,https://eventhq-git-main-you.vercel.app".
+// Unset = allow any origin (local dev). Auth is a Bearer token, not cookies,
+// so no credentials mode is needed.
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((o) => o.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+// Optional: also allow this project's Vercel preview deployments (*.vercel.app
+// URLs that start with the given prefix), e.g. CORS_VERCEL_PREVIEW_PREFIX=eventhq
+const previewPrefix = (process.env.CORS_VERCEL_PREVIEW_PREFIX || '').trim();
+
+app.set('trust proxy', 1); // Render terminates TLS in front of the app
+app.use(
+  cors({
+    origin(origin, cb) {
+      if (!origin || allowedOrigins.length === 0) return cb(null, true);
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      if (previewPrefix && new RegExp(`^https://${previewPrefix}[a-z0-9-]*\\.vercel\\.app$`).test(origin)) {
+        return cb(null, true);
+      }
+      return cb(null, false);
+    },
+  }),
+);
 // Chat messages can carry base64 file attachments (see agent/agent.documents.js);
 // everything else keeps the small default limit. The global parser skips parsed bodies.
 app.use('/api/agent/chat', express.json({ limit: '40mb' }));
@@ -48,8 +76,13 @@ app.use('/api/events/:eventId/incidents', authenticate, billing.requireModule('i
 app.use('/api/events/:eventId/inventory', inventoryRoutes);
 app.use('/api/events/:eventId/documents', documentRoutes);
 app.use('/api/events/:eventId/vendors', procurementRoutes);
+app.use('/api/events/:eventId/budget', authenticate, billing.requireModule('budget-planner'), budgetRoutes);
+app.use('/api/events/:eventId/lost-found', authenticate, billing.requireModule('lost-and-found'), lostFoundRoutes);
+app.use('/api/events/:eventId/analytics', authenticate, billing.requireModule('analytics'), analytics.router);
 app.use('/api/vendors', authenticate, billing.requireModule('vendors'), vendorsRoutes);
 app.use('/api/billing', billing.router);
+// Slack, Zapier and the calendar feed. The feed route inside is public (token-based).
+app.use('/api/integrations', integrations.router);
 app.use('/api/agent', agentRoutes);
 
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));

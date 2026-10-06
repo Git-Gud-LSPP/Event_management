@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "MERN backend for the Event Management app",
   "main": "server.js",
+  "engines": {
+    "node": ">=22"
+  },
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",

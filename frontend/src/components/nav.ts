@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import type { IconType } from "react-icons";
 import { LayoutDashboard } from "lucide-react";
 import type { EventRecord } from "../features/events/api";
 import { moduleIcon } from "../billing/icons";
@@ -7,7 +7,7 @@ import { hasModule, type Workspace } from "../billing/plan";
 export interface NavItem {
   label: string;
   path: string;
-  icon: LucideIcon;
+  icon: IconType;
   tint: string; // per-workspace icon colour
   module?: string; // gated add-on: shows a lock when not in the plan
 }
@@ -21,6 +21,10 @@ export const NAV: NavItem[] = [
   { label: "Incidents", path: "/incidents", icon: moduleIcon("incidents"), tint: "text-[#C9668E]", module: "incidents" },
   { label: "Floor Plan", path: "/floorplan", icon: moduleIcon("floor-plan"), tint: "text-[#7DB394]", module: "floor-plan" },
   { label: "Documents", path: "/documents", icon: moduleIcon("documents"), tint: "text-ink-3" },
+  { label: "Budget", path: "/budget", icon: moduleIcon("budget-planner"), tint: "text-[#C9A54A]", module: "budget-planner" },
+  { label: "Lost & Found", path: "/lost-and-found", icon: moduleIcon("lost-and-found"), tint: "text-[#6F9BD6]", module: "lost-and-found" },
+  { label: "Analytics", path: "/analytics", icon: moduleIcon("analytics"), tint: "text-[#7DB394]", module: "analytics" },
+  { label: "Export", path: "/export", icon: moduleIcon("data-export"), tint: "text-ink-3", module: "data-export" },
 ];
 
 /** NAV minus add-ons not in the plan, with Dashboard opening the current event (the event list when there is none). */

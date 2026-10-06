@@ -49,7 +49,7 @@ export const KINDS: Record<Kind, { cat: Cat; label: string; w: number; h: number
   room: { cat: "spaces", label: "Room", w: 240, h: 160, cap: 20 },
   zone: { cat: "spaces", label: "Zone", w: 240, h: 168, cap: 50 },
   stage: { cat: "spaces", label: "Stage", w: 192, h: 72 },
-  booth: { cat: "spaces", label: "Booth 3×3", w: 72, h: 72, cap: 4 },
+  booth: { cat: "spaces", label: "Booth 3Ã—3", w: 72, h: 72, cap: 4 },
   registration: { cat: "service", label: "Registration", w: 168, h: 44, code: "REG" },
   entrance: { cat: "safety", label: "Entrance", w: 32, h: 32, code: "IN" },
   exit: { cat: "safety", label: "Fire exit", w: 32, h: 32, code: "EX" },

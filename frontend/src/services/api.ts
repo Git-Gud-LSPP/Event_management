@@ -1,5 +1,8 @@
 // Single place the frontend learns where the backend lives.
-export const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
+// Dev: falls back to the local backend. Production (Vercel): set VITE_API_BASE to
+// your Render URL + "/api", e.g. https://eventhq-api.onrender.com/api. It is baked in
+// at build time, so redeploy the frontend after changing it.
+export const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:5000/api").replace(/\/+$/, "");
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("authToken");

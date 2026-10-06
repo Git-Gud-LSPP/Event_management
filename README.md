@@ -54,6 +54,43 @@ npm install
 npm run dev
 ```
 
+## Deployment (Vercel + Render + MongoDB Atlas)
+
+The frontend is a static Vite build on **Vercel**, the API runs on **Render**, and the database is **MongoDB Atlas** (Render has no managed MongoDB).
+
+### 1. Database: MongoDB Atlas
+1. Create a free M0 cluster and a database user.
+2. Network Access: allow `0.0.0.0/0` (Render's outbound IPs aren't fixed on the free plan).
+3. Copy the connection string and add the database name, e.g.
+   `mongodb+srv://USER:PASS@cluster0.xxxx.mongodb.net/event_management?retryWrites=true&w=majority`
+
+### 2. Backend: Render
+Option A: **Blueprint**. In Render, go to *New → Blueprint* and pick this repo. `render.yaml` sets up the service.
+Option B: **Manual web service**. Use root directory `backend`, build `npm ci`, start `npm start`, health check path `/api/health`.
+
+Environment variables:
+
+| Key | Value |
+|-----|-------|
+| `NODE_ENV` | `production` |
+| `MONGO_URI` | Atlas connection string |
+| `JWT_SECRET` | long random string (the Blueprint generates one) |
+| `JWT_EXPIRES_IN` | `1h` |
+| `CORS_ORIGIN` | your Vercel URL, e.g. `https://eventhq.vercel.app` (comma-separate several, no trailing slash) |
+| `CORS_VERCEL_PREVIEW_PREFIX` | *(optional)* e.g. `eventhq` to also allow `https://eventhq-*.vercel.app` preview deploys |
+| `AGENT_MODEL` + provider key | e.g. `ANTHROPIC_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` for the AI assistant |
+
+Render sets `PORT` itself. Check `https://<your-service>.onrender.com/api/health` once it's deployed.
+On the free plan the service sleeps after ~15 min idle, so the first request takes a little longer.
+
+### 3. Frontend: Vercel
+1. *Add New → Project*, import the repo, and set **Root Directory** to `frontend` (the framework is detected as Vite).
+2. Environment variable: `VITE_API_BASE` = `https://<your-service>.onrender.com/api`
+3. Deploy. `frontend/vercel.json` rewrites all routes to `index.html` so React Router deep links work on refresh.
+
+`VITE_API_BASE` is baked in at build time, so **redeploy** the frontend after changing it.
+After you have the Vercel URL, put it in `CORS_ORIGIN` on Render (Render redeploys automatically).
+
 ## Project structure
 
 ```

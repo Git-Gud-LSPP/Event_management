@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   Check,
-  Loader2,
   Paperclip,
   RotateCcw,
   Send,
@@ -11,6 +10,7 @@ import {
   Square,
   X,
 } from "lucide-react";
+import { ThinkingOrb, type OrbSize, type OrbState } from "thinking-orbs";
 import { getSelectedEventId, setSelectedEventId } from "../../services/selectedEvent";
 import {
   ATTACH_ACCEPT,
@@ -40,6 +40,11 @@ const SUGGESTIONS = [
   "Summarize the open critical incidents",
   "Find caterers near this event's venue",
 ];
+
+// The helper orb: light panel, accent-green ink. Decorative — status text carries the meaning.
+const Orb = ({ state, size }: { state: OrbState; size: OrbSize }) => (
+  <ThinkingOrb state={state} size={size} theme="light" color="#2f7552" aria-hidden="true" />
+);
 
 const EVENT_IN_PATH = /^\/events\/([a-f\d]{24})/i;
 
@@ -81,7 +86,7 @@ function ItemView({
     case "tool":
       return (
         <p className="flex items-center gap-1.5 pl-1 text-xs text-ink-3">
-          {item.status === "running" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          {item.status === "running" && <Orb state="searching" size={20} />}
           {item.status === "done" && <Check className="h-3.5 w-3.5 text-accent" />}
           {item.status === "error" && <AlertCircle className="h-3.5 w-3.5 text-warn" />}
           {toolLabel(item.name)}
@@ -309,6 +314,13 @@ export default function AgentPanel({
 
   const last = items[items.length - 1];
   const thinking = busy && last?.kind !== "assistant";
+  const toolRunning = items.some((i) => i.kind === "tool" && i.status === "running");
+  const awaitingConfirm = items.some((i) => i.kind === "confirm" && i.action.status === "pending");
+  const orbState: OrbState = toolRunning
+    ? "searching"
+    : busy
+      ? thinking ? "working" : "composing"
+      : awaitingConfirm ? "shaping" : "breathing";
 
   return (
     <>
@@ -337,7 +349,7 @@ export default function AgentPanel({
     >
       <header className="flex h-[60px] items-center gap-3 border-b border-line px-[18px]">
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-2 text-[15px] font-medium text-ink"><span className="size-2 rounded-full bg-live" aria-hidden="true" />EventOps AI</p>
+          <p className="flex items-center gap-2 text-[15px] font-medium text-ink"><Orb state={orbState} size={32} />EventOps AI</p>
         </div>
         <button
           type="button"
@@ -361,6 +373,9 @@ export default function AgentPanel({
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {items.length === 0 && (
           <div className="space-y-2 pt-6">
+            <div className="mb-4 flex justify-center">
+              <Orb state="breathing" size={64} />
+            </div>
             <p className="text-sm text-ink-3">
               I can look things up and make changes across events, schedules, staff, incidents, floor plans and vendors.
             </p>
@@ -381,7 +396,7 @@ export default function AgentPanel({
         ))}
         {thinking && (
           <p className="flex items-center gap-1.5 pl-1 text-xs text-ink-3">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking…
+            <Orb state="working" size={20} /> Thinking…
           </p>
         )}
       </div>

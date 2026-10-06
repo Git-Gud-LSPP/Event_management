@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createElement, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { isLoggedIn } from "../services/authApi";
+import { BRANDS } from "../components/brands";
 import { Dot, Mark, Wordmark } from "./ui";
 import { eyebrow, h2, lede, muted, pad, pillDark, pillLight, wrap } from "./lib";
 import { CompareTable, DemoPage, FeaturePage, PricingPage } from "./FeaturePage";
@@ -473,7 +474,9 @@ export default function LandingPage() {
                 <div key={r} {...(r ? { "data-marq-rev": "" } : { "data-marq": "" })} className="flex w-max gap-3">
                   {row.map(([n, c, k], i) => (
                     <div key={i} aria-hidden={i >= row.length / 2} className="flex items-center gap-3 rounded-xl bg-surface px-5 py-3.5 whitespace-nowrap ring-1 ring-transparent transition-[transform,box-shadow] duration-[350ms] ease-[cubic-bezier(.2,.7,.2,1)] hover:-translate-y-[3px] hover:shadow-[0_14px_28px_-18px_rgba(20,45,30,.35)] hover:ring-ink">
-                      <span className="grid size-[26px] place-items-center rounded-[7px] bg-[#E4EEE6] text-[11px] font-semibold">{k}</span>
+                      <span className="grid size-[26px] place-items-center rounded-[7px] bg-[#E4EEE6] text-[11px] font-semibold">
+                        {BRANDS[n] ? createElement(BRANDS[n].Icon, { size: 16, color: BRANDS[n].color, "aria-hidden": true }) : k}
+                      </span>
                       <div>
                         <div className="text-sm font-medium">{n}</div>
                         <div className={`text-[11.5px] ${muted}`}>{c}</div>

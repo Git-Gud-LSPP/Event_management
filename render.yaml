@@ -1,0 +1,34 @@
+# Render Blueprint for the backend API.
+# Render dashboard -> New -> Blueprint -> pick this repo. Fill in the "sync: false"
+# values when prompted (they are secrets and never stored in git).
+services:
+  - type: web
+    name: eventhq-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: MONGO_URI # MongoDB Atlas connection string
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 1h
+      - key: CORS_ORIGIN # your Vercel URL, e.g. https://eventhq.vercel.app
+        sync: false
+      - key: AGENT_MODEL # "<provider>:<model id>", see backend/.env.example
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GOOGLE_GENERATIVE_AI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
