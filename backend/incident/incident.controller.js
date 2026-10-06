@@ -1,4 +1,16 @@
 const Incident = require('./incident.model');
+const { notify, slackEsc } = require('../integration/integration');
+
+// Slack + Zapier alert on the event organizer's connected apps.
+const alert = (req, item, type, text) =>
+  notify(req.event.organizer, {
+    type,
+    text,
+    data: {
+      event: { id: req.event._id, title: req.event.title },
+      incident: { id: item._id, title: item.title, priority: item.priority, status: item.status, location: item.location },
+    },
+  });
 
 const withRefs = (q) =>
   q.populate('reportedBy', 'name email').populate('assignedTo', 'name email');
@@ -47,6 +59,9 @@ exports.create = async (req, res, next) => {
       assignedTo: assignedTo || null,
       reportedBy: req.user.userId,
     });
+    const where = created.location ? ` at ${slackEsc(created.location)}` : '';
+    alert(req, created, 'incident.created',
+      `:rotating_light: *${created.priority} incident* on ${slackEsc(req.event.title)}: ${slackEsc(created.title)}${where}`);
     res.status(201).json(await withRefs(Incident.findById(created._id)));
   } catch (err) {
     next(err);
@@ -67,6 +82,7 @@ exports.updateStatus = async (req, res, next) => {
     item.status = req.body.status;
     item.resolvedAt = item.status === 'Resolved' ? new Date() : null;
     await item.save();
+    alert(req, item, 'incident.status', `:arrows_counterclockwise: Incident *${slackEsc(item.title)}* on ${slackEsc(req.event.title)} is now *${item.status}*`);
     res.json(await withRefs(Incident.findById(item._id)));
   } catch (err) {
     next(err);

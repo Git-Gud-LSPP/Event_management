@@ -18,6 +18,18 @@ const PREVIEW: Record<string, { bullets: string[]; clip?: string }> = {
     clip: "incidents",
     bullets: ["Staff log incidents from the floor in seconds", "Triage by severity and assign an owner", "Timestamped trail for the post-event review"],
   },
+  "budget-planner": {
+    bullets: ["Planned vs actual for every line item", "See overspend per category before it lands", "Owners on each line, so nothing goes unpaid"],
+  },
+  "lost-and-found": {
+    bullets: ["Crew log found items from the floor", "Know where each item is stored", "Hand items back and record who claimed them"],
+  },
+  analytics: {
+    bullets: ["Task completion and overdue work at a glance", "Open incidents and average time to resolve", "Budget burn and vendor spend committed"],
+  },
+  "data-export": {
+    bullets: ["Schedule, incidents, inventory and budget as CSV", "One JSON file with the whole event", "Open it in Excel, Sheets or your BI tool"],
+  },
   vendors: {
     bullets: ["One directory of suppliers, contacts and history", "Track quotes and bookings per event", "See which vendor is delivering what, and when"],
   },

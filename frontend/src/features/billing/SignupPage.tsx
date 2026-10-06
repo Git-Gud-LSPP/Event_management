@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { createElement, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { authApi, saveSession } from "../../services/authApi";
@@ -6,6 +6,7 @@ import { byId } from "../../billing/catalog";
 import { loadStack } from "../../billing/plan";
 import { Wordmark } from "../../marketing/ui";
 import { buttonCls } from "../../marketing/lib";
+import { BRANDS } from "../../components/brands";
 
 const field =
   "h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-[15px] text-ink placeholder:text-ink-3 aria-[invalid=true]:border-danger";
@@ -97,8 +98,8 @@ export default function SignupPage() {
           <>
             <div className="mt-6 grid gap-2.5">
               {["Google", "Microsoft"].map((p) => (
-                <button key={p} type="button" onClick={() => sso(p)} className={`${buttonCls.secondary} h-11 w-full`}>
-                  Continue with {p}
+                <button key={p} type="button" onClick={() => sso(p)} className={`${buttonCls.secondary} h-11 w-full gap-2`}>
+                  {createElement(BRANDS[p].Icon, { size: 18, color: BRANDS[p].color, "aria-hidden": true })} Continue with {p}
                 </button>
               ))}
             </div>

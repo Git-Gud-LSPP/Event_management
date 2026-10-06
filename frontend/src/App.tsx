@@ -36,11 +36,16 @@ const IncidentsPage = lazy(() => import("./features/incidents/IncidentsPage"));
 const FloorPlanPage = lazy(() => import("./features/floorplan/FloorPlanPage"));
 const VendorDetailPage = lazy(() => import("./features/vendors/VendorDetailPage"));
 const DocumentsPage = lazy(() => import("./features/documents/DocumentsPage"));
+const BudgetPage = lazy(() => import("./features/budget/BudgetPage"));
+const LostFoundPage = lazy(() => import("./features/lostfound/LostFoundPage"));
+const AnalyticsPage = lazy(() => import("./features/analytics/AnalyticsPage"));
+const ExportPage = lazy(() => import("./features/export/ExportPage"));
+const IntegrationsPage = lazy(() => import("./features/integrations/IntegrationsPage"));
 
 // Pages reach the assistant drawer through useOutletContext<LayoutContext>().
 export type LayoutContext = { openAgent: () => void };
 
-const EXTRA_CRUMBS: Record<string, string> = { "/events": "Events", "/modules": "Modules", "/billing": "Plan & billing", "/billing/checkout": "Checkout" };
+const EXTRA_CRUMBS: Record<string, string> = { "/events": "Events", "/modules": "Modules", "/billing": "Plan & billing", "/billing/checkout": "Checkout", "/integrations": "Integrations" };
 
 // Layout wrapper for authenticated application routes.
 // No token -> straight to the login screen, remembering where they were headed.
@@ -169,6 +174,12 @@ const App = () => {
           <Route path="/staffs" element={<StaffDashboard />} />
           <Route path="/floorplan" element={<Gate id="floor-plan"><FloorPlanPage /></Gate>} />
           <Route path="/documents" element={<DocumentsPage />} />
+          <Route path="/budget" element={<Gate id="budget-planner"><BudgetPage /></Gate>} />
+          <Route path="/lost-and-found" element={<Gate id="lost-and-found"><LostFoundPage /></Gate>} />
+          <Route path="/analytics" element={<Gate id="analytics"><AnalyticsPage /></Gate>} />
+          <Route path="/export" element={<Gate id="data-export"><ExportPage /></Gate>} />
+          {/* Each integration card checks its own module, so the page itself isn't gated. */}
+          <Route path="/integrations" element={<OrganizerOnly><IntegrationsPage /></OrganizerOnly>} />
           <Route path="/modules" element={<OrganizerOnly><ModulesPage /></OrganizerOnly>} />
           <Route path="/billing" element={<OrganizerOnly><BillingPage /></OrganizerOnly>} />
           <Route path="/billing/checkout" element={<OrganizerOnly><CheckoutPage /></OrganizerOnly>} />

@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { CreditCard, LayoutGrid } from "lucide-react";
+import { CreditCard, LayoutGrid, Plug } from "lucide-react";
 import { getStoredUser, logout } from "../services/authApi";
 import { planById } from "../billing/catalog";
 import { daysLeft, useWorkspace } from "../billing/plan";
@@ -81,6 +81,10 @@ export default function Sidebar({
             <NavLink to="/modules" className={navCls}>
               <LayoutGrid className="h-4 w-4 text-ink-3" aria-hidden="true" />
               <span className="flex-1">Browse modules</span>
+            </NavLink>
+            <NavLink to="/integrations" className={navCls}>
+              <Plug className="h-4 w-4 text-ink-3" aria-hidden="true" />
+              <span className="flex-1">Integrations</span>
             </NavLink>
             <NavLink to="/billing" className={navCls}>
               <CreditCard className="h-4 w-4 text-ink-3" aria-hidden="true" />

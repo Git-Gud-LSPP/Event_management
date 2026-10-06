@@ -2,6 +2,7 @@ const repo = require('./event.repository');
 const Event = require('./event.model');
 const User = require('../auth/user.model');
 const FloorPlan = require('../floorplan/floorplan.model');
+const { notify, slackEsc } = require('../integration/integration');
 
 // Everything that hangs off an event; removed with it so nothing is left orphaned.
 const CHILDREN = [
@@ -11,6 +12,8 @@ const CHILDREN = [
   require('../inventory/inventory.model'),
   require('../document/document.model'),
   require('../procurement/procurement.model'),
+  require('../budget/budget.model'),
+  require('../lostfound/lostfound.model'),
 ];
 
 // Only fields a client is allowed to set.
@@ -22,7 +25,13 @@ exports.create = async (req, res, next) => {
   try {
     const eventData = pick(req.body);
     eventData.organizer = req.user.userId;
-    res.status(201).json(await repo.create(eventData));
+    const created = await repo.create(eventData);
+    notify(req.user.userId, {
+      type: 'event.created',
+      text: `:calendar: New event *${slackEsc(created.title)}* on ${new Date(created.startsAt).toUTCString()}`,
+      data: { event: { id: created._id, title: created.title, startsAt: created.startsAt, location: created.location } },
+    });
+    res.status(201).json(created);
   } catch (err) {
     next(err);
   }

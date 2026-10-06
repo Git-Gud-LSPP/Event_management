@@ -1,4 +1,5 @@
-import type { LucideIcon } from "lucide-react";
+import type { IconType } from "react-icons";
+import { BRANDS } from "../components/brands";
 import {
   Accessibility, AlarmClock, Archive, Armchair, Award, BadgeCheck, BarChart3, Bell, BookOpen, Bus, CalendarCheck,
   CalendarClock, CalendarDays, CalendarRange, Captions, ChartLine, ChartPie, CircleDollarSign, ClipboardCheck,
@@ -8,11 +9,11 @@ import {
   MessageCircleQuestion, MessageSquare, Mic, Newspaper, Package, PackageSearch, PenTool, Percent, Play, Presentation,
   Printer, Radio, Receipt, ReceiptText, RefreshCw, Rss, ScanLine, Scale, ScrollText, Send, Share2, Shield, ShieldCheck,
   ShoppingCart, Signpost, Siren, Smartphone, Smile, Sparkles, Star, Store, Ticket, Timer, Trophy, Truck, UserCheck,
-  UserPlus, Users, UsersRound, Utensils, Video, Vote, Wallet, Webhook, Workflow, Wrench,
+  UserPlus, Users, UsersRound, Utensils, Video, Vote, Wallet, Workflow, Wrench,
 } from "lucide-react";
 
 // One icon per module id (see slug() in catalog.ts). Unknown ids fall back to a package.
-const ICONS: Record<string, LucideIcon> = {
+const ICONS: Record<string, IconType> = {
   events: CalendarDays, "my-tasks": KanbanSquare, "run-of-show": CalendarRange, documents: FileText,
   "agenda-builder": ListOrdered, "budget-planner": Wallet, approvals: BadgeCheck, "event-templates": Copy,
   milestones: Flag, "portfolio-view": Columns3,
@@ -40,9 +41,9 @@ const ICONS: Record<string, LucideIcon> = {
   analytics: BarChart3, surveys: Smile, nps: Star, "attendance-reports": FileBarChart, "sponsor-roi": Award,
   "financial-reports": ChartPie, "lead-retrieval": ScanLine, heatmaps: Flame, "custom-reports": PenTool,
   "data-export": Download, sustainability: Leaf,
-  assistant: Sparkles, "crm-sync": Workflow, "calendar-sync": CalendarCheck, "slack-and-teams": MessageSquare,
-  "webhooks-and-zapier": Webhook, "public-api": Code, "custom-roles": Shield, "multi-language": Languages,
+  assistant: Sparkles, "crm-sync": Workflow, "calendar-sync": CalendarCheck, slack: BRANDS.Slack.Icon,
+  zapier: BRANDS.Zapier.Icon, "public-api": Code, "custom-roles": Shield, "multi-language": Languages,
   "sso-saml": Key, "scim-provisioning": UserCheck, "audit-log": BookOpen,
 };
 
-export const moduleIcon = (id: string): LucideIcon => ICONS[id] ?? Package;
+export const moduleIcon = (id: string): IconType => ICONS[id] ?? Package;

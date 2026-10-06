@@ -35,6 +35,10 @@ const PAGES = {
   incidents: '/incidents',
   floorplan: '/floorplan',
   documents: '/documents',
+  budget: '/budget',
+  lost_and_found: '/lost-and-found',
+  data_export: '/export',
+  integrations: '/integrations',
 };
 
 const qs = (params) => {
