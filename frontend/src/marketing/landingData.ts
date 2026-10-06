@@ -28,7 +28,7 @@ export const TIER_CARDS = [
   { name: "Starter", desc: "For a first event or a small team trying the platform.", feats: ["Up to 5 modules", "3 events / year", "250 attendees per event", "2 team seats"], cta: "Start free", to: "/signup" },
   { name: "Growth", desc: "For teams running a regular calendar of events.", feats: ["Up to 25 modules", "25 events / year", "2,500 attendees per event", "10 seats · custom branding"], cta: "Start 14-day trial", to: "/signup?plan=growth" },
   { name: "Scale", desc: "For portfolios of large, multi-track events.", feats: ["Up to 60 modules", "Unlimited events", "15,000 attendees per event", "40 seats · SSO · 99.9% SLA"], cta: "Start 14-day trial", to: "/signup?plan=scale" },
-  { name: "Enterprise", desc: "Every module, custom ones too, with a team behind you.", feats: ["All 102 modules + custom", "Unlimited everything", "SCIM, data residency", "Dedicated CSM · onsite"], cta: "Talk to sales", to: "/contact-sales" },
+  { name: "Enterprise", desc: "Every module, custom ones too, with a team behind you.", feats: ["All 102 modules + custom", "Unlimited everything", "SCIM, data residency", "Dedicated CSM · onsite"], cta: "Talk to sales", to: "/demo" },
 ];
 
 const ck = "✓";
@@ -158,3 +158,66 @@ export const FOOTER = [
   { h: "DEVELOPERS", l: ["API reference", "Webhooks", "Integrations", "Status"] },
   { h: "COMPANY", l: ["Customers", "Pricing", "Trust center", "Careers", "Contact"] },
 ];
+
+// Feature pages (/product, /ai, /use-cases): deeper copy than the landing sections, each with its own demo clip
+// (videos/eventhq-clips/<video>). Chapter times match the scene starts in those compositions.
+export const FEATURES = {
+  product: {
+    nav: "Product",
+    kicker: "PRODUCT · EIGHT WORKSPACES",
+    title: "Every workspace your ops team touches.",
+    sub: "AI in each one.",
+    lede: "Events, tasks, schedule, staff, vendors, incidents, floor plan and the copilot share one data model, so a change in one shows up everywhere it matters. Turn on only the modules your next event needs.",
+    video: "product",
+    chapters: [[0, "Pick your modules"], [8, "Staff roster"], [16, "Floor plan"]],
+  },
+  ai: {
+    nav: "AI",
+    kicker: "EVENTOPS AI · COPILOT",
+    title: "A copilot from brief to debrief.",
+    sub: "It suggests. You approve.",
+    lede: "EventOps AI reads your tasks, schedule, staff, vendors, incidents and floor plan together. At every stage it does the legwork and hands you a decision, with the data behind it one click away.",
+    video: "ai",
+    chapters: [[0, "Brief to plan"], [9, "Fix a delay"], [18, "Debrief"]],
+  },
+  "use-cases": {
+    nav: "Use cases",
+    kicker: "USE CASES BY EVENT TYPE",
+    title: "Built for the events you actually run.",
+    sub: "From offsites to expos.",
+    lede: "The same platform runs a 40-person offsite and a 90,000-attendee festival. What changes is the stack of modules you switch on and where the AI earns its keep.",
+    video: "use-cases",
+    chapters: [[0, "Conferences"], [8, "Festivals"], [16, "Corporate"]],
+  },
+} as const;
+export type FeatureId = keyof typeof FEATURES;
+
+export const CAT_BLURBS: Record<string, string> = {
+  Events: "The home for every event: status, readiness by workstream and what needs attention, across your whole portfolio.",
+  "My Tasks": "Each person's own list, grouped by when it starts. Tick it off and the schedule and every dependant update.",
+  Schedule: "The run-of-show as a list or a live Gantt. Link tasks so one delay carries through, and see the cascade before it lands.",
+  Staff: "Who is on the event, what they're doing right now and who is blocked, derived from the schedule rather than typed in.",
+  Vendors: "Find suppliers near the venue on a map, shortlist them and track each booking from RFQ to paid.",
+  Incidents: "Report from any phone, set severity, route to whoever is on site and follow it to resolved.",
+  "Floor Plan": "Draw rooms with capacity, drop staff into them and get told when a room fills up.",
+  "EventOps AI": "The copilot that sits across every workspace. Ask it anything; every action it proposes waits for your click.",
+};
+
+export const AI_EXAMPLES: Record<string, [string, string, string]> = {
+  // [trigger, what the AI proposes, what you do]
+  Plan: ["You paste a one-paragraph brief for a 600-person summit.", "16 tasks across Technical, Logistics and Catering, with owners and dependencies.", "Edit two owners, approve the rest."],
+  Staff: ["A stage manager calls in sick at 07:10.", "Marcus is free until 11:00 and already on the Hall B floor plan.", "Confirm the swap; Marcus is notified."],
+  Source: ["Lunch caterer hasn't confirmed and the event is in 3 days.", "Two backups within 1 km, ranked by rating and capacity for 400.", "Send an RFQ to the top pick."],
+  Schedule: ["AV check is running 15 minutes late.", "Sound check and the keynote slip unless the walkthrough moves 5 minutes.", "Pick the fix; owners get the new times."],
+  Run: ["Main projector in Hall B won't power on.", "Critical, assign Rui (on AV, spare in the tech store), move to In Progress.", "One tap to approve, one to resolve."],
+  Debrief: ["Doors close at 18:00.", "A wrap-up of tasks, incidents and vendor issues, plus lessons for next year.", "Share it with stakeholders that night."],
+};
+
+export const UC_DETAILS: Record<string, { pains: string[]; how: string[] }> = {
+  Conferences: { pains: ["Dozens of AV checks and rehearsals that all feed the keynote", "Speakers, rooms and crew changing until the last hour"], how: ["Dependencies on the Gantt so a late check shows its knock-on", "AI triage routes stage issues to whoever is nearest", "Debrief drafted the same night"] },
+  "Trade shows & expos": { pains: ["Halls and booths that fill unevenly", "Exhibitor vendors arriving through the same dock"], how: ["Floor plan with live room capacity", "Vendor booking tracker per exhibitor", "Staff placed where the crowd is"] },
+  "Corporate & internal": { pains: ["Small team, many suppliers, tight budget sign-off", "Every offsite starts from a blank spreadsheet"], how: ["AI drafts the plan from a short brief", "Vendors nearby with booking status", "Personal task lists for everyone involved"] },
+  "Festivals & ticketed": { pains: ["Large crews across many stages and gates", "Incidents reported by radio and lost"], how: ["Staff status derived from what they're working on", "Incidents logged from phones and triaged", "Cover suggestions when someone drops out"] },
+  "Hybrid & virtual": { pains: ["Segments timed to the minute", "Crew, talent and AV vendors on one call sheet"], how: ["Run-of-show with owners and dependencies", "AI re-plans when a segment overruns", "Copilot answers \"who's on next?\" instantly"] },
+  Associations: { pains: ["The same events every year, rebuilt from scratch", "Lessons lost when staff change"], how: ["Multi-event portfolio view", "Last year's timings and vendors carried forward", "Readiness score per workstream"] },
+};

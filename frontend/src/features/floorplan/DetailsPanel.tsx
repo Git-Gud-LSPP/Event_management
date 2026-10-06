@@ -1,178 +1,269 @@
-import { useState } from "react";
-import { Search, Users, Maximize2, X } from "lucide-react";
 import { initials } from "./geometry";
-import type { Floor, Room, RosterMember } from "./types";
+import { PX_PER_M } from "./itemStyle";
+import type { Floor, Kind, Room, RosterMember } from "./types";
+import { KINDS, catOf, isSpace, kindOf } from "./types";
 
-interface Props {
-  floor: Floor;
-  floorName: string;
-  roster: RosterMember[];
-  selectedRoom: Room | undefined;
-  onPatchRoom: (id: string, patch: Partial<Room>) => void;
-  onDeleteRoom: (id: string) => void;
-  onUnplace: (userId: string) => void;
+const kicker = "font-mono text-[10.5px] tracking-[.05em] text-[#6E7C73]";
+const card = "rounded-2xl bg-surface p-[18px]";
+const m = (px: number) => (px / PX_PER_M).toFixed(1);
+
+export interface Check {
+  tone: "bad" | "warn";
+  text: string;
+  actLabel: string;
+  fix: { add: Kind } | { select: string };
 }
 
-// 24px on the canvas reads as 1m of venue, matching the grid square.
-const PX_PER_M = 24;
+interface Props {
+  floors: Floor[];
+  active: number;
+  roster: RosterMember[];
+  selectedId: string | null;
+  snap: boolean;
+  checks: Check[];
+  dragging: string | null;
+  onSelect: (id: string | null) => void;
+  onAdd: (kind: Kind) => void;
+  onGoTo: (floor: number, id: string) => void;
+  onBeginEdit: () => void;
+  onPatchRoom: (id: string, patch: Partial<Room>) => void;
+  onDuplicate: (id: string) => void;
+  onDelete: (id: string) => void;
+  onUnplace: (userId: string) => void;
+  onPlace: (userId: string) => void;
+  onDragPerson: (name: string | null) => void;
+}
 
-export default function DetailsPanel({
-  floor,
-  floorName,
-  roster,
-  selectedRoom,
-  onPatchRoom,
-  onDeleteRoom,
-  onUnplace,
-}: Props) {
-  const [search, setSearch] = useState("");
-
-  const placedIds = new Set(floor.placements.map((p) => p.user));
-  const inRoom = selectedRoom
-    ? floor.placements.filter((p) => p.roomId === selectedRoom.id)
-    : [];
-  const nameOf = (id: string) => roster.find((m) => m._id === id)?.name || "Unknown";
-
-  const visible = roster.filter((m) =>
-    m.name.toLowerCase().includes(search.trim().toLowerCase())
-  );
+export default function DetailsPanel(p: Props) {
+  const floor = p.floors[p.active];
+  const nameOf = (id: string) => p.roster.find((r) => r._id === id)?.name || "Unknown";
+  const roomName = (id: string | null) => floor.rooms.find((r) => r.id === id)?.name;
+  const sel = floor.rooms.find((r) => r.id === p.selectedId);
+  const pinUser = p.selectedId?.startsWith("u:") ? p.selectedId.slice(2) : null;
+  const pin = pinUser ? floor.placements.find((q) => q.user === pinUser) : undefined;
+  const placedTotal = p.floors.reduce((a, f) => a + f.placements.length, 0);
+  const spaces = floor.rooms.filter(isSpace);
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto">
-      {/* Room details */}
-      <section className="rounded-xl border border-line bg-surface p-4">
-        {!selectedRoom ? (
-          <p className="text-sm text-ink-3">
-            Select a room to edit it, or drag <strong>Room</strong> from the left onto the canvas.
-          </p>
-        ) : (
-          <>
-            <div className="mb-3 flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <input
-                  value={selectedRoom.name}
-                  onChange={(e) => onPatchRoom(selectedRoom.id, { name: e.target.value })}
-                  className="w-full rounded border border-transparent px-1 text-base font-semibold text-ink hover:border-line focus:border-ink focus:outline-none"
-                />
-                <p className="px-1 text-xs text-ink-3">{floorName} · Room</p>
+    <aside className="flex h-[calc(100vh-170px)] min-h-[560px] max-w-full flex-[0_0_300px] flex-col gap-3 overflow-y-auto">
+      {sel && <ItemCard key={sel.id} {...p} sel={sel} floorName={floor.name} staffHere={floor.placements.filter((q) => q.roomId === sel.id).map((q) => q.user)} nameOf={nameOf} />}
+
+      {pin && (
+        <div className={`${card} flex flex-col gap-3.5`}>
+          <div className="flex items-center justify-between">
+            <span className={kicker}>STAFF</span>
+            <CloseBtn onClick={() => p.onSelect(null)} />
+          </div>
+          <div className="flex items-center gap-3 rounded-xl bg-[#F4F7F3] p-3">
+            <Avatar name={nameOf(pin.user)} placed />
+            <div className="min-w-0 text-[13px]">
+              <div className="truncate font-medium">{nameOf(pin.user)}</div>
+              <div className="text-xs text-[#6E7C73]">{roomName(pin.roomId) ? `In ${roomName(pin.roomId)}` : "Loose on the floor"}</div>
+            </div>
+          </div>
+          <ActionBtn danger onClick={() => p.onUnplace(pin.user)}>Remove from plan</ActionBtn>
+        </div>
+      )}
+
+      {!sel && !pin && (
+        <div className={card}>
+          <div className={kicker}>{floor.name.toUpperCase()} · SUMMARY</div>
+          <div className="mt-3.5 grid grid-cols-2 gap-x-2.5 gap-y-3.5">
+            {[
+              ["Spaces", spaces.length],
+              ["Capacity", spaces.reduce((a, r) => a + (r.capacity || 0), 0)],
+              ["Fire exits", floor.rooms.filter((r) => kindOf(r) === "exit").length],
+              ["Staff on floor", floor.placements.length],
+            ].map(([k, v]) => (
+              <div key={k}>
+                <div className="text-2xl tracking-[-0.03em] tabular-nums">{v}</div>
+                <div className="text-xs text-[#6E7C73]">{k}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className={card}>
+        <div className="mb-2 flex items-center justify-between">
+          <span className={kicker}>PEOPLE · {placedTotal}/{p.roster.length} PLACED</span>
+          <span className="text-[11.5px] text-[#8A968E]">Drag onto the plan</span>
+        </div>
+        {p.roster.length === 0 && <p className="border-t border-line-soft pt-2 text-[13px] text-ink-3">No staff on this event yet.</p>}
+        {p.roster.map((r) => {
+          const fIdx = p.floors.findIndex((f) => f.placements.some((q) => q.user === r._id));
+          const here = fIdx === p.active;
+          const q = fIdx >= 0 ? p.floors[fIdx].placements.find((x) => x.user === r._id)! : null;
+          const where = !q ? "not placed" : here ? roomName(q.roomId) ?? "on floor" : p.floors[fIdx].name;
+          return (
+            <div
+              key={r._id}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData("text/plain", "staff:" + r._id);
+                e.dataTransfer.effectAllowed = "move";
+                p.onDragPerson(r.name);
+              }}
+              onDragEnd={() => p.onDragPerson(null)}
+              title="Drag onto the plan"
+              className={`flex cursor-grab items-center gap-2.5 rounded-lg border-t border-line-soft py-2 pr-1.5 text-[13px] hover:bg-[#F7FAF6] ${p.dragging === r.name ? "bg-[#F4F9F3]" : ""}`}
+            >
+              <span aria-hidden className="grid flex-none grid-cols-[3px_3px] gap-0.5 px-0.5">
+                {Array.from({ length: 6 }, (_, i) => <span key={i} className="size-[3px] rounded-full bg-[#B5BFB8]" />)}
+              </span>
+              <Avatar name={r.name} placed={!!q} small />
+              <div className="min-w-0 flex-1">
+                <div className="truncate">{r.name}</div>
+                <div className="truncate text-[11.5px] text-[#6E7C73]">{where}</div>
               </div>
               <button
-                onClick={() => onDeleteRoom(selectedRoom.id)}
-                title="Delete room"
-                className="rounded p-1 text-ink-3 hover:bg-danger-soft hover:text-danger"
+                onClick={() => (q ? p.onGoTo(fIdx, "u:" + r._id) : p.onPlace(r._id))}
+                className="cursor-pointer rounded-full border border-line px-2.5 py-1 text-xs text-ink-2 hover:border-ink"
               >
-                <X className="h-4 w-4" />
+                {q ? (here ? "Locate" : "Go") : "Place"}
               </button>
             </div>
+          );
+        })}
+      </div>
 
-            <dl className="space-y-2 border-t border-line pt-3 text-sm">
-              <div className="flex items-center justify-between">
-                <dt className="flex items-center gap-2 text-ink-3">
-                  <Users className="h-4 w-4" /> Capacity
-                </dt>
-                <dd>
-                  <input
-                    type="number"
-                    min={0}
-                    value={selectedRoom.capacity}
-                    onChange={(e) =>
-                      onPatchRoom(selectedRoom.id, {
-                        capacity: Math.max(0, Number(e.target.value) || 0),
-                      })
-                    }
-                    className="w-20 rounded border border-line px-2 py-0.5 text-right focus:border-ink focus:outline-none"
-                  />
-                </dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-ink-3">Current occupancy</dt>
-                <dd
-                  className={
-                    inRoom.length > selectedRoom.capacity
-                      ? "font-semibold text-danger"
-                      : "font-semibold text-ink"
-                  }
-                >
-                  {inRoom.length}
-                </dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="flex items-center gap-2 text-ink-3">
-                  <Maximize2 className="h-4 w-4" /> Area
-                </dt>
-                <dd className="text-ink">
-                  {Math.round((selectedRoom.width * selectedRoom.height) / (PX_PER_M * PX_PER_M))} m²
-                </dd>
-              </div>
-            </dl>
-
-            <p className="mt-4 mb-2 text-sm font-semibold text-ink">People in this room</p>
-            {inRoom.length === 0 ? (
-              <p className="text-sm text-ink-3">Nobody assigned yet.</p>
-            ) : (
-              <ul className="space-y-2">
-                {inRoom.map((p) => (
-                  <li key={p.user} className="flex items-center gap-2 text-sm">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[10px] font-bold text-white">
-                      {initials(nameOf(p.user))}
-                    </span>
-                    <span className="flex-1 truncate text-ink">{nameOf(p.user)}</span>
-                    <button
-                      onClick={() => onUnplace(p.user)}
-                      title="Remove from plan"
-                      className="rounded p-1 text-ink-3 hover:bg-sunken hover:text-ink-2"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
-        )}
-      </section>
-
-      {/* Roster */}
-      <section className="rounded-xl border border-line bg-surface p-4">
-        <p className="mb-3 text-sm font-semibold text-ink">People ({roster.length})</p>
-        <div className="relative mb-3">
-          <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-ink-3" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search people..."
-            className="w-full rounded-lg border border-line py-1.5 pr-2 pl-8 text-sm focus:border-ink focus:outline-none"
-          />
+      <div className={card}>
+        <div className={`${kicker} mb-2.5 flex items-center gap-[7px]`}>
+          <span className="size-1.5 rounded-full bg-[#8A75D1]" />CHECKS · {p.checks.length}
         </div>
-
-        {roster.length === 0 && (
-          <p className="text-sm text-ink-3">No staff on this event yet.</p>
+        {p.checks.length === 0 && (
+          <div className="flex gap-2.5 border-t border-line-soft py-[9px] text-[13px] text-ink-2">
+            <span className="mt-1.5 size-[7px] flex-none rounded-full bg-live" />No issues found on this floor.
+          </div>
         )}
-
-        <ul className="space-y-1">
-          {visible.map((m) => {
-            const placed = placedIds.has(m._id);
-            return (
-              <li
-                key={m._id}
-                draggable={!placed}
-                onDragStart={(e) => e.dataTransfer.setData("application/x-staff-id", m._id)}
-                className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
-                  placed ? "opacity-50" : "cursor-grab hover:bg-soft active:cursor-grabbing"
-                }`}
-              >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sunken text-[10px] font-bold text-ink-2">
-                  {initials(m.name)}
-                </span>
-                <span className="flex-1 truncate text-ink">{m.name}</span>
-                <span className="text-xs text-ink-3">
-                  {placed ? "On plan" : "Drag to place"}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+        {p.checks.map((c) => (
+          <div key={c.text} className="flex items-start gap-2.5 border-t border-line-soft py-[9px] text-[13px] leading-[1.4]">
+            <span className={`mt-1.5 size-[7px] flex-none rounded-full ${c.tone === "bad" ? "bg-danger" : "bg-[#C08A1E]"}`} />
+            <span className="flex-1 text-ink-2">{c.text}</span>
+            <button onClick={() => ("add" in c.fix ? p.onAdd(c.fix.add) : p.onSelect(c.fix.select))} className="cursor-pointer text-xs font-medium whitespace-nowrap hover:text-accent">{c.actLabel}</button>
+          </div>
+        ))}
+      </div>
     </aside>
   );
 }
+
+function ItemCard(p: Props & { sel: Room; floorName: string; staffHere: string[]; nameOf: (id: string) => string }) {
+  const { sel } = p;
+  const k: Kind = kindOf(sel), cat = catOf(sel), step = p.snap ? 12 : 6;
+  const space = isSpace(sel);
+  const room = !space ? p.floors[p.active].rooms.filter(isSpace).find((r) => {
+    const cx = sel.x + sel.width / 2, cy = sel.y + sel.height / 2;
+    return cx > r.x && cx < r.x + r.width && cy > r.y && cy < r.y + r.height;
+  }) : undefined;
+  const patch = (x: Partial<Room>) => {
+    p.onBeginEdit();
+    p.onPatchRoom(sel.id, x);
+  };
+  const fields: [string, string | number, (d: number) => void][] = [];
+  if (cat !== "safety") {
+    fields.push(["Width", m(sel.width) + " m", (d) => patch({ width: Math.max(20, sel.width + d * step) })]);
+    fields.push(["Depth", m(sel.height) + " m", (d) => patch({ height: Math.max(20, sel.height + d * step) })]);
+  }
+  if (KINDS[k].cap !== undefined) fields.push(["Capacity", sel.capacity, (d) => patch({ capacity: Math.max(0, sel.capacity + d * (sel.capacity >= 50 ? 10 : 1)) })]);
+
+  return (
+    <div className={`${card} flex flex-col gap-3.5`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className={kicker}>{KINDS[k].label.toUpperCase()}{sel.locked ? " · LOCKED" : ""}</span>
+        <CloseBtn onClick={() => p.onSelect(null)} />
+      </div>
+      <input
+        aria-label="Name"
+        value={sel.name}
+        onFocus={p.onBeginEdit}
+        onChange={(e) => p.onPatchRoom(sel.id, { name: e.target.value })}
+        className="border-b border-dashed border-transparent pb-0.5 text-[22px] font-medium tracking-[-0.03em] outline-none hover:border-[#CBD6CC] focus:border-ink"
+      />
+
+      {fields.length > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          {fields.map(([label, value, set]) => (
+            <div key={label} className="flex flex-col gap-[5px]">
+              <span className="text-[11.5px] text-[#6E7C73]">{label}</span>
+              <span className="flex h-9 items-center overflow-hidden rounded-[10px] border border-[#CBD6CC] bg-[#F7FAF6]">
+                <button onClick={() => set(-1)} aria-label={`Decrease ${label}`} className="w-7 cursor-pointer text-center text-[#56645B]">−</button>
+                <span className="flex-1 text-center font-mono text-[13px]">{value}</span>
+                <button onClick={() => set(1)} aria-label={`Increase ${label}`} className="w-7 cursor-pointer text-center text-[#56645B]">+</button>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {cat === "service" && (
+        <label className="flex flex-col gap-[5px]">
+          <span className="text-[11.5px] text-[#6E7C73]">Owner on show day</span>
+          <select
+            value={sel.owner ?? ""}
+            onChange={(e) => patch({ owner: e.target.value || null })}
+            className="h-9 rounded-[10px] border border-[#CBD6CC] bg-[#F7FAF6] px-2.5 text-[13px] outline-none"
+          >
+            <option value="">Unassigned</option>
+            {p.roster.map((r) => <option key={r._id} value={r._id}>{r.name}</option>)}
+          </select>
+        </label>
+      )}
+
+      {space && (
+        <div>
+          <div className="mb-1.5 text-[11.5px] text-[#6E7C73]">Staff in this space</div>
+          {p.staffHere.length === 0 ? (
+            <p className="text-[13px] text-ink-3">Nobody placed yet.</p>
+          ) : (
+            <ul className="flex flex-wrap gap-1.5">
+              {p.staffHere.map((u) => (
+                <li key={u}>
+                  <button onClick={() => p.onSelect("u:" + u)} className="flex cursor-pointer items-center gap-1.5 rounded-full bg-[#F4F7F3] py-0.5 pr-2.5 pl-0.5 text-xs hover:bg-line-soft">
+                    <Avatar name={p.nameOf(u)} placed small />{p.nameOf(u)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <div className="flex justify-between border-t border-line-soft pt-3 text-[12.5px] text-[#6E7C73]">
+        <span>{cat === "safety" ? p.floorName : `${m(sel.width)} × ${m(sel.height)} m · ${Math.round((sel.width * sel.height) / PX_PER_M ** 2)} m²`}</span>
+        <span>{room ? `in ${room.name}` : ""}</span>
+      </div>
+      <div className="grid grid-cols-4 gap-1.5">
+        <ActionBtn onClick={() => patch({ rot: ((sel.rot || 0) + 90) % 360 })}>Rotate</ActionBtn>
+        <ActionBtn onClick={() => p.onDuplicate(sel.id)}>Duplicate</ActionBtn>
+        <ActionBtn onClick={() => patch({ locked: !sel.locked })}>{sel.locked ? "Unlock" : "Lock"}</ActionBtn>
+        <ActionBtn danger onClick={() => p.onDelete(sel.id)}>Delete</ActionBtn>
+      </div>
+    </div>
+  );
+}
+
+function Avatar({ name, placed, small }: { name: string; placed: boolean; small?: boolean }) {
+  return (
+    <span
+      className={`grid flex-none place-items-center rounded-full ${small ? "size-[26px] text-[9.5px]" : "size-[34px] text-[11px]"} ${
+        placed ? "bg-ink text-paper" : "border border-dashed border-[#C4CEC6] text-ink-2"
+      }`}
+    >
+      {initials(name)}
+    </span>
+  );
+}
+
+const CloseBtn = ({ onClick }: { onClick: () => void }) => (
+  <button onClick={onClick} aria-label="Close" className="grid size-6 cursor-pointer place-items-center rounded-full bg-paper text-[13px] text-ink-2">×</button>
+);
+
+const ActionBtn = ({ danger, onClick, children }: { danger?: boolean; onClick: () => void; children: React.ReactNode }) => (
+  <button
+    onClick={onClick}
+    className={`cursor-pointer rounded-[10px] border border-line px-1 py-2 text-center text-xs hover:border-ink ${danger ? "text-danger" : "text-ink"}`}
+  >
+    {children}
+  </button>
+);

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Loader2, UserPlus } from "lucide-react";
+import { X, Loader2, UserPlus, Link2, Mail, Check } from "lucide-react";
 import { authApi, type AuthUser } from "../../services/authApi";
 import { addStaff, type EventRecord } from "../events/api";
 
@@ -18,6 +18,28 @@ export default function AddStaffModal({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const inviteUrl = `${window.location.origin}/login?invite=staff`;
+  const inviteEmail = search.includes("@") ? search.trim() : "";
+  const mailto = `mailto:${inviteEmail}?subject=${encodeURIComponent(`Join the crew for ${event.title}`)}&body=${encodeURIComponent(
+    `Hi,
+
+I'd like you on staff for ${event.title}. Create your EventOps staff account here:
+${inviteUrl}
+
+Once you're signed up I'll add you to the event.`
+  )}`;
+
+  const copyInvite = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError(`Couldn't copy. The invite link is ${inviteUrl}`);
+    }
+  };
 
   useEffect(() => {
     authApi
@@ -84,7 +106,9 @@ export default function AddStaffModal({
             <p className="py-8 text-center text-sm text-ink-3">
               {users.length === 0
                 ? "No staff accounts exist yet. Sign someone up with the Staff role first."
-                : "Everyone matching is already on this event."}
+                : search.includes("@")
+                  ? "No account with that email yet. Invite them below."
+                  : "Everyone matching is already on this event."}
             </p>
           ) : (
             <ul className="space-y-1">
@@ -113,6 +137,29 @@ export default function AddStaffModal({
               ))}
             </ul>
           )}
+        </div>
+
+        {/* Not everyone has an account yet: send them a staff sign-up link, then add them here. */}
+        <div className="mt-4 border-t border-line pt-4">
+          <p className="mb-2 text-xs text-ink-3">
+            Not on EventOps yet? Send a staff sign-up link, then add them here once they've joined.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={copyInvite}
+              className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-ink"
+            >
+              {copied ? <Check size={13} /> : <Link2 size={13} />}
+              {copied ? "Copied" : "Copy invite link"}
+            </button>
+            <a
+              href={mailto}
+              className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-ink"
+            >
+              <Mail size={13} /> {inviteEmail ? `Email ${inviteEmail}` : "Email invite"}
+            </a>
+          </div>
         </div>
       </div>
     </div>

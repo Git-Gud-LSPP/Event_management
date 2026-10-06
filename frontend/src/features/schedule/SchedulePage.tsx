@@ -4,10 +4,10 @@ import { PageHeader, Segmented } from "../../components/DashboardHeader";
 import SearchBar from "../../components/SearchBar";
 
 import ScheduleList from "./components/ScheduleList";
-import Gantt from "./components/GanttView";
+import TimelineView from "./components/TimelineView";
 import TaskFormModal from "./TaskFormModal";
 import EventPicker, { useEventSelection } from "../../components/EventPicker";
-import { assignTask, deleteTask, listSchedule, toTask, updateTask, type ScheduleItem } from "./api";
+import { assignTask, clashFor, deleteTask, listSchedule, toTask, updateTask, type ScheduleItem } from "./api";
 import { getStoredUser } from "../../services/authApi";
 
 export default function SchedulePage() {
@@ -58,8 +58,10 @@ export default function SchedulePage() {
     }
   };
 
-  // Gantt drag/resize. On failure reload, so the bar snaps back to the saved time.
-  const handleReschedule = async (taskId: string, change: { startsAt?: string; endsAt?: string }) => {
+  // Timeline drag. Applied optimistically so the bar stays where it was dropped; on failure reload,
+  // so it snaps back to the saved time.
+  const handleReschedule = async (taskId: string, change: { startsAt: string; endsAt?: string }) => {
+    setItems((prev) => prev.map((i) => (i._id === taskId ? { ...i, ...change } : i)));
     try {
       const updated = await updateTask(selectedId, taskId, change);
       setItems((prev) => prev.map((i) => (i._id === taskId ? updated : i)));
@@ -67,6 +69,22 @@ export default function SchedulePage() {
       setError((e as Error).message);
       load();
     }
+  };
+
+  const openEdit = (id: string) => {
+    setEditing(items.find((i) => i._id === id) ?? null);
+    setShowForm(true);
+  };
+
+  // The organizer can take tasks too, so they head the assignee list.
+  const staff = selected?.staff ?? [];
+  const assignees =
+    user && selected?.organizer === user.id
+      ? [{ _id: user.id, name: `${user.name} (me)`, email: user.email }, ...staff.filter((s) => s._id !== user.id)]
+      : staff;
+  const busyFor = (taskId: string, staffId: string) => {
+    const task = items.find((i) => i._id === taskId);
+    return task ? clashFor(items, staffId, task)?.name : undefined;
   };
 
   const tasks = items.map(toTask);
@@ -124,22 +142,17 @@ export default function SchedulePage() {
       ) : view === "list" ? (
         <ScheduleList
           tasks={filteredTasks}
-          staff={selected?.staff ?? []}
+          staff={assignees}
+          busyFor={busyFor}
           onAssign={isOrganizer ? handleAssign : undefined}
-          onEdit={
-            isOrganizer
-              ? (id) => {
-                  setEditing(items.find((i) => i._id === id) ?? null);
-                  setShowForm(true);
-                }
-              : undefined
-          }
+          onEdit={isOrganizer ? openEdit : undefined}
           onDelete={isOrganizer ? handleDelete : undefined}
         />
       ) : (
-        <Gantt
+        <TimelineView
           items={items.filter((i) => filteredTasks.some((t) => t.id === i._id))}
           onReschedule={isOrganizer ? handleReschedule : undefined}
+          onEdit={isOrganizer ? openEdit : undefined}
         />
       )}
 
@@ -147,7 +160,7 @@ export default function SchedulePage() {
         <TaskFormModal
           eventId={selectedId}
           task={editing ?? undefined}
-          staff={selected?.staff ?? []}
+          staff={assignees}
           siblings={items}
           onClose={() => {
             setShowForm(false);

@@ -50,6 +50,8 @@ async function tryOverpass(query) {
   );
 }
 
+const MAX_RESULTS = 25;
+
 const vendorTags = {
   photographer: 'craft="photographer"',
   bakery: 'shop="bakery"',
@@ -364,7 +366,7 @@ async function getWebsiteImage(websiteUrl) {
           'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
       },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) return null;
     // Only parse HTML documents
@@ -478,18 +480,21 @@ exports.searchNearby = async ({
   longitude,
   radius = 5000,
 }) => {
-  const tag = vendorTags[type];
-  if (!tag) throw new Error(`Unsupported vendor type: ${type}`);
+  // A known category maps to its OSM tag; anything else is a free-text search over the
+  // place's name and its shop/craft/amenity/cuisine tags. Only letters, digits, spaces and
+  // hyphens survive, so the keyword can't break out of the Overpass regex string.
+  const keyword = vendorTags[type] ? null : String(type).replace(/[^\p{L}\p{N} -]/gu, '').trim().slice(0, 40);
+  if (keyword === '') return [];
+  const filters = keyword
+    ? ['name', 'shop', 'craft', 'amenity', 'cuisine'].map((k) => `"${k}"~"${keyword}",i`)
+    : [vendorTags[type]];
 
-  // ── 1. Fetch from Overpass ──────────────────────────────────────────────
   // [timeout:20] is the server-side query limit (seconds).
   // tryOverpass() adds a 28-second HTTP abort on top of that.
   const query = `
     [out:json][timeout:20];
     (
-      node[${tag}](around:${radius},${latitude},${longitude});
-      way[${tag}](around:${radius},${latitude},${longitude});
-      relation[${tag}](around:${radius},${latitude},${longitude});
+      ${filters.map((f) => `nwr[${f}](around:${radius},${latitude},${longitude});`).join(' ')}
     );
     out center tags;
   `;
@@ -528,7 +533,10 @@ exports.searchNearby = async ({
       };
     })
     .filter(Boolean)
-    .sort((a, b) => a.distance - b.distance);
+    .sort((a, b) => a.distance - b.distance)
+    // A 5 km city search can return hundreds of places, and enriching each one scrapes its
+    // website (up to 8 s apiece), which kept the request open for minutes. Keep the nearest.
+    .slice(0, MAX_RESULTS);
 
   // ── 3. Enrich vendors via website scraping (bounded concurrency) ────────
   //
@@ -536,7 +544,7 @@ exports.searchNearby = async ({
   //    - have no OSM image yet
   //    - have a website to scrape
   //
-  //  Use a concurrency pool of 5 so we don't flood target servers.
+  //  Concurrency pool of 10: bounded, and each site is a different host.
   const vendorsToEnrich = vendors.filter((v) => !v.image && v.website);
 
   console.log(
@@ -553,7 +561,7 @@ exports.searchNearby = async ({
     }
   });
 
-  await pLimit(enrichThunks, 5);   // max 5 concurrent website requests
+  await pLimit(enrichThunks, 10);   // 25 results max → at most 3 rounds of 5 s
 
   // ── 4. Log summary ──────────────────────────────────────────────────────
   console.log('\n── Image Summary ──────────────────────────────────────');

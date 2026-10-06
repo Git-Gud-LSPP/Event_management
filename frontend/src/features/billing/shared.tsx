@@ -6,7 +6,7 @@ import { slotsFor, swapModule, useWorkspace } from "../../billing/plan";
 import { buttonCls } from "../../marketing/lib";
 
 /** Native <dialog>: focus trap, Esc and inert background come free. */
-export function Dialog({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+export function Dialog({ open, onClose, title, kicker, children }: { open: boolean; onClose: () => void; title: string; kicker?: string; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -18,37 +18,65 @@ export function Dialog({ open, onClose, title, children }: { open: boolean; onCl
     <dialog
       ref={ref}
       onClose={onClose}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
       aria-labelledby="dlg-title"
-      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-card border border-line bg-surface p-0 text-ink shadow-overlay backdrop:bg-ink/30"
+      className="m-auto w-[min(520px,calc(100vw-2rem))] rounded-[20px] bg-surface p-0 text-ink shadow-[0_40px_90px_-30px_rgba(25,70,45,.45)] backdrop:bg-ink/30"
     >
-      <div className="flex items-start justify-between gap-4 border-b border-line p-5">
-        <h2 id="dlg-title" className="text-lg font-semibold tracking-[-0.01em]">{title}</h2>
-        <button type="button" onClick={onClose} className="-m-1 rounded-control p-1 text-ink-3 hover:text-ink" aria-label="Close">
-          <X className="size-5" />
+      <div className="flex items-start justify-between gap-4 px-[22px] pt-[22px]">
+        <div>
+          {kicker && <p className="font-mono text-[11px] tracking-[.05em] text-[#6E7C73]">{kicker}</p>}
+          <h2 id="dlg-title" className="mt-2 text-[22px] font-medium tracking-[-0.03em]">{title}</h2>
+        </div>
+        <button type="button" onClick={onClose} className="grid size-[30px] shrink-0 cursor-pointer place-items-center rounded-full bg-paper text-ink-2 hover:bg-sunken" aria-label="Close">
+          <X className="size-4" />
         </button>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="px-[22px] pt-[18px] pb-[22px]">{children}</div>
     </dialog>
   );
 }
 
-/** Hairline track, 2px fill, mono count. No filled background bar. */
-export function Meter({ used, total, label }: { used: number; total: number | null; label: string }) {
-  const pct = total === null || !isFinite(total) ? 0 : Math.min(100, (used / Math.max(total, 1)) * 100);
+/** Bulleted fact list used in the billing dialogs. */
+export const Facts = ({ items }: { items: ReactNode[] }) => (
+  <ul className="flex flex-col gap-2">
+    {items.map((x, i) => (
+      <li key={i} className="flex gap-2.5 text-sm leading-[1.45] text-ink-2">
+        <span className="mt-2 size-[5px] shrink-0 rounded-full bg-[#8A968E]" aria-hidden="true" />
+        {x}
+      </li>
+    ))}
+  </ul>
+);
+
+/** Label, mono count, 6px bar, optional note. */
+export function Meter({ used, total, label, note, warn }: { used: number; total: number | null; label: string; note?: string; warn?: boolean }) {
+  const inf = total === null || !isFinite(total);
+  const pct = inf ? 100 : Math.min(100, (used / Math.max(total, 1)) * 100);
   return (
     <div>
-      <div className="flex items-baseline justify-between text-sm">
-        <span className="text-ink-2">{label}</span>
-        <span className="font-mono text-ink tabular-nums">
-          {used}/{total === null || !isFinite(total) ? "∞" : total}
+      <div className="flex items-baseline justify-between gap-2.5">
+        <span className="text-sm text-ink-2">{label}</span>
+        <span className="font-mono text-[13px] tabular-nums">
+          {used}<span className="text-[#8A968E]">/{inf ? "∞" : total}</span>
         </span>
       </div>
-      <div className="relative mt-2 h-px bg-line" aria-hidden="true">
-        <div className={`absolute -top-px h-[3px] rounded-full ${pct >= 100 ? "bg-accent" : "bg-ink"}`} style={{ width: `${pct}%` }} />
+      <div className="mt-2.5 h-1.5 overflow-hidden rounded-[3px] bg-line-soft" aria-hidden="true">
+        <div className={`h-full rounded-[3px] ${warn ? "bg-[#C08A1E]" : pct >= 100 ? "bg-live" : "bg-ink"}`} style={{ width: `${pct}%` }} />
       </div>
+      {note && <p className="mt-1.5 text-xs text-[#6E7C73]">{note}</p>}
     </div>
   );
 }
+
+/** Square checkbox mark from the design (16px ink/green box with a tick). */
+export const CheckBox = ({ on, green }: { on: boolean; green?: boolean }) => (
+  <span
+    aria-hidden="true"
+    className={`grid size-[18px] shrink-0 place-items-center rounded-[5px] text-xs text-white ${on ? (green ? "bg-live" : "bg-ink") : "bg-surface ring-1 ring-inset ring-[#CBD6CC]"}`}
+  >
+    {on && "✓"}
+  </span>
+);
 
 const ago = (ms?: number) => {
   if (!ms) return "not opened yet";
@@ -71,7 +99,7 @@ export function SlotDialog({ want, onClose }: { want: string | null; onClose: ()
   };
 
   return (
-    <Dialog open={!!m} onClose={onClose} title={`All ${slotsFor(w)} ${planById(w.plan).name} slots are in use`}>
+    <Dialog open={!!m} onClose={onClose} kicker="SLOTS FULL" title={`All ${slotsFor(w)} ${planById(w.plan).name} slots are in use`}>
         <>
           {active.length > 0 && (
             <fieldset>
@@ -103,7 +131,7 @@ export function SlotDialog({ want, onClose }: { want: string | null; onClose: ()
               </>
             ) : (
               <p className="text-sm text-ink-2">
-                Need more than 60? <a href="/contact-sales" className="font-medium text-ink underline underline-offset-2">Book a demo</a> for Enterprise, which includes every module.
+                Need more than 60? <a href="/demo" className="font-medium text-ink underline underline-offset-2">Book a demo</a> for Enterprise, which includes every module.
               </p>
             )}
           </div>

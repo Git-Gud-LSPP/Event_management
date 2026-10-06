@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1600, height=1000">
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/v2.css">
+    <style>
+      /* 1. Modules */
+      .meter { margin-top: 26px; padding: 22px 26px; display: flex; align-items: center; gap: 24px; font-size: 21px; }
+      .meter .track { flex: 1; height: 8px; border-radius: 99px; background: var(--line-soft); overflow: hidden; }
+      .meter .fill { height: 100%; background: var(--live); transform-origin: left; }
+      .mods { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 18px; }
+      .mod { padding: 24px; height: 200px; display: flex; flex-direction: column; gap: 10px; border: 2px solid transparent; }
+      .mod .n { font-size: 25px; font-weight: 500; letter-spacing: -0.02em; }
+      .mod .d { font-size: 18px; color: var(--ink-3); line-height: 1.4; }
+      .mod .f { margin-top: auto; display: flex; justify-content: space-between; align-items: center; }
+      .tog { position: relative; width: 70px; height: 38px; border-radius: 99px; background: #cbd6cc; }
+      .tog .k { position: absolute; left: 4px; top: 4px; width: 30px; height: 30px; border-radius: 99px; background: #fff; }
+      .new { opacity: 0; }
+      /* 2. Staff */
+      .chips { display: flex; gap: 10px; margin-top: 30px; }
+      .chip { padding: 10px 18px; border-radius: 99px; background: var(--surface); font-size: 19px; color: var(--ink-2); }
+      .chip b { font-family: "Geist Mono", monospace; font-weight: 400; font-size: 15px; color: inherit; opacity: .75; margin-left: 6px; }
+      .chip.on { background: var(--ink); color: var(--bg); }
+      .staff { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 22px; }
+      .sc { padding: 24px; display: flex; flex-direction: column; gap: 16px; border: 2px solid transparent; }
+      .sc .top { display: flex; align-items: center; gap: 14px; }
+      .sc .nm { font-size: 22px; font-weight: 500; }
+      .sc .rl { font-size: 16px; color: var(--ink-3); }
+      .sc .top .pill { margin-left: auto; }
+      .sc .row { display: flex; justify-content: space-between; font-size: 18px; border-top: 2px solid var(--line-soft); padding-top: 12px; }
+      .sc .row span:first-child { color: var(--ink-3); }
+      .sc.blk { border-color: #f0cdb8; }
+      /* 3. Floor plan */
+      .plan { position: relative; margin-top: 30px; height: 680px; border-radius: 26px; background-color: var(--surface); background-image: linear-gradient(rgba(22,35,28,.05) 2px, transparent 2px), linear-gradient(90deg, rgba(22,35,28,.05) 2px, transparent 2px); background-size: 48px 48px; }
+      .room { position: absolute; border: 3px solid var(--ink); border-radius: 14px; background: rgba(227,241,231,.55); padding: 16px 18px; }
+      .room .rn { font-size: 21px; font-weight: 500; }
+      .room .cap { font-family: "Geist Mono", monospace; font-size: 15px; color: var(--ink-3); margin-top: 4px; }
+      .room .ppl { position: absolute; left: 18px; bottom: 16px; display: flex; gap: 8px; }
+      .room .ppl .av { width: 40px; height: 40px; font-size: 14px; background: #fff; border: 2px solid var(--line); }
+      #hallb.over { border-color: var(--danger); }
+      .alert { position: absolute; right: 30px; top: 400px; max-width: 500px; display: flex; align-items: center; gap: 14px; padding: 18px 22px; border-radius: 16px; background: var(--ink); color: var(--bg); font-size: 20px; opacity: 0; }
+      .alert .mono { color: var(--ai); font-size: 15px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="product" data-start="0" data-duration="25" data-width="1600" data-height="1000">
+      <div class="shell">
+        <aside class="side">
+          <div class="brand"><span class="mark"></span>EventOps</div>
+          <div class="cur"><div class="k mono">CURRENT EVENT</div><div class="v">TechSummit 2026</div></div>
+          <div class="nav">
+            <div class="nv" id="nv-ev"><div class="hl"></div><i style="background:#16231c"></i><span>Events</span></div>
+            <div class="nv"><div class="hl"></div><i style="background:#3f8a64"></i><span>My Tasks</span></div>
+            <div class="nv"><div class="hl"></div><i style="background:#6f9bd6"></i><span>Schedule</span></div>
+            <div class="nv" id="nv-st"><div class="hl"></div><i style="background:#c9a54a"></i><span>Staff</span></div>
+            <div class="nv new" id="nv-ve"><div class="hl"></div><i style="background:#8a75d1"></i><span>Vendors</span></div>
+            <div class="nv new" id="nv-in"><div class="hl"></div><i style="background:#c9668e"></i><span>Incidents</span></div>
+            <div class="nv new" id="nv-fp"><div class="hl"></div><i style="background:#7db394"></i><span>Floor Plan</span></div>
+            <div class="nv"><div class="hl"></div><i style="background:#5c6a62"></i><span>Documents</span></div>
+          </div>
+        </aside>
+
+        <main class="main">
+          <!-- 1. Modules -->
+          <section class="view" id="v-mod">
+            <div class="top">
+              <div><div class="eyebrow mono">WORKSPACE · NORTHWIND EVENTS</div><div class="h1">Browse modules</div><div class="sub">Turn on what this event needs. Swap any time.</div></div>
+              <div class="seg"><span class="on">All</span><span>On</span><span>Off</span></div>
+            </div>
+            <div class="card meter"><span>Starter plan</span><div class="track"><div class="fill" id="fill"></div></div><span class="mono swap"><span id="c2">2 of 5</span><span id="c3" style="opacity:0">3 of 5</span><span id="c4" style="opacity:0">4 of 5</span><span id="c5" style="opacity:0">5 of 5</span></span></div>
+            <div class="mods">
+              <div class="card mod"><div class="n">Events</div><div class="d">Status, readiness and incidents across every event.</div><div class="f"><span class="pill good">ON</span><div class="tog" style="background:#3f8a64"><div class="k" style="left:36px"></div></div></div></div>
+              <div class="card mod"><div class="n">Staff roster</div><div class="d">Who's on the event and what they're doing now.</div><div class="f"><span class="pill good">ON</span><div class="tog" style="background:#3f8a64"><div class="k" style="left:36px"></div></div></div></div>
+              <div class="card mod" id="m-ve"><div class="n">Vendors</div><div class="d">Suppliers near the venue, with booking status.</div><div class="f"><span class="pill quiet">STARTER+</span><div class="tog"><div class="k"></div></div></div></div>
+              <div class="card mod" id="m-in"><div class="n">Incidents</div><div class="d">Report, triage and resolve from any phone.</div><div class="f"><span class="pill quiet">STARTER+</span><div class="tog"><div class="k"></div></div></div></div>
+              <div class="card mod" id="m-fp"><div class="n">Floor Plan</div><div class="d">Rooms, capacity and where staff are placed.</div><div class="f"><span class="pill quiet">STARTER+</span><div class="tog"><div class="k"></div></div></div></div>
+              <div class="card mod"><div class="n">AI delay prediction</div><div class="d">See the cascade before it happens.</div><div class="f"><span class="pill quiet">GROWTH+</span><div class="tog"><div class="k"></div></div></div></div>
+            </div>
+          </section>
+
+          <!-- 2. Staff -->
+          <section class="view" id="v-st">
+            <div class="top">
+              <div><div class="eyebrow mono">STAFF · TECHSUMMIT 2026</div><div class="h1">Staff</div><div class="sub">6 people · 3 on a task right now</div></div>
+              <div class="btn">Add staff</div>
+            </div>
+            <div class="chips"><span class="chip on" id="ch-all">All<b>6</b></span><span class="chip">On task<b>3</b></span><span class="chip" id="ch-blk">Blocked<b>1</b></span><span class="chip">Available<b>2</b></span></div>
+            <div class="staff">
+              <div class="card sc dim"><div class="top"><span class="av">PR</span><div><div class="nm">Priya Raman</div><div class="rl">Event lead</div></div><span class="pill dark">ON TASK</span></div><div class="row"><span>Now</span><span>Opening keynote</span></div><div class="row"><span>Tasks</span><span>3 of 5 done</span></div></div>
+              <div class="card sc blk" id="sc-blk"><div class="top"><span class="av">RO</span><div><div class="nm">Rui Okafor</div><div class="rl">AV lead</div></div><span class="pill bad">BLOCKED</span></div><div class="row"><span>Now</span><span style="color:var(--danger)">AV setup, Hall B</span></div><div class="row"><span>Tasks</span><span>1 of 4 done</span></div></div>
+              <div class="card sc dim"><div class="top"><span class="av">IP</span><div><div class="nm">Ines Park</div><div class="rl">Registration</div></div><span class="pill dark">ON TASK</span></div><div class="row"><span>Now</span><span>Registration desk</span></div><div class="row"><span>Tasks</span><span>2 of 3 done</span></div></div>
+              <div class="card sc dim"><div class="top"><span class="av">DM</span><div><div class="nm">Dev Malhotra</div><div class="rl">Stage manager</div></div><span class="pill dark">ON TASK</span></div><div class="row"><span>Now</span><span>Check stage mics</span></div><div class="row"><span>Tasks</span><span>1 of 3 done</span></div></div>
+              <div class="card sc dim"><div class="top"><span class="av">SW</span><div><div class="nm">Sam Whitaker</div><div class="rl">Catering</div></div><span class="pill quiet">AVAILABLE</span></div><div class="row"><span>Now</span><span>—</span></div><div class="row"><span>Tasks</span><span>2 of 2 done</span></div></div>
+              <div class="card sc dim"><div class="top"><span class="av">AO</span><div><div class="nm">Aisha Okoye</div><div class="rl">Logistics</div></div><span class="pill quiet">AVAILABLE</span></div><div class="row"><span>Now</span><span>—</span></div><div class="row"><span>Tasks</span><span>4 of 4 done</span></div></div>
+            </div>
+          </section>
+
+          <!-- 3. Floor plan -->
+          <section class="view" id="v-fp">
+            <div class="top">
+              <div><div class="eyebrow mono">FLOOR PLAN · LEVEL 1</div><div class="h1">Floor plan</div><div class="sub">4 rooms · 6 staff placed</div></div>
+              <div class="seg"><span class="on">Level 1</span><span>Level 2</span></div>
+            </div>
+            <div class="plan">
+              <div class="room" style="left:40px;top:40px;width:470px;height:300px"><div class="rn">Hall A · Main stage</div><div class="cap">CAPACITY 600 · <span>412</span></div><div class="ppl"><span class="av pp">PR</span><span class="av pp">DM</span></div></div>
+              <div class="room" id="hallb" style="left:540px;top:40px;width:420px;height:300px"><div class="rn">Hall B · Breakouts</div><div class="cap">CAPACITY 400 · <span id="hb">380</span></div><div class="ppl"><span class="av pp">RO</span></div></div>
+              <div class="room" style="left:40px;top:370px;width:300px;height:260px"><div class="rn">Registration</div><div class="cap">CAPACITY 150 · 96</div><div class="ppl"><span class="av pp">IP</span><span class="av pp">AO</span></div></div>
+              <div class="room" style="left:370px;top:370px;width:260px;height:260px"><div class="rn">Speaker lounge</div><div class="cap">CAPACITY 40 · 18</div><div class="ppl"><span class="av pp">SW</span></div></div>
+              <div class="alert" id="alert"><span class="mono">CAPACITY</span>Hall B is over 400. Open the partition to Hall A?</div>
+            </div>
+          </section>
+        </main>
+      </div>
+
+      <div class="cap" id="cap1"><b>01</b>Switch on only the modules you need</div>
+      <div class="cap" id="cap2"><b>02</b>See who's on what, live</div>
+      <div class="cap" id="cap3"><b>03</b>Rooms, staff and capacity on one plan</div>
+    </div>
+    <script>
+      gsap.set("#fill", { scaleX: 0.4 });
+      gsap.set(".pp", { scale: 0, opacity: 0 });
+      const tl = gsap.timeline({ paused: true });
+      const E = "expo.out";
+      const cap = (id, a, b) => tl.fromTo(id, { y: 20, xPercent: -50, x: 0 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, a).to(id, { opacity: 0, y: 10, duration: 0.3 }, b);
+      const view = (from, to, t) => tl.to(from, { opacity: 0, y: -12, duration: 0.35 }, t).fromTo(to, { y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, t + 0.2);
+      const toggle = (mod, nav, n, t) =>
+        tl.to(`${mod} .tog`, { backgroundColor: "#3f8a64", duration: 0.2 }, t)
+          .to(`${mod} .k`, { x: 32, duration: 0.25, ease: "back.out(2)" }, t)
+          .to(mod, { borderColor: "#3f8a64", duration: 0.2 }, t)
+          .to("#fill", { scaleX: n / 5, duration: 0.4, ease: E }, t)
+          .to(`#c${n - 1}`, { opacity: 0, duration: 0.15 }, t)
+          .to(`#c${n}`, { opacity: 1, duration: 0.15 }, t + 0.05)
+          .fromTo(nav, { x: -14 }, { x: 0, opacity: 1, duration: 0.4, ease: E }, t + 0.1);
+
+      // 0–8: browse modules and switch three on.
+      tl.set("#nv-ev .hl", { opacity: 1 }, 0)
+        .fromTo("#v-mod", { y: 16 }, { opacity: 1, y: 0, duration: 0.6, ease: E }, 0.1)
+        .from("#v-mod .mod", { y: 24, opacity: 0, duration: 0.6, ease: E, stagger: 0.06 }, 0.3);
+      toggle("#m-ve", "#nv-ve", 3, 2.2);
+      toggle("#m-in", "#nv-in", 4, 3.6);
+      toggle("#m-fp", "#nv-fp", 5, 5.0);
+      cap("#cap1", 0.8, 7.4);
+
+      // 8–16: staff roster; filter to Blocked.
+      tl.to("#nv-ev .hl", { opacity: 0, duration: 0.3 }, 7.8).to("#nv-st .hl", { opacity: 1, duration: 0.3 }, 7.8);
+      view("#v-mod", "#v-st", 7.8);
+      tl.from("#v-st .sc", { y: 24, opacity: 0, duration: 0.6, ease: E, stagger: 0.07 }, 8.2)
+        .to("#ch-all", { backgroundColor: "#ffffff", color: "#44524a", duration: 0.25 }, 11.4)
+        .to("#ch-blk", { backgroundColor: "#16231c", color: "#f2f5f1", duration: 0.25 }, 11.4)
+        .to("#v-st .dim", { opacity: 0.3, duration: 0.35 }, 11.5)
+        .to("#sc-blk", { y: -6, duration: 0.3 }, 11.5)
+        .to("#v-st .dim", { opacity: 1, duration: 0.35 }, 14.4)
+        .to("#sc-blk", { y: 0, duration: 0.3 }, 14.4);
+      cap("#cap2", 8.6, 15.4);
+
+      // 16–25: floor plan; staff drop into rooms, Hall B goes over capacity.
+      tl.to("#nv-st .hl", { opacity: 0, duration: 0.3 }, 15.8).to("#nv-fp .hl", { opacity: 1, duration: 0.3 }, 15.8);
+      view("#v-st", "#v-fp", 15.8);
+      tl.from("#v-fp .room", { scale: 0.96, opacity: 0, duration: 0.6, ease: E, stagger: 0.1 }, 16.2)
+        .to(".pp", { scale: 1, opacity: 1, duration: 0.45, ease: "back.out(2.5)", stagger: 0.12 }, 17.2);
+      const hb = { v: 380 };
+      tl.to(hb, { v: 440, duration: 2, ease: "none", onUpdate: () => (document.getElementById("hb").textContent = Math.round(hb.v)) }, 19)
+        .to("#hallb", { borderColor: "#8a2e52", backgroundColor: "rgba(244,220,230,.6)", duration: 0.3 }, 20.3)
+        .fromTo("#alert", { y: -12 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, 20.6);
+      cap("#cap3", 16.6, 24.4);
+      tl.to({}, { duration: 0.1 }, 24.9);
+      window.__timelines["product"] = tl;
+    </script>
+  </body>
+</html>

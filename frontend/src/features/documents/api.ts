@@ -45,6 +45,7 @@ export interface DocumentRecord {
   dueDate?: string;
   content?: string; // only on getDocument
   file?: { name: string; mime: string; size: number };
+  sharedWith?: string[]; // staff ids who can see it
   createdBy: StaffRef;
   createdAt: string;
   updatedAt: string;
@@ -61,6 +62,7 @@ export interface DocumentInput {
   dueDate?: string | null;
   content?: string;
   file?: Attachment;
+  sharedWith?: string[];
 }
 
 const docs = (eventId: string) => `/events/${eventId}/documents`;
@@ -72,6 +74,10 @@ export const listDocuments = (eventId: string) =>
 export const getDocument = (eventId: string, id: string) => apiFetch<DocumentRecord>(`${docs(eventId)}/${id}`);
 export const createDocument = (eventId: string, data: DocumentInput) =>
   apiFetch<DocumentRecord>(docs(eventId), json("POST", data));
+export const generateDocument = (
+  eventId: string,
+  data: { spec: string; title?: string; category?: DocCategory; vendor?: string },
+) => apiFetch<{ content: string }>(`${docs(eventId)}/generate`, json("POST", data)).then((r) => r.content);
 export const updateDocument = (eventId: string, id: string, data: DocumentInput) =>
   apiFetch<DocumentRecord>(`${docs(eventId)}/${id}`, json("PATCH", data));
 export const deleteDocument = (eventId: string, id: string) =>

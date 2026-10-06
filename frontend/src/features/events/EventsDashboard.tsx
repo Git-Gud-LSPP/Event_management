@@ -8,6 +8,7 @@ import EventCard from "./EventCard";
 import EventFormModal from "./EventFormModal";
 import DashboardHeader from "../../components/DashboardHeader";
 import { listEvents, type EventRecord } from "./api";
+import { setSelectedEventId } from "../../services/selectedEvent";
 
 const FILTERS = ["All", "Live", "Upcoming", "Draft", "Completed", "Cancelled"] as const;
 type Filter = (typeof FILTERS)[number];
@@ -138,7 +139,7 @@ const EventsDashboard = (): React.JSX.Element => {
                 category={bucketOf(ev)}
                 progress={progressOf(ev)}
                 staffCount={ev.staff?.length ?? 0}
-                onClick={() => navigate(`/events/${ev._id}`)}
+                onClick={() => (setSelectedEventId(ev._id), navigate(`/events/${ev._id}`))}
               />
             ))}
           </div>

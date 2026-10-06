@@ -44,8 +44,11 @@ const StaffDashboard = (): React.JSX.Element => {
 
   const replaceEvent = (updated: EventRecord) => setEvents((prev) => prev.map((e) => (e._id === updated._id ? updated : e)));
 
-  const drop = async (staffId: string) => {
+  const drop = async (staffId: string, name: string) => {
     if (!selectedId) return;
+    const open = schedule.filter((i) => i.owner?._id === staffId && i.status !== "Done").length;
+    const note = open ? ` They still own ${open} unfinished task${open === 1 ? "" : "s"}; reassign them on the Schedule page.` : "";
+    if (!confirm(`Remove ${name} from ${selected?.title ?? "this event"}?${note}`)) return;
     setActionError(null);
     try {
       replaceEvent(await removeStaff(selectedId, staffId));
@@ -97,7 +100,7 @@ const StaffDashboard = (): React.JSX.Element => {
       ) : (
         <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))]">
           {visible.map(({ member, load }) => (
-            <StaffCard key={member._id} member={member} load={load} onRemove={isOrganizer ? () => drop(member._id) : undefined} />
+            <StaffCard key={member._id} member={member} load={load} onRemove={isOrganizer ? () => drop(member._id, member.name) : undefined} />
           ))}
         </div>
       )}

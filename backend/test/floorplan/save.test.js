@@ -68,3 +68,13 @@ it('rejects non-numeric geometry', async () => {
 it('rejects an empty payload', async () => {
   expect((await run({})).statusCode).toBe(400);
 });
+
+it('accepts typed items with a staff owner', async () => {
+  const res = await run({ floors: floors({ rooms: [room(), room({ id: 'r2', kind: 'registration', owner: STAFF, rot: 90 })] }) });
+  expect(res.statusCode).toBe(200);
+});
+
+it('rejects an unknown kind or a non-staff owner', async () => {
+  expect((await run({ floors: floors({ rooms: [room({ kind: 'helipad' })] }) })).statusCode).toBe(400);
+  expect((await run({ floors: floors({ rooms: [room({ owner: OUTSIDER })] }) })).statusCode).toBe(400);
+});

@@ -89,7 +89,11 @@
 
 /* Pressable feedback. */
 .eh-press {
-  transition: transform 150ms var(--ease-out-expo), background-color 180ms, border-color 180ms, color 180ms;
+  transition:
+    transform 150ms var(--ease-out-expo),
+    background-color 180ms,
+    border-color 180ms,
+    color 180ms;
 }
 .eh-press:active {
   transform: translateY(1px) scale(0.985);
@@ -124,25 +128,4 @@ html.lenis body {
 }
 .lenis.lenis-stopped {
   overflow: hidden;
-}
-
-/* SVAR Gantt (schedule timeline) themed to the v2 run-of-show. */
-.eh-gantt .wx-willow-theme {
-  --wx-font-family: inherit;
-  --wx-font-size: 13px;
-  --wx-color-font: var(--eh-ink);
-  --wx-background: var(--eh-surface);
-  --wx-background-alt: var(--eh-soft);
-  --wx-gantt-border: 1px solid var(--eh-line-soft);
-  --wx-gantt-border-color: var(--eh-line-soft);
-  --wx-gantt-select-color: #f4f9f3;
-  --wx-gantt-bar-border-radius: 6px;
-  --wx-gantt-bar-shadow: none;
-  --wx-gantt-link-color: #c4cec6;
-  --wx-gantt-link-color-hovered: var(--eh-ink-3);
-  --wx-grid-header-font: 400 10.5px var(--font-mono);
-  --wx-grid-header-font-color: var(--eh-ink-3);
-  --wx-grid-header-text-transform: uppercase;
-  --wx-timescale-font: 400 10.5px var(--font-mono);
-  --wx-timescale-font-color: #6e7c73;
 }

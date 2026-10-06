@@ -7,9 +7,10 @@ const { assign } = require('../../schedule/schedule.controller');
 
 const STAFF = 'bbbbbbbbbbbbbbbbbbbbbbbb';
 const OUTSIDER = 'cccccccccccccccccccccccc';
+const ORGANIZER = 'aaaaaaaaaaaaaaaaaaaaaaaa';
 
 const run = async (body) => {
-  const req = { params: { id: 's1' }, body, event: { _id: 'e1', staff: [STAFF] } };
+  const req = { params: { id: 's1' }, body, event: { _id: 'e1', organizer: ORGANIZER, staff: [STAFF] } };
   const res = {
     statusCode: 200,
     body: null,
@@ -29,6 +30,12 @@ it('assigns a task to staff on the event', async () => {
   const res = await run({ assigneeId: STAFF });
   expect(res.statusCode).toBe(200);
   expect(res.body).toEqual({ _id: 's1', owner: STAFF });
+});
+
+it('lets the organizer assign a task to themselves', async () => {
+  const res = await run({ assigneeId: ORGANIZER });
+  expect(res.statusCode).toBe(200);
+  expect(res.body).toEqual({ _id: 's1', owner: ORGANIZER });
 });
 
 it('rejects a non-staff assignee', async () => {

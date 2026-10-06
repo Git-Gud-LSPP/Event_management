@@ -9,10 +9,11 @@ const scheduleSchema = new mongoose.Schema(
       index: true,
     },
     name: { type: String, required: true, trim: true },
+    // null = in the event backlog, waiting for someone to take it on.
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      default: null,
     },
     startsAt: { type: Date, required: true },
     endsAt: {

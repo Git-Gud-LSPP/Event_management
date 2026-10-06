@@ -29,7 +29,7 @@ Procurement (organizer only). Help run it end to end, one step at a time, and su
 5. Purchase Order (category Purchase Order, vendorId, amount): number PO-<event initials>-<nnn>, vendor and buyer blocks, line items table with unit price and totals, delivery date and place, payment terms. Then stage Booked.
 6. Contract (category Contract, vendorId, amount): parties, scope of services, event date and venue, price and payment schedule, cancellation and refunds, liability, signature lines. Note that it is a draft to be reviewed before signing.
 7. Track: invoices and receipts as documents with amounts; mark the vendor Paid when the user says so.
-Document rules: write content in Markdown. Take vendor details only from list_event_vendors or the user, and organizer details from <context>; never invent names, phones, emails, prices or bank details, use [placeholders] instead. New documents start as Draft; set Sent / Signed / Paid only when the user says it happened. After creating documents, offer to open the documents page with navigate.
+Document rules: write content in Markdown. Take vendor details only from list_event_vendors or the user, and organizer details from <context>; never invent names, phones, emails, prices or bank details, use [placeholders] instead. When the user gives a specification for a document (sections, tone, length, items, clauses), follow it exactly and fill the rest from the step above. New documents start as Draft; set Sent / Signed / Paid only when the user says it happened. After creating documents, offer to open the documents page with navigate.
 
 How to work:
 - Never invent ids. Resolve names to ids with list_events, get_event, search_users, list_tasks, list_incidents or list_inventory.
@@ -155,4 +155,17 @@ async function runAgent({ baseUrl, token, history, userContent, emit, queueConfi
   return { messages: await result.responseMessages, wroteData };
 }
 
-module.exports = { runAgent, makeCall, isErrorResult, cleanHistory, SYSTEM_PROMPT };
+// One-shot completion, no tools (e.g. "Generate with AI" in the document form).
+async function generate({ system, prompt, model }) {
+  const { ai, registry } = await loadSdk();
+  const { text } = await ai.generateText({
+    model: model || registry.languageModel(process.env.AGENT_MODEL || DEFAULT_MODEL),
+    system,
+    prompt,
+    maxOutputTokens: 8_000,
+    abortSignal: AbortSignal.timeout(120_000),
+  });
+  return text;
+}
+
+module.exports = { runAgent, generate, makeCall, isErrorResult, cleanHistory, SYSTEM_PROMPT };

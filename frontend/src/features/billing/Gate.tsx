@@ -6,6 +6,7 @@ import { addModule, freeSlots, hasModule, markUsed, useWorkspace } from "../../b
 import { Clip } from "../../marketing/ui";
 import { buttonCls } from "../../marketing/lib";
 import { SlotDialog } from "./shared";
+import { getStoredUser } from "../../services/authApi";
 
 // What a locked preview promises, per live add-on. Concrete outcomes, not feature names.
 const PREVIEW: Record<string, { bullets: string[]; clip?: string }> = {
@@ -69,9 +70,13 @@ function LockedModule({ id }: { id: string }) {
             {slots > 0 ? `You have ${slots} free slot${slots === 1 ? "" : "s"}.` : "All your slots are in use."}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <button type="button" onClick={add} className={buttonCls.primary}>
-              Add to my plan
-            </button>
+            {getStoredUser()?.role === "staff" ? (
+              <p className="text-sm text-ink-2">Ask your organizer to add it.</p>
+            ) : (
+              <button type="button" onClick={add} className={buttonCls.primary}>
+                Add to my plan
+              </button>
+            )}
             <Link to="/events" className={buttonCls.secondary}>Back to events</Link>
           </div>
         </div>

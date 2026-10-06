@@ -1,320 +1,334 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Stage, Layer, Rect, Text, Group, Circle, Transformer } from "react-konva";
-import { Minus, Plus, Maximize } from "lucide-react";
-import type Konva from "konva";
-import type { Floor, Placement, Room, RosterMember } from "./types";
-import { contentBounds, initials, roomAt } from "./geometry";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { Cat, Floor, Room, RosterMember } from "./types";
+import { CATS, KINDS, catOf, isSpace } from "./types";
+import { contentBounds, initials } from "./geometry";
+import { PX_PER_M, itemStyle, type DropPayload } from "./itemStyle";
 
-const MIN_SIZE = 40;
-const MIN_ZOOM = 0.2;
-const MAX_ZOOM = 3;
-const FIT_PADDING = 48;
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 2.5;
+const PIN = 28; // staff pin diameter; placements store the pin's centre
 
-const clampZoom = (s: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, s));
+const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+const mono = "font-mono";
+
+type Drag =
+  | { mode: "pan"; sx: number; sy: number; px: number; py: number; moved: boolean }
+  | { mode: "move"; id: string; sx: number; sy: number; ox: number; oy: number; moved: boolean }
+  | { mode: "resize"; id: string; sx: number; sy: number; ow: number; oh: number; moved: boolean }
+  | { mode: "pin"; user: string; sx: number; sy: number; ox: number; oy: number; moved: boolean };
 
 interface Props {
   floor: Floor;
   roster: RosterMember[];
-  selectedId: string | null;
+  selectedId: string | null; // room id, or "u:<userId>" for a staff pin
+  hidden: Cat[];
+  snap: boolean;
   onSelect: (id: string | null) => void;
-  onRoomsChange: (rooms: Room[]) => void;
-  onPlacementsChange: (placements: Placement[]) => void;
-  /** Drop from the left palette or the People list, in stage coords. */
-  onDrop: (
-    payload: { kind: "room" } | { kind: "staff"; userId: string },
-    x: number,
-    y: number
-  ) => void;
+  onToggleLayer: (c: Cat) => void;
+  onToggleSnap: () => void;
+  /** Called once before a drag changes anything, so the page can push an undo step. */
+  onBeginEdit: () => void;
+  onPatchRoom: (id: string, patch: Partial<Room>) => void;
+  onMovePin: (userId: string, x: number, y: number) => void;
+  onDrop: (payload: DropPayload, x: number, y: number) => void;
+  /** The page reads the visible centre through this to place click-added items. */
+  centerRef: React.MutableRefObject<() => { x: number; y: number }>;
+  dragLabel: string | null;
 }
 
-export default function FloorCanvas({
-  floor,
-  roster,
-  selectedId,
-  onSelect,
-  onRoomsChange,
-  onPlacementsChange,
-  onDrop,
-}: Props) {
+export default function FloorCanvas(p: Props) {
+  const { floor, roster, selectedId, hidden, snap } = p;
   const wrapRef = useRef<HTMLDivElement>(null);
-  const stageRef = useRef<Konva.Stage>(null);
-  const trRef = useRef<Konva.Transformer>(null);
-  const [size, setSize] = useState({ width: 800, height: 600 });
-  const [renaming, setRenaming] = useState<string | null>(null);
-  // Pan/zoom lives in React state so the wheel, the buttons and the readout agree.
-  const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
+  const [view, setView] = useState({ zoom: 0.7, x: 24, y: 24 });
+  const [layersOpen, setLayersOpen] = useState(false);
+  const [dropHint, setDropHint] = useState(false);
+  const userMoved = useRef(false);
+  const drag = useRef<Drag | null>(null);
+  // Window listeners are bound once; they read the latest render through this.
+  const live = useRef({ p, view });
+  useLayoutEffect(() => {
+    live.current = { p, view };
+  });
 
-  // Stage needs pixel dimensions, so track the wrapper.
-  useEffect(() => {
+  const visible = floor.rooms
+    .filter((r) => !hidden.includes(catOf(r)))
+    // Spaces underneath, biggest first, then markers on top.
+    .sort((a, b) => (isSpace(b) ? 1 : 0) - (isSpace(a) ? 1 : 0) || b.width * b.height - a.width * a.height);
+  const pins = hidden.includes("staff") ? [] : floor.placements;
+
+  const fit = useCallback(() => {
     const el = wrapRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([entry]) =>
-      setSize({ width: entry.contentRect.width, height: entry.contentRect.height })
+    const b = contentBounds(
+      floor.rooms.filter((r) => !hidden.includes(catOf(r))),
+      hidden.includes("staff") ? [] : floor.placements
     );
+    if (!el || !b) return setView({ zoom: 0.8, x: 24, y: 24 });
+    const zoom = clampZoom(Math.min((el.clientWidth - 64) / b.width, (el.clientHeight - 96) / b.height));
+    setView({
+      zoom,
+      x: (el.clientWidth - b.width * zoom) / 2 - b.x * zoom,
+      y: (el.clientHeight - b.height * zoom) / 2 - b.y * zoom,
+    });
+  }, [floor.rooms, floor.placements, hidden]);
+
+  // Fit on first size and on every resize until the user pans or zooms. The page keys this
+  // component by floor, so switching floors remounts and refits.
+  const fitRef = useRef(fit);
+  useLayoutEffect(() => {
+    fitRef.current = fit;
+  });
+  useEffect(() => {
+    const el = wrapRef.current!;
+    const ro = new ResizeObserver(() => !userMoved.current && fitRef.current());
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  // Attach the transformer to whichever room is selected.
-  useEffect(() => {
-    const tr = trRef.current;
-    const stage = stageRef.current;
-    if (!tr || !stage) return;
-    const node = selectedId ? stage.findOne("#" + selectedId) : null;
-    tr.nodes(node ? [node] : []);
-  }, [selectedId, floor.rooms]);
-
-  const nameOf = (userId: string) => roster.find((m) => m._id === userId)?.name || "Unknown";
-
-  const patchRoom = (id: string, patch: Partial<Room>) =>
-    onRoomsChange(floor.rooms.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-
-  // Browser drop -> stage coordinates, undoing the stage's own pan/zoom.
-  const toStageCoords = (e: React.DragEvent) => {
-    const stage = stageRef.current!;
-    stage.setPointersPositions(e.nativeEvent);
-    const pos = stage.getPointerPosition()!;
-    return stage.getAbsoluteTransform().copy().invert().point(pos);
-  };
-
-  // Zoom to `next`, keeping `anchor` (viewport px) pinned to the same spot on the plan.
-  const zoomTo = useCallback((next: number, anchor?: { x: number; y: number }) => {
+  const zoomTo = useCallback((next: number, a?: { x: number; y: number }) => {
+    userMoved.current = true;
     setView((v) => {
-      const scale = clampZoom(next);
-      const a = anchor ?? { x: size.width / 2, y: size.height / 2 };
-      const k = scale / v.scale;
-      return { scale, x: a.x - (a.x - v.x) * k, y: a.y - (a.y - v.y) * k };
+      const el = wrapRef.current!;
+      const zoom = clampZoom(next), k = zoom / v.zoom;
+      const pt = a ?? { x: el.clientWidth / 2, y: el.clientHeight / 2 };
+      return { zoom, x: pt.x - (pt.x - v.x) * k, y: pt.y - (pt.y - v.y) * k };
     });
-  }, [size.width, size.height]);
+  }, []);
 
-  const fit = useCallback(() => {
-    const b = contentBounds(floor.rooms, floor.placements);
-    if (!b) return setView({ scale: 1, x: 0, y: 0 });
-    const scale = clampZoom(
-      Math.min(
-        (size.width - FIT_PADDING * 2) / b.width,
-        (size.height - FIT_PADDING * 2) / b.height
-      )
-    );
-    setView({
-      scale,
-      x: (size.width - b.width * scale) / 2 - b.x * scale,
-      y: (size.height - b.height * scale) / 2 - b.y * scale,
-    });
-  }, [floor.rooms, floor.placements, size.width, size.height]);
+  // Wheel must be non-passive to stop the page scrolling.
+  useEffect(() => {
+    const el = wrapRef.current!;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      zoomTo(live.current.view.zoom * (e.deltaY > 0 ? 0.92 : 1.08), { x: e.clientX - r.left, y: e.clientY - r.top });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [zoomTo]);
 
-  const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
-    e.evt.preventDefault();
-    const pointer = e.target.getStage()!.getPointerPosition()!;
-    zoomTo(view.scale * (e.evt.deltaY > 0 ? 0.92 : 1.08), pointer);
+  const toWorld = (cx: number, cy: number) => {
+    const r = wrapRef.current!.getBoundingClientRect(), v = live.current.view;
+    return { x: (cx - r.left - v.x) / v.zoom, y: (cy - r.top - v.y) / v.zoom };
   };
+  const { centerRef } = p;
+  useLayoutEffect(() => {
+    centerRef.current = () => {
+      const r = wrapRef.current!.getBoundingClientRect(), v = live.current.view;
+      return { x: (r.width / 2 - v.x) / v.zoom, y: (r.height / 2 - v.y) / v.zoom };
+    };
+  }, [centerRef]);
 
-  const renamingRoom = floor.rooms.find((r) => r.id === renaming);
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      const d = drag.current;
+      if (!d) return;
+      const { p, view } = live.current;
+      const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
+      if (!d.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
+      if (!d.moved && d.mode !== "pan") p.onBeginEdit();
+      d.moved = true;
+      const z = view.zoom;
+      const s = (v: number) => (p.snap ? Math.round(v / 12) * 12 : Math.round(v));
+      if (d.mode === "pan") {
+        userMoved.current = true;
+        setView((v) => ({ ...v, x: d.px + dx, y: d.py + dy }));
+      } else if (d.mode === "move") p.onPatchRoom(d.id, { x: s(d.ox + dx / z), y: s(d.oy + dy / z) });
+      else if (d.mode === "resize") p.onPatchRoom(d.id, { width: Math.max(20, s(d.ow + dx / z)), height: Math.max(20, s(d.oh + dy / z)) });
+      else p.onMovePin(d.user, Math.round(d.ox + dx / z), Math.round(d.oy + dy / z));
+    };
+    const up = () => {
+      const d = drag.current;
+      drag.current = null;
+      // A click (no movement) on empty canvas clears the selection.
+      if (d?.mode === "pan" && !d.moved) {
+        live.current.p.onSelect(null);
+        setLayersOpen(false);
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  }, []);
+
+  const stop = (e: React.PointerEvent) => e.stopPropagation();
+  const staffIn = (r: Room) => floor.placements.filter((q) => q.roomId === r.id).length;
+  const nameOf = (id: string) => roster.find((m) => m._id === id)?.name || "Unknown";
+  const zoom = view.zoom;
+  const pill = "cursor-pointer rounded-full px-3 py-[7px] text-[12.5px]";
 
   return (
     <div
       ref={wrapRef}
-      className="relative h-full w-full overflow-hidden rounded-xl border border-line bg-surface"
-      style={{
-        backgroundImage:
-          "linear-gradient(#EDF2EC 1px, transparent 1px), linear-gradient(90deg, #EDF2EC 1px, transparent 1px)",
-        backgroundSize: "24px 24px",
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        drag.current = { mode: "pan", sx: e.clientX, sy: e.clientY, px: view.x, py: view.y, moved: false };
       }}
-      onDragOver={(e) => e.preventDefault()}
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!dropHint) setDropHint(true);
+      }}
+      onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && setDropHint(false)}
       onDrop={(e) => {
         e.preventDefault();
-        const userId = e.dataTransfer.getData("application/x-staff-id");
-        const { x, y } = toStageCoords(e);
-        onDrop(userId ? { kind: "staff", userId } : { kind: "room" }, x, y);
+        setDropHint(false);
+        const d = e.dataTransfer.getData("text/plain"), pt = toWorld(e.clientX, e.clientY);
+        if (d.startsWith("kind:")) p.onDrop({ kind: "item", type: d.slice(5) as keyof typeof KINDS }, pt.x, pt.y);
+        if (d.startsWith("staff:")) p.onDrop({ kind: "staff", userId: d.slice(6) }, pt.x, pt.y);
+      }}
+      className="relative h-full min-h-[560px] w-full cursor-grab touch-none overflow-hidden rounded-2xl bg-surface select-none"
+      style={{
+        outline: dropHint ? "2px dashed #3F8A64" : "none",
+        outlineOffset: -2,
+        backgroundImage: "linear-gradient(#EDF2EC 1px,transparent 1px),linear-gradient(90deg,#EDF2EC 1px,transparent 1px)",
+        backgroundSize: `${PX_PER_M * zoom}px ${PX_PER_M * zoom}px`,
+        backgroundPosition: `${view.x}px ${view.y}px`,
       }}
     >
-      <Stage
-        ref={stageRef}
-        width={size.width}
-        height={size.height}
-        scaleX={view.scale}
-        scaleY={view.scale}
-        x={view.x}
-        y={view.y}
-        draggable
-        onWheel={handleWheel}
-        onDragEnd={(e) => {
-          // Child drags bubble up here too; only the stage itself is a pan.
-          if (e.target === e.target.getStage()) {
-            setView((v) => ({ ...v, x: e.target.x(), y: e.target.y() }));
-          }
-        }}
-        onMouseDown={(e) => {
-          // Clicking empty canvas clears the selection.
-          if (e.target === e.target.getStage()) onSelect(null);
-        }}
-      >
-        <Layer>
-          {floor.rooms.map((room) => {
-            const occupied = floor.placements.filter((p) => p.roomId === room.id).length;
-            return (
-              <Group key={room.id}>
-                <Rect
-                  id={room.id}
-                  x={room.x}
-                  y={room.y}
-                  width={room.width}
-                  height={room.height}
-                  fill={room.color}
-                  stroke={selectedId === room.id ? "#16231C" : "#C4CEC6"}
-                  strokeWidth={selectedId === room.id ? 2 : 1}
-                  cornerRadius={4}
-                  draggable
-                  onClick={() => onSelect(room.id)}
-                  onTap={() => onSelect(room.id)}
-                  onDblClick={() => setRenaming(room.id)}
-                  onDragEnd={(e) => patchRoom(room.id, { x: e.target.x(), y: e.target.y() })}
-                  onTransformEnd={(e) => {
-                    // Konva scales nodes rather than resizing them: bake the scale into
-                    // width/height and reset it, or every later drag compounds it.
-                    const node = e.target;
-                    patchRoom(room.id, {
-                      x: node.x(),
-                      y: node.y(),
-                      width: Math.max(MIN_SIZE, node.width() * node.scaleX()),
-                      height: Math.max(MIN_SIZE, node.height() * node.scaleY()),
-                    });
-                    node.scaleX(1);
-                    node.scaleY(1);
-                  }}
-                />
-                <Text
-                  x={room.x + 10}
-                  y={room.y + 8}
-                  text={room.name}
-                  fontSize={14}
-                  fontStyle="bold"
-                  fill="#16231C"
-                  listening={false}
-                />
-                <Text
-                  x={room.x + 10}
-                  y={room.y + 26}
-                  text={occupied + " / " + room.capacity}
-                  fontSize={12}
-                  fill={occupied > room.capacity ? "#8A2E52" : "#5C6A62"}
-                  listening={false}
-                />
-              </Group>
-            );
-          })}
-
-          {floor.placements.map((p) => (
-            <Group
-              key={p.user}
-              x={p.x}
-              y={p.y}
-              draggable
-              onDragEnd={(e) => {
-                const x = e.target.x();
-                const y = e.target.y();
-                onPlacementsChange(
-                  floor.placements.map((q) =>
-                    q.user === p.user ? { ...q, x, y, roomId: roomAt(floor.rooms, x, y) } : q
-                  )
-                );
+      <div className="absolute top-0 left-0 origin-top-left" style={{ transform: `translate(${view.x}px,${view.y}px) scale(${zoom})` }}>
+        {visible.map((it) => {
+          const st = itemStyle(it, isSpace(it) ? staffIn(it) : 0);
+          const sel = it.id === selectedId;
+          return (
+            <div
+              key={it.id}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                if (e.button !== 0) return;
+                p.onSelect(it.id);
+                setLayersOpen(false);
+                if (!it.locked) drag.current = { mode: "move", id: it.id, sx: e.clientX, sy: e.clientY, ox: it.x, oy: it.y, moved: false };
+              }}
+              className="absolute"
+              style={{
+                left: it.x, top: it.y, width: it.width, height: it.height,
+                transform: `rotate(${it.rot || 0}deg)`,
+                outline: sel ? "2px solid #3F8A64" : "none", outlineOffset: 3,
+                borderRadius: st.radius, cursor: it.locked ? "default" : "move",
               }}
             >
-              <Circle radius={16} fill="#16231C" stroke="white" strokeWidth={2} />
-              <Text
-                x={-16}
-                y={-5}
-                width={32}
-                align="center"
-                text={initials(nameOf(p.user))}
-                fontSize={11}
-                fontStyle="bold"
-                fill="white"
-                listening={false}
-              />
-              <Text
-                x={-40}
-                y={20}
-                width={80}
-                align="center"
-                text={nameOf(p.user)}
-                fontSize={11}
-                fill="#16231C"
-                listening={false}
-              />
-            </Group>
-          ))}
+              <div
+                className="absolute inset-0 flex flex-col gap-0.5 overflow-hidden"
+                style={{
+                  borderRadius: st.radius, background: st.bg, border: st.border, color: st.fg,
+                  alignItems: st.align, justifyContent: st.justify, padding: st.pad,
+                }}
+              >
+                <span className="leading-[1.15] font-medium whitespace-nowrap" style={{ fontSize: st.fs, fontFamily: st.ff, letterSpacing: st.ls }}>
+                  {st.label}
+                </span>
+                {st.sub && <span className={`${mono} text-[10px] whitespace-nowrap`} style={{ color: st.subFg }}>{st.sub}</span>}
+              </div>
+              {sel && !it.locked && catOf(it) !== "safety" && (
+                <span
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    drag.current = { mode: "resize", id: it.id, sx: e.clientX, sy: e.clientY, ow: it.width, oh: it.height, moved: false };
+                  }}
+                  className="absolute -right-[7px] -bottom-[7px] size-3 cursor-nwse-resize rounded-[3px] border-2 border-live bg-white"
+                />
+              )}
+            </div>
+          );
+        })}
+        {pins.map((q) => (
+          <div
+            key={q.user}
+            title={nameOf(q.user)}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              if (e.button !== 0) return;
+              p.onSelect("u:" + q.user);
+              drag.current = { mode: "pin", user: q.user, sx: e.clientX, sy: e.clientY, ox: q.x, oy: q.y, moved: false };
+            }}
+            className="absolute grid cursor-move place-items-center rounded-full border-2 border-white bg-ink text-[9.5px] font-medium text-paper"
+            style={{
+              left: q.x - PIN / 2, top: q.y - PIN / 2, width: PIN, height: PIN,
+              outline: selectedId === "u:" + q.user ? "2px solid #3F8A64" : "none", outlineOffset: 3,
+            }}
+          >
+            {initials(nameOf(q.user))}
+          </div>
+        ))}
+      </div>
 
-          <Transformer
-            ref={trRef}
-            rotateEnabled={false}
-            boundBoxFunc={(oldBox, newBox) =>
-              newBox.width < MIN_SIZE || newBox.height < MIN_SIZE ? oldBox : newBox
-            }
-          />
-        </Layer>
-      </Stage>
+      {/* Layers */}
+      <div onPointerDown={stop} className="absolute top-3 left-3 flex flex-col items-start gap-1.5">
+        <button onClick={() => setLayersOpen((o) => !o)} className={`${pill} flex items-center gap-2 bg-ink text-paper`}>
+          Layers<span className={`${mono} text-[10.5px] text-[#95A39A]`}>{CATS.length - hidden.length}/{CATS.length}</span>
+        </button>
+        {layersOpen && (
+          <div className="w-[220px] rounded-xl bg-surface p-1.5 shadow-[0_20px_40px_-20px_rgba(20,45,30,.35),0_0_0_1px_#E1E8E0]">
+            {CATS.map(([c, name]) => {
+              const on = !hidden.includes(c);
+              const count = c === "staff" ? floor.placements.length : floor.rooms.filter((r) => catOf(r) === c).length;
+              return (
+                <button
+                  key={c}
+                  role="switch"
+                  aria-checked={on}
+                  onClick={() => p.onToggleLayer(c)}
+                  className={`flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 text-left text-[13px] hover:bg-[#F4F7F3] ${on ? "text-ink" : "text-[#8A968E]"}`}
+                >
+                  <span className={`relative h-4 w-7 flex-none rounded-full ${on ? "bg-live" : "bg-[#CBD6CC]"}`}>
+                    <span className="absolute top-0.5 size-3 rounded-full bg-white transition-[left]" style={{ left: on ? 14 : 2 }} />
+                  </span>
+                  <span className="flex-1">{name}</span>
+                  <span className={`${mono} text-[10.5px] text-[#8A968E]`}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-      {/* Zoom controls */}
-      <div className="absolute bottom-4 left-4 z-10 flex items-center gap-1 rounded-lg border border-line bg-surface/95 p-1 shadow-sm backdrop-blur">
+      <div onPointerDown={stop} className="absolute top-3 right-3">
         <button
-          onClick={() => zoomTo(view.scale - 0.2)}
-          disabled={view.scale <= MIN_ZOOM}
-          title="Zoom out"
-          aria-label="Zoom out"
-          className="rounded p-1.5 text-ink-2 hover:bg-sunken disabled:opacity-40"
+          onClick={p.onToggleSnap}
+          aria-pressed={snap}
+          className={`${pill} shadow-[0_0_0_1px_#E1E8E0] ${snap ? "bg-ink text-paper" : "bg-surface text-ink-2"}`}
         >
-          <Minus className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => zoomTo(1)}
-          title="Reset to 100%"
-          aria-label="Reset zoom to 100%"
-          className="min-w-14 rounded px-1 py-1 text-xs font-medium text-ink-2 tabular-nums hover:bg-sunken"
-        >
-          {Math.round(view.scale * 100)}%
-        </button>
-        <button
-          onClick={() => zoomTo(view.scale + 0.2)}
-          disabled={view.scale >= MAX_ZOOM}
-          title="Zoom in"
-          aria-label="Zoom in"
-          className="rounded p-1.5 text-ink-2 hover:bg-sunken disabled:opacity-40"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
-        <span className="mx-0.5 h-5 w-px bg-sunken" />
-        <button
-          onClick={fit}
-          title="Fit plan to screen"
-          aria-label="Fit plan to screen"
-          className="rounded p-1.5 text-ink-2 hover:bg-sunken"
-        >
-          <Maximize className="h-4 w-4" />
+          Snap {snap ? "0.5 m" : "off"}
         </button>
       </div>
 
-      {/* Inline rename, positioned over the room in screen space. */}
-      {renamingRoom && (
-        <input
-          autoFocus
-          defaultValue={renamingRoom.name}
-          className="absolute z-10 rounded border border-ink px-1 text-sm outline-none"
-          style={{
-            left: renamingRoom.x * view.scale + view.x + 8,
-            top: renamingRoom.y * view.scale + view.y + 6,
-            width: 140,
+      <div onPointerDown={stop} className="absolute right-3 bottom-3 flex items-center gap-1.5">
+        <div className="flex items-center rounded-full bg-surface text-[13px] shadow-[0_0_0_1px_#E1E8E0]">
+          <button onClick={() => zoomTo(zoom / 1.2)} aria-label="Zoom out" className="cursor-pointer px-3 py-[7px]">−</button>
+          <span className={`${mono} min-w-[42px] text-center text-[11px]`}>{Math.round(zoom * 100)}%</span>
+          <button onClick={() => zoomTo(zoom * 1.2)} aria-label="Zoom in" className="cursor-pointer px-3 py-[7px]">+</button>
+        </div>
+        <button
+          onClick={() => {
+            userMoved.current = false;
+            fit();
           }}
-          onBlur={(e) => {
-            const name = e.target.value.trim();
-            if (name) patchRoom(renamingRoom.id, { name });
-            setRenaming(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-            if (e.key === "Escape") setRenaming(null);
-          }}
-        />
+          className={`${pill} bg-surface shadow-[0_0_0_1px_#E1E8E0]`}
+        >
+          Fit
+        </button>
+      </div>
+
+      <div className="pointer-events-none absolute bottom-3.5 left-3 flex flex-col gap-1">
+        <span className={`${mono} text-[10px] text-[#6E7C73]`}>5 m</span>
+        <span className="block h-1.5 border-[1.5px] border-t-0 border-[#6E7C73]" style={{ width: 5 * PX_PER_M * zoom }} />
+      </div>
+
+      {dropHint && (
+        <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-live px-3.5 py-[7px] text-[12.5px] whitespace-nowrap text-white">
+          {p.dragLabel ? `Drop to place ${p.dragLabel}` : "Drop to place"}
+        </div>
+      )}
+
+      {!floor.rooms.length && !floor.placements.length && (
+        <div className="pointer-events-none absolute inset-0 grid place-items-center">
+          <div className="max-w-[300px] text-center">
+            <div className="text-base font-medium">An empty floor</div>
+            <div className="mt-1.5 text-[13.5px] leading-[1.45] text-ink-3">Drag a room from Components, or click one to add it here.</div>
+          </div>
+        </div>
       )}
     </div>
   );
